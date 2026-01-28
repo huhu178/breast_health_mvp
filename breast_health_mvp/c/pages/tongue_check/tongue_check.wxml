@@ -1,0 +1,17 @@
+<navigation-bar title="舌诊检测" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+
+<view class="container">
+  <view wx:if="{{!isReady}}" class="card warn">
+    <view class="title">舌诊功能待开通</view>
+    <view class="desc">
+      当前尚未配置舌诊插件的 idCode，暂无法开始检测。
+    </view>
+  </view>
+
+  <view wx:else class="card">
+    <!-- 插件全屏组件：建议页面不要放其它内容 -->
+    <tongue-check bind:checkfinish="finish" customNav="true" diseaseCode="all"></tongue-check>
+  </view>
+</view>
+
+

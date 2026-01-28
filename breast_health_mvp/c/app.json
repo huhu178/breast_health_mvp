@@ -1,0 +1,21 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/result/result",
+    "pages/tongue_check/tongue_check"
+  ],
+  "plugins": {
+    "ai-tongue": {
+      "version": "1.0.14",
+      "provider": "wxf77c87e5f53e6336",
+      "export": "aiTongue.js"
+    }
+  },
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationStyle": "custom"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

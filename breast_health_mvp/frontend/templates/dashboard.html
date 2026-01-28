@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}工作台 - 多结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">📊 今日数据概览</div>
+    
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div style="text-align: center; padding: 20px; background: #ecf5ff; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold; color: #409eff;">0</div>
+            <div style="color: #606266; margin-top: 10px;">今日新增患者</div>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; background: #f0f9ff; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold; color: #67c23a;">0</div>
+            <div style="color: #606266; margin-top: 10px;">今日新建档案</div>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; background: #fef0f0; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold; color: #e6a23c;">0</div>
+            <div style="color: #606266; margin-top: 10px;">今日生成报告</div>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; background: #f4f4f5; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold; color: #909399;" id="totalPatients">0</div>
+            <div style="color: #606266; margin-top: 10px;">总患者数</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">🚀 快速操作</div>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <a href="/patients" class="btn btn-primary">添加患者</a>
+        <a href="/records" class="btn btn-success">创建档案</a>
+        <a href="/reports" class="btn" style="background: #e6a23c; color: #fff;">查看报告</a>
+        <a href="/nodule-form" class="btn" style="background: #9c27b0; color: #fff;">📋 多结节管理</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">📋 最近操作记录</div>
+    <table>
+        <thead>
+            <tr>
+                <th>操作类型</th>
+                <th>患者姓名</th>
+                <th>操作时间</th>
+                <th>操作人</th>
+            </tr>
+        </thead>
+        <tbody id="recentActivities">
+            <tr>
+                <td colspan="4" style="text-align: center; color: #909399;">暂无操作记录</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 加载统计数据
+    fetch('/api/patients?per_page=1')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalPatients').textContent = data.data.total;
+            }
+        });
+</script>
+{% endblock %}
+

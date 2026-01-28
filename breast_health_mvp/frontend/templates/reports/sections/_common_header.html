@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ nodule_type_name }}结节健康管理方案</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            width: 95%;
+            max-width: 100%;
+            margin: 10px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 封面页样式 */
+        .cover-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+        }
+        .cover-page h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        .cover-page h2 {
+            font-size: 36px;
+            font-weight: 300;
+            margin-top: 0;
+        }
+        
+        /* 寄语页样式 */
+        .greeting-page {
+            padding: 40px;
+            line-height: 2;
+            font-size: 14px;
+        }
+        .greeting-page h2 {
+            color: #3498db;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .greeting-page h3 {
+            color: #2c3e50;
+            font-size: 16px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        .greeting-page p {
+            text-indent: 2em;
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .greeting-page ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .greeting-page ul li {
+            padding-left: 2em;
+            margin-bottom: 10px;
+        }
+        .greeting-page ul li:before {
+            content: "● ";
+            color: #3498db;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        /* 复选框样式 */
+        .checkbox-label {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            cursor: default;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 5px;
+            cursor: default;
+        }
+        
+        .checkbox-label input[type="checkbox"]:disabled {
+            cursor: default;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4CAF50;
+        }
+        header h1 {
+            color: #2c3e50;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        header p {
+            font-size: 12px;
+            color: #555;
+        }
+        section {
+            margin-bottom: 25px;
+        }
+        section h2 {
+            color: #3498db;
+            font-size: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+        }
+        section h3 {
+            color: #5dade2;
+            font-size: 14px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 11px;
+            table-layout: fixed;
+        }
+        section th, section td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        section th {
+            background-color: #e9f5e9;
+            color: #2c3e50;
+            font-weight: 600;
+            min-width: 80px;
+        }
+        .disclaimer {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            font-size: 11px;
+            color: #777;
+            line-height: 1.8;
+        }
+        .disclaimer strong {
+            color: #333;
+            font-size: 13px;
+        }
+        footer {
+            margin-top: 20px;
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+            color: white;
+            font-size: 10px;
+        }
+        footer p {
+            margin: 0;
+            color: rgba(255,255,255,0.95);
+        }
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .risk-low { background-color: #67c23a; color: white; }
+        .risk-medium { background-color: #e6a23c; color: white; }
+        .risk-high { background-color: #f56c6c; color: white; }
+        
+        /* 分页符 - 屏幕上显示提示（方便调试） */
+        .page-break {
+            margin: 30px 0;
+            padding: 10px;
+            text-align: center;
+            background: linear-gradient(to right, #e3f2fd, #fff, #e3f2fd);
+            border-top: 2px dashed #90caf9;
+            border-bottom: 2px dashed #90caf9;
+            color: #1976d2;
+            font-size: 12px;
+        }
+        
+        .page-break::after {
+            content: "━━━ 分页符（PDF导出时此处分页）━━━";
+        }
+        
+        
+        /* 打印和PDF导出优化 */
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm 12mm;  /* 上下10mm（减小），左右12mm */
+            }
+            
+            body {
+                background-color: white;
+                margin: 0;
+                padding: 0;
+            }
+            
+            /* 封面页打印优化 */
+            .cover-page {
+                min-height: 100vh;
+                page-break-after: always;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color: white !important;
+            }
+            
+            /* 寄语页打印优化 */
+            .greeting-page {
+                page-break-after: always;
+                page-break-inside: avoid;
+                padding: 30px !important;
+                font-size: 13px !important;
+                line-height: 1.8 !important;
+            }
+            
+            .greeting-page h2 {
+                page-break-after: avoid;
+            }
+            
+            .greeting-page h3 {
+                page-break-after: avoid;
+            }
+            
+            .greeting-page ul {
+                page-break-inside: avoid;
+            }
+            
+            /* 打印时复选框样式 */
+            .checkbox-label {
+                display: inline-block;
+                margin-right: 12px !important;
+                margin-bottom: 5px !important;
+                font-size: 11px !important;
+            }
+            
+            .checkbox-label input[type="checkbox"] {
+                margin-right: 4px !important;
+            }
+            
+            .container {
+                width: 100% !important;
+                max-width: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 8px 0 !important;  /* 只保留上下小边距 */
+                border-radius: 0 !important;
+            }
+            
+            header {
+                margin-bottom: 12px !important;
+                padding-bottom: 8px !important;
+                page-break-after: avoid;
+            }
+            
+            /* section默认不强制分页 */
+            section {
+                margin-bottom: 12px !important;
+                padding: 0 !important;
+                page-break-inside: auto;  /* 允许内部分页 */
+            }
+            
+            /* 标题与内容不分离 */
+            h1, h2, h3 {
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+            
+            /* 标题后的第一个元素必须跟随 */
+            h2 + table,
+            h2 + div,
+            h2 + p {
+                page-break-before: avoid;
+            }
+            
+            /* 表格智能分页 */
+            table {
+                page-break-inside: auto;
+                margin-bottom: 10px;
+                width: 100% !important;
+                table-layout: auto !important;
+                font-size: 10px !important;
+            }
+            
+            /* 表格单元格自动换行 */
+            td, th {
+                word-wrap: break-word !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: normal !important;
+                padding: 6px !important;
+            }
+            
+            /* 表格行不被截断 */
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            
+            /* 表头重复显示（某些浏览器支持） */
+            thead {
+                display: table-header-group;
+            }
+            
+            /* 打印时分页符完全隐形但生效 */
+            .page-break {
+                display: block !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                background: none !important;
+                visibility: hidden !important;
+                line-height: 0 !important;
+                font-size: 0 !important;
+                overflow: hidden !important;
+            }
+            
+            .page-break::after {
+                display: none !important;
+                content: '' !important;
+            }
+            
+            /* 最后一个section优化：减少底部空白 */
+            section:last-of-type {
+                margin-bottom: 5px !important;
+            }
+            
+            section:last-of-type table {
+                margin-bottom: 5px !important;
+            }
+            
+            /* 免责声明和footer打印优化 */
+            .disclaimer {
+                page-break-before: avoid !important;  /* 🔥 禁止在前面分页 */
+                page-break-inside: avoid !important;  /* 内容不分页 */
+                page-break-after: avoid !important;   /* 尽量与footer在同页 */
+                background-color: #f5f5f5 !important;
+                padding: 10px !important;
+                margin-top: 5px !important;
+                font-size: 10px !important;
+                line-height: 1.5 !important;
+            }
+            
+            footer {
+                page-break-before: avoid !important;  /* 🔥 禁止在前面分页 */
+                page-break-inside: avoid !important;  /* footer不分页 */
+                -webkit-print-color-adjust: exact;  /* 确保背景色打印 */
+                print-color-adjust: exact;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: white !important;
+                padding: 12px 10px !important;
+                margin-top: 5px !important;
+            }
+            
+            footer h3 {
+                font-size: 12px !important;
+                margin-bottom: 6px !important;
+            }
+            
+            footer p {
+                margin: 2px 0 !important;
+                line-height: 1.4 !important;
+            }
+            
+            footer h3,
+            footer strong,
+            footer p {
+                color: white !important;
+            }
+            
+            footer .copyright {
+                border-top: 1px solid rgba(255,255,255,0.2) !important;
+                margin-top: 8px !important;
+                padding-top: 8px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 封面页 -->
+        <div class="cover-page">
+            <h1>{{ patient_name }}女士/先生</h1>
+            <h2>结节健康管理方案</h2>
+            <p style="margin-top: 40px; font-size: 16px;">报告编号: {{ report_code }}</p>
+            <p style="font-size: 14px;">生成日期: {{ report_date }}</p>
+        </div>
+
+        <div class="page-break"></div>
+
+        <!-- 寄语页 -->
+        <div class="greeting-page">
+            <h2>结节健康管理团队给您的寄语</h2>
+            <h3>尊敬的{{ patient_name }}女士/先生：</h3>
+            <p><strong>感谢您对我们的信任！</strong>我们将竭诚为您提供科学、专业的结节健康管理指导及全程管家服务。我们坚持以新医学模式（生理—心理—社会）为核心，通过多维度干预有效管控结节风险、改善体质基础。目前，我们已形成<strong>结节风险评估、生活方式干预、中医体质调理、影像复查跟踪、情绪与压力管理、长期随访计划</strong>等服务板块，为您提供全方位守护。</p>
+
+            <h3>结节健康管理团队郑重承诺：</h3>
+            <ul>
+                <li>健康管理师严格遵守公司的服务标准流程；</li>
+                <li>认真执行、落实每一项服务内容，同时也接受您的监督；</li>
+                <li>承担信息保密责任，未经您的许可，不向第三方泄漏个人信息。</li>
+            </ul>
+
+            <p>下列结节健康管理方案是基于您的基础信息、遗传史、疾病史、饮食生活习惯及各项检查报告经综合分析评估后而制定的。我们秉承"结节可防可控，体质调理是根本"的理念，重点从饮食、运动、情绪三大维度入手，帮助您改善内环境、降低结节进展风险。若您有更多信息补充（如近期复查结果、症状变化等），欢迎随时联系专属健康管理师，我们将及时更新您的健康档案与管理策略。</p>
+
+            <p>为了您的健康，希望您配合健康管理师的工作；如您有关于健康的任何需求，均可与您的专属健康管理师联系，您的健康是我们最大的追求和成就！</p>
+
+            <p style="text-align: right; margin-top: 30px;"><strong>结节健康管理团队</strong></p>
+        </div>
+
+        <div class="page-break"></div>

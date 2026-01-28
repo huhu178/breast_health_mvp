@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}患者详情 - 乳腺结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div class="card-title" style="margin: 0;">👤 患者详情</div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="history.back()">返回</button>
+            <button class="btn btn-success" onclick="window.location.href='/followups?patient_id={{ patient_id }}'">📝 跟进记录</button>
+            <button class="btn btn-primary" onclick="window.location.href='/records/new/{{ patient_id }}'">建立档案</button>
+        </div>
+    </div>
+    
+    <div id="patientDetail">
+        <p style="text-align: center; color: #909399;">加载中...</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">📋 健康档案</div>
+    <div id="recordsList">
+        <p style="text-align: center; color: #909399;">加载中...</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">📄 相关报告</div>
+    <div id="reportsList">
+        <p style="text-align: center; color: #909399;">加载中...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 加载患者详情
+    fetch(`/api/patients/{{ patient_id }}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const p = data.data;
+                document.getElementById('patientDetail').innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                        <div>
+                            <strong>患者编号：</strong>${p.patient_code || '-'}
+                        </div>
+                        <div>
+                            <strong>姓名：</strong>${p.name}
+                        </div>
+                        <div>
+                            <strong>年龄：</strong>${p.age || '-'}
+                        </div>
+                        <div>
+                            <strong>性别：</strong>${p.gender || '-'}
+                        </div>
+                        <div>
+                            <strong>联系电话：</strong>${p.phone || '-'}
+                        </div>
+                        <div>
+                            <strong>微信号：</strong>${p.wechat_id || '-'}
+                        </div>
+                        <div>
+                            <strong>来源渠道：</strong>${p.source_channel || '-'}
+                        </div>
+                        <div>
+                            <strong>状态：</strong><span style="color: #67c23a">${p.status}</span>
+                        </div>
+                        <div>
+                            <strong>创建时间：</strong>${formatDate(p.created_at)}
+                        </div>
+                    </div>
+                `;
+                
+                // 渲染档案列表
+                if (p.records && p.records.length > 0) {
+                    document.getElementById('recordsList').innerHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>档案编号</th>
+                                    <th>BI-RADS分级</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${p.records.map(r => `
+                                    <tr>
+                                        <td>${r.record_code || '-'}</td>
+                                        <td>${r.birads_level}级</td>
+                                        <td>${formatDate(r.created_at)}</td>
+                                        <td>
+                                            <button class="btn btn-text" onclick="generateReport(${r.id})">生成报告</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    document.getElementById('recordsList').innerHTML = '<p style="text-align: center; color: #909399;">暂无档案</p>';
+                }
+                
+                // 渲染报告列表
+                if (p.reports && p.reports.length > 0) {
+                    document.getElementById('reportsList').innerHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>报告编号</th>
+                                    <th>风险等级</th>
+                                    <th>生成时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${p.reports.map(r => `
+                                    <tr>
+                                        <td>${r.report_code || '-'}</td>
+                                        <td>${r.risk_level || '-'}</td>
+                                        <td>${formatDate(r.created_at)}</td>
+                                        <td>
+                                            <button class="btn btn-text" onclick="window.location.href='/reports/${r.id}'">查看</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    document.getElementById('reportsList').innerHTML = '<p style="text-align: center; color: #909399;">暂无报告</p>';
+                }
+            }
+        });
+    
+    // 生成报告
+    function generateReport(recordId) {
+        fetch('/api/reports/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ record_id: recordId })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('报告生成成功');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}
+

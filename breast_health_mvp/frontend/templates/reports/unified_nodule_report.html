@@ -1,0 +1,63 @@
+<!-- ==========================================
+     统一结节健康管理报告模板
+     支持: 乳腺、肺、甲状腺及其任意组合
+     ========================================== -->
+
+{# 根据nodule_types动态生成报告标题 #}
+{% set nodule_type_name = '' %}
+{% if nodule_types %}
+    {% set types_list = nodule_types.split(',') %}
+    {% if 'breast' in types_list and 'lung' in types_list and 'thyroid' in types_list %}
+        {% set nodule_type_name = '多器官（乳腺+肺+甲状腺）' %}
+    {% elif 'breast' in types_list and 'lung' in types_list %}
+        {% set nodule_type_name = '乳腺合并肺' %}
+    {% elif 'breast' in types_list and 'thyroid' in types_list %}
+        {% set nodule_type_name = '乳腺合并甲状腺' %}
+    {% elif 'lung' in types_list and 'thyroid' in types_list %}
+        {% set nodule_type_name = '肺合并甲状腺' %}
+    {% elif 'breast' in types_list %}
+        {% set nodule_type_name = '乳腺' %}
+    {% elif 'lung' in types_list %}
+        {% set nodule_type_name = '肺' %}
+    {% elif 'thyroid' in types_list %}
+        {% set nodule_type_name = '甲状腺' %}
+    {% else %}
+        {% set nodule_type_name = '结节' %}
+    {% endif %}
+{% else %}
+    {% set nodule_type_name = '结节' %}
+{% endif %}
+
+<!-- 引入公共头部（CSS样式 + 封面页 + 寄语页） -->
+{% include 'reports/sections/_common_header.html' %}
+
+<!-- ==========================================
+     动态加载各类型结节的专用部分
+     ========================================== -->
+
+{% if nodule_types %}
+    {% set types_list = nodule_types.split(',') %}
+
+    {# 1. 乳腺结节部分 #}
+    {% if 'breast' in types_list %}
+        {% include 'reports/sections/_breast_section.html' %}
+    {% endif %}
+
+    {# 2. 肺结节部分 #}
+    {% if 'lung' in types_list %}
+        {% include 'reports/sections/_lung_section.html' %}
+    {% endif %}
+
+    {# 3. 甲状腺结节部分 #}
+    {% if 'thyroid' in types_list %}
+        {% include 'reports/sections/_thyroid_section.html' %}
+    {% endif %}
+{% else %}
+    {# 如果没有指定类型，默认显示乳腺（向后兼容） #}
+    {% include 'reports/sections/_breast_section.html' %}
+{% endif %}
+
+<!-- ==========================================
+     公共尾部（健康管理建议 + 免责声明 + Footer）
+     ========================================== -->
+{% include 'reports/sections/_common_footer.html' %}

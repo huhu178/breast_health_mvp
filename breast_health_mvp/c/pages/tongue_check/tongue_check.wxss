@@ -1,0 +1,32 @@
+.container {
+  padding: 24rpx;
+  background: #f7f7f7;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  box-sizing: border-box;
+}
+
+.card.warn {
+  background: #fff7e6;
+}
+
+.title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111;
+}
+
+.desc {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #8a5a00;
+  line-height: 1.6;
+}
+
+

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}患者管理 - 乳腺结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">👥 患者列表</div>
+    
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="搜索患者姓名、电话、编号...">
+        <button class="btn btn-primary" onclick="searchPatients()">搜索</button>
+        <button class="btn btn-success" onclick="showAddPatientModal()">+ 添加患者</button>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>患者编号</th>
+                <th>姓名</th>
+                <th>年龄</th>
+                <th>性别</th>
+                <th>电话</th>
+                <th>类型</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="patientList">
+            <tr>
+                <td colspan="9" style="text-align: center; color: #909399;">加载中...</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- 添加/编辑患者模态框 -->
+<div id="patientModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="background: #fff; border-radius: 8px; padding: 30px; width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h2 style="margin-bottom: 20px;" id="modalTitle">添加患者</h2>
+        
+        <form id="patientForm" onsubmit="savePatient(event)">
+            <div class="form-group">
+                <label>姓名 *</label>
+                <input type="text" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>年龄</label>
+                <input type="number" name="age" min="0" max="120">
+            </div>
+            
+            <div class="form-group">
+                <label>性别</label>
+                <select name="gender">
+                    <option value="">请选择</option>
+                    <option value="女">女</option>
+                    <option value="男">男</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>联系电话</label>
+                <input type="tel" name="phone">
+            </div>
+            
+            <div class="form-group">
+                <label>微信号</label>
+                <input type="text" name="wechat_id">
+            </div>
+            
+            <div class="form-group">
+                <label>来源渠道</label>
+                <select name="source_channel">
+                    <option value="manual">手动录入</option>
+                    <option value="wechat">企业微信</option>
+                    <option value="referral">转介绍</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn" onclick="closePatientModal()">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    let currentPatientId = null;
+    let currentPatientType = null;
+    
+    // 加载患者列表
+    function loadPatients(page = 1, search = '') {
+        let url = `/api/b/patients?page=${page}&per_page=20`;
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+        
+        fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    renderPatients(data.data.items);
+                    renderPagination(data.data.page, data.data.pages);
+                } else {
+                    console.error('加载失败:', data.message);
+                    alert(data.message || '加载患者列表失败');
+                }
+            })
+            .catch(err => {
+                console.error('加载患者失败:', err);
+                alert('加载患者列表失败，请刷新重试');
+            });
+    }
+    
+    // 渲染患者列表
+    function renderPatients(patients) {
+        const tbody = document.getElementById('patientList');
+        
+        if (patients.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #909399;">暂无患者数据</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = patients.map(p => `
+            <tr>
+                <td>${p.patient_code || '-'}</td>
+                <td>${p.name}</td>
+                <td>${p.age || '-'}</td>
+                <td>${p.gender || '-'}</td>
+                <td>${p.phone || '-'}</td>
+                <td><span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; ${p.patient_type === 'b_end' ? 'background: #e6f7ff; color: #1890ff;' : 'background: #f0f9ff; color: #0ea5e9;'}">${p.patient_type === 'b_end' ? 'B端' : 'C端'}</span></td>
+                <td><span style="color: ${p.status === 'new' ? '#409eff' : '#67c23a'}">${p.status}</span></td>
+                <td>${formatDate(p.created_at)}</td>
+                <td>
+                    <button class="btn btn-text" onclick="viewPatient(${p.id}, '${p.patient_type}')">查看</button>
+                    <button class="btn btn-text" onclick="editPatient(${p.id}, '${p.patient_type}')">编辑</button>
+                    <button class="btn btn-text" onclick="createRecord(${p.id}, '${p.patient_type}')">建档</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    // 渲染分页
+    function renderPagination(page, totalPages) {
+        const pagination = document.getElementById('pagination');
+        let html = '';
+        
+        if (page > 1) {
+            html += `<button onclick="loadPatients(${page - 1})">上一页</button>`;
+        }
+        
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<button class="${i === page ? 'active' : ''}" onclick="loadPatients(${i})">${i}</button>`;
+        }
+        
+        if (page < totalPages) {
+            html += `<button onclick="loadPatients(${page + 1})">下一页</button>`;
+        }
+        
+        pagination.innerHTML = html;
+    }
+    
+    // 搜索患者
+    function searchPatients() {
+        const search = document.getElementById('searchInput').value;
+        loadPatients(1, search);
+    }
+    
+    // 显示添加患者模态框
+    function showAddPatientModal() {
+        currentPatientId = null;
+        document.getElementById('modalTitle').textContent = '添加患者';
+        document.getElementById('patientForm').reset();
+        document.getElementById('patientModal').style.display = 'flex';
+    }
+    
+    // 关闭模态框
+    function closePatientModal() {
+        document.getElementById('patientModal').style.display = 'none';
+    }
+    
+    // 保存患者
+    function savePatient(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const data = Object.fromEntries(formData.entries());
+        
+        // 如果是编辑，需要传递patient_type
+        if (currentPatientId && currentPatientType) {
+            data.type = currentPatientType;
+        }
+        
+        const url = currentPatientId 
+            ? `/api/b/patients/${currentPatientId}` 
+            : '/api/b/patients';
+        const method = currentPatientId ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('保存成功');
+                closePatientModal();
+                loadPatients(currentPage);
+            } else {
+                showMessage(result.message || '保存失败', 'error');
+            }
+        })
+        .catch(err => {
+            console.error('保存患者失败:', err);
+            showMessage('保存失败，请稍后重试', 'error');
+        });
+    }
+    
+    // 查看患者详情
+    function viewPatient(patientId, patientType) {
+        window.location.href = `/patients/${patientId}?type=${patientType}`;
+    }
+    
+    // 编辑患者
+    function editPatient(patientId, patientType) {
+        currentPatientType = patientType;
+        fetch(`/api/b/patients/${patientId}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    currentPatientId = patientId;
+                    document.getElementById('modalTitle').textContent = '编辑患者';
+                    
+                    const form = document.getElementById('patientForm');
+                    const patient = data.data;
+                    
+                    form.name.value = patient.name || '';
+                    form.age.value = patient.age || '';
+                    form.gender.value = patient.gender || '';
+                    form.phone.value = patient.phone || '';
+                    form.wechat_id.value = patient.wechat_id || '';
+                    form.source_channel.value = patient.source_channel || 'manual';
+                    
+                    document.getElementById('patientModal').style.display = 'flex';
+                }
+            });
+    }
+    
+    // 创建档案
+    function createRecord(patientId, patientType) {
+        window.location.href = `/records/new/${patientId}?type=${patientType}`;
+    }
+    
+    // 页面加载时获取数据
+    loadPatients();
+</script>
+{% endblock %}
+

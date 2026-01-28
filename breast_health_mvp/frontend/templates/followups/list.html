@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+
+{% block title %}患者跟进记录{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>患者跟进记录</h2>
+    <button class="btn btn-primary" onclick="showAddModal()">
+        <i class="icon">➕</i> 新增跟进
+    </button>
+</div>
+
+<!-- 筛选区域 -->
+<div class="filter-section">
+    <div class="filter-group">
+        <label>患者：</label>
+        <input type="text" id="patientFilter" placeholder="搜索患者姓名">
+    </div>
+    <div class="filter-group">
+        <label>跟进类型：</label>
+        <select id="typeFilter">
+            <option value="">全部</option>
+            <option value="phone">电话</option>
+            <option value="wechat">微信</option>
+            <option value="visit">上门</option>
+            <option value="other">其他</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>时间范围：</label>
+        <input type="date" id="startDate">
+        <span>至</span>
+        <input type="date" id="endDate">
+    </div>
+    <button class="btn" onclick="loadFollowups()">查询</button>
+    <button class="btn" onclick="resetFilters()">重置</button>
+</div>
+
+<!-- 待跟进提醒 -->
+<div id="pendingAlert" class="alert-section" style="display: none;">
+    <div class="alert-warning">
+        <strong>🔔 待跟进提醒</strong>
+        <div id="pendingStats"></div>
+    </div>
+</div>
+
+<!-- 跟进记录列表 -->
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>患者姓名</th>
+                <th>跟进类型</th>
+                <th>跟进日期</th>
+                <th>跟进内容</th>
+                <th>健康管理师</th>
+                <th>下次跟进</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="followupList">
+            <tr>
+                <td colspan="7" class="loading">加载中...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- 分页 -->
+<div class="pagination" id="pagination"></div>
+
+<!-- 新增/编辑跟进记录模态框 -->
+<div id="followupModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 id="modalTitle">新增跟进记录</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="followupForm">
+                <input type="hidden" id="followupId">
+                
+                <div class="form-group">
+                    <label>患者 <span class="required">*</span></label>
+                    <select id="patientId" required>
+                        <option value="">请选择患者</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>跟进类型 <span class="required">*</span></label>
+                    <select id="followUpType" required>
+                        <option value="phone">电话</option>
+                        <option value="wechat">微信</option>
+                        <option value="visit">上门</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>跟进日期 <span class="required">*</span></label>
+                    <input type="date" id="followUpDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>跟进内容 <span class="required">*</span></label>
+                    <textarea id="content" rows="4" placeholder="记录本次与患者的沟通内容、患者反馈等" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>下次跟进日期</label>
+                    <input type="date" id="nextFollowUpDate">
+                </div>
+                
+                <div class="form-group">
+                    <label>下次跟进计划</label>
+                    <textarea id="nextFollowUpAction" rows="3" placeholder="下次需要做什么？提醒事项？"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 查看详情模态框 -->
+<div id="detailModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3>跟进记录详情</h3>
+            <span class="close" onclick="closeDetailModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="followupDetail"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.filter-section {
+    background: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    color: #666;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.alert-section {
+    margin-bottom: 20px;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.alert-warning strong {
+    display: block;
+    margin-bottom: 10px;
+    color: #856404;
+}
+
+#pendingStats {
+    color: #856404;
+    font-size: 14px;
+}
+
+.followup-type {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.followup-type.phone {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.followup-type.wechat {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.followup-type.visit {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.followup-type.other {
+    background: #f5f5f5;
+    color: #616161;
+}
+
+.next-date {
+    font-size: 13px;
+}
+
+.next-date.today {
+    color: #ff9800;
+    font-weight: 600;
+}
+
+.next-date.overdue {
+    color: #f44336;
+    font-weight: 600;
+}
+
+.detail-item {
+    margin-bottom: 20px;
+}
+
+.detail-item label {
+    display: block;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.detail-item .value {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    line-height: 1.6;
+}
+</style>
+
+<script>
+let currentPage = 1;
+let currentPatientId = null;
+
+// 页面加载时
+document.addEventListener('DOMContentLoaded', function() {
+    // 从URL获取患者ID（如果有）
+    const urlParams = new URLSearchParams(window.location.search);
+    currentPatientId = urlParams.get('patient_id');
+    
+    loadPatients();
+    loadFollowups();
+    loadPendingFollowups();
+    
+    // 设置今天为默认日期
+    document.getElementById('followUpDate').valueAsDate = new Date();
+    
+    // 表单提交
+    document.getElementById('followupForm').addEventListener('submit', handleSubmit);
+});
+
+// 加载患者列表（用于下拉选择）
+async function loadPatients() {
+    try {
+        const response = await fetch('/api/patients?per_page=1000');
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            const select = document.getElementById('patientId');
+            select.innerHTML = '<option value="">请选择患者</option>';
+            
+            result.data.items.forEach(patient => {
+                const option = document.createElement('option');
+                option.value = patient.id;
+                option.textContent = `${patient.name} - ${patient.phone || ''}`;
+                select.appendChild(option);
+            });
+            
+            // 如果有指定患者，自动选中
+            if (currentPatientId) {
+                select.value = currentPatientId;
+            }
+        }
+    } catch (error) {
+        console.error('加载患者列表失败:', error);
+    }
+}
+
+// 加载跟进记录
+async function loadFollowups(page = 1) {
+    try {
+        let url = `/api/followups?page=${page}&per_page=20`;
+        
+        if (currentPatientId) {
+            url += `&patient_id=${currentPatientId}`;
+        }
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            renderFollowups(result.data.items);
+            renderPagination(result.data.total, page, result.data.per_page);
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('加载跟进记录失败:', error);
+        showError('加载失败，请刷新页面重试');
+    }
+}
+
+// 加载待跟进提醒
+async function loadPendingFollowups() {
+    try {
+        const response = await fetch('/api/followups/pending');
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            const { today, overdue, total } = result.data;
+            
+            if (total > 0) {
+                document.getElementById('pendingAlert').style.display = 'block';
+                document.getElementById('pendingStats').innerHTML = `
+                    今日待跟进：<strong>${today.length}</strong> 人 | 
+                    逾期未跟进：<strong>${overdue.length}</strong> 人 | 
+                    合计：<strong>${total}</strong> 人
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('加载待跟进提醒失败:', error);
+    }
+}
+
+// 渲染跟进记录列表
+function renderFollowups(followups) {
+    const tbody = document.getElementById('followupList');
+    
+    if (followups.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无跟进记录</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = followups.map(item => {
+        const typeClass = item.follow_up_type || 'other';
+        const typeText = {
+            'phone': '电话',
+            'wechat': '微信',
+            'visit': '上门',
+            'other': '其他'
+        }[item.follow_up_type] || '其他';
+        
+        // 判断下次跟进日期状态
+        let nextDateClass = '';
+        let nextDateText = item.next_follow_up_date || '-';
+        
+        if (item.next_follow_up_date) {
+            const today = new Date().toISOString().split('T')[0];
+            if (item.next_follow_up_date === today) {
+                nextDateClass = 'today';
+                nextDateText += ' (今天)';
+            } else if (item.next_follow_up_date < today) {
+                nextDateClass = 'overdue';
+                nextDateText += ' (逾期)';
+            }
+        }
+        
+        return `
+            <tr>
+                <td>${item.patient_name || '-'}</td>
+                <td><span class="followup-type ${typeClass}">${typeText}</span></td>
+                <td>${item.follow_up_date}</td>
+                <td class="text-truncate" title="${item.content}">${item.content || '-'}</td>
+                <td>${item.manager_name || '-'}</td>
+                <td class="next-date ${nextDateClass}">${nextDateText}</td>
+                <td>
+                    <button class="btn-link" onclick="viewDetail(${item.id})">查看</button>
+                    <button class="btn-link" onclick="editFollowup(${item.id})">编辑</button>
+                    <button class="btn-link danger" onclick="deleteFollowup(${item.id})">删除</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 显示新增模态框
+function showAddModal() {
+    document.getElementById('modalTitle').textContent = '新增跟进记录';
+    document.getElementById('followupId').value = '';
+    document.getElementById('followupForm').reset();
+    document.getElementById('followUpDate').valueAsDate = new Date();
+    
+    if (currentPatientId) {
+        document.getElementById('patientId').value = currentPatientId;
+    }
+    
+    document.getElementById('followupModal').style.display = 'block';
+}
+
+// 编辑跟进记录
+async function editFollowup(id) {
+    try {
+        const response = await fetch(`/api/followups/${id}`);
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            const data = result.data;
+            document.getElementById('modalTitle').textContent = '编辑跟进记录';
+            document.getElementById('followupId').value = data.id;
+            document.getElementById('patientId').value = data.patient_id;
+            document.getElementById('followUpType').value = data.follow_up_type;
+            document.getElementById('followUpDate').value = data.follow_up_date;
+            document.getElementById('content').value = data.content || '';
+            document.getElementById('nextFollowUpDate').value = data.next_follow_up_date || '';
+            document.getElementById('nextFollowUpAction').value = data.next_follow_up_action || '';
+            
+            document.getElementById('followupModal').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('加载跟进记录失败:', error);
+        showError('加载失败');
+    }
+}
+
+// 查看详情
+async function viewDetail(id) {
+    try {
+        const response = await fetch(`/api/followups/${id}`);
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            const data = result.data;
+            const typeText = {
+                'phone': '电话',
+                'wechat': '微信',
+                'visit': '上门',
+                'other': '其他'
+            }[data.follow_up_type] || '其他';
+            
+            document.getElementById('followupDetail').innerHTML = `
+                <div class="detail-item">
+                    <label>患者姓名</label>
+                    <div class="value">${data.patient_name || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <label>跟进类型</label>
+                    <div class="value">${typeText}</div>
+                </div>
+                <div class="detail-item">
+                    <label>跟进日期</label>
+                    <div class="value">${data.follow_up_date}</div>
+                </div>
+                <div class="detail-item">
+                    <label>跟进内容</label>
+                    <div class="value">${data.content || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <label>健康管理师</label>
+                    <div class="value">${data.manager_name || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <label>下次跟进日期</label>
+                    <div class="value">${data.next_follow_up_date || '未设置'}</div>
+                </div>
+                <div class="detail-item">
+                    <label>下次跟进计划</label>
+                    <div class="value">${data.next_follow_up_action || '未设置'}</div>
+                </div>
+            `;
+            
+            document.getElementById('detailModal').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('加载详情失败:', error);
+    }
+}
+
+// 表单提交
+async function handleSubmit(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('followupId').value;
+    const data = {
+        patient_id: parseInt(document.getElementById('patientId').value),
+        follow_up_type: document.getElementById('followUpType').value,
+        follow_up_date: document.getElementById('followUpDate').value,
+        content: document.getElementById('content').value,
+        next_follow_up_date: document.getElementById('nextFollowUpDate').value || null,
+        next_follow_up_action: document.getElementById('nextFollowUpAction').value || ''
+    };
+    
+    try {
+        const url = id ? `/api/followups/${id}` : '/api/followups';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            showSuccess(result.message);
+            closeModal();
+            loadFollowups(currentPage);
+            loadPendingFollowups();
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        showError('保存失败，请重试');
+    }
+}
+
+// 删除跟进记录
+async function deleteFollowup(id) {
+    if (!confirm('确定要删除这条跟进记录吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/followups/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            showSuccess('删除成功');
+            loadFollowups(currentPage);
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('删除失败:', error);
+        showError('删除失败');
+    }
+}
+
+// 关闭模态框
+function closeModal() {
+    document.getElementById('followupModal').style.display = 'none';
+}
+
+function closeDetailModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+// 分页渲染
+function renderPagination(total, current, perPage) {
+    const totalPages = Math.ceil(total / perPage);
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let html = `<span>共 ${total} 条</span>`;
+    
+    if (current > 1) {
+        html += `<button onclick="loadFollowups(${current - 1})">上一页</button>`;
+    }
+    
+    html += `<span>第 ${current} / ${totalPages} 页</span>`;
+    
+    if (current < totalPages) {
+        html += `<button onclick="loadFollowups(${current + 1})">下一页</button>`;
+    }
+    
+    pagination.innerHTML = html;
+}
+
+function resetFilters() {
+    document.getElementById('patientFilter').value = '';
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    loadFollowups(1);
+}
+
+function showSuccess(message) {
+    alert(message);
+}
+
+function showError(message) {
+    alert('错误: ' + message);
+}
+</script>
+{% endblock %}
+
+
+

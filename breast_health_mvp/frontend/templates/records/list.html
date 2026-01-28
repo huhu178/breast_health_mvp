@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}档案管理 - 乳腺结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">📋 档案列表</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>档案编号</th>
+                <th>患者姓名</th>
+                <th>年龄</th>
+                <th>BI-RADS分级</th>
+                <th>类型</th>
+                <th>创建时间</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="recordList">
+            <tr>
+                <td colspan="8" style="text-align: center; color: #909399;">加载中...</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="pagination" id="pagination"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    
+    // 加载档案列表
+    function loadRecords(page = 1) {
+        fetch(`/api/b/records?page=${page}&per_page=20`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    renderRecords(data.data.items);
+                    renderPagination(data.data.page, data.data.pages);
+                } else {
+                    console.error('加载档案失败:', data.message);
+                    alert(data.message || '加载档案失败');
+                }
+            })
+            .catch(err => {
+                console.error('加载档案失败:', err);
+                alert('加载档案失败，请刷新重试');
+            });
+    }
+    
+    // 渲染档案列表
+    function renderRecords(records) {
+        const tbody = document.getElementById('recordList');
+        
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #909399;">暂无档案数据</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = records.map(r => `
+            <tr>
+                <td>${r.record_code || '-'}</td>
+                <td>${r.patient_name || '-'}</td>
+                <td>${r.age || '-'}</td>
+                <td>${r.birads_level || '-'}级</td>
+                <td><span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; ${r.record_type === 'b_end' ? 'background: #e6f7ff; color: #1890ff;' : 'background: #f0f9ff; color: #0ea5e9;'}">${r.record_type === 'b_end' ? 'B端' : 'C端'}</span></td>
+                <td>${formatDate(r.created_at)}</td>
+                <td><span style="color: #67c23a">${r.status}</span></td>
+                <td>
+                    <button class="btn btn-text" onclick="viewRecord(${r.id}, '${r.record_type}')">查看</button>
+                    <button class="btn btn-text" onclick="generateReport(${r.id}, '${r.record_type}')">生成报告</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    // 渲染分页
+    function renderPagination(page, totalPages) {
+        const pagination = document.getElementById('pagination');
+        let html = '';
+        
+        if (page > 1) {
+            html += `<button onclick="loadRecords(${page - 1})">上一页</button>`;
+        }
+        
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<button class="${i === page ? 'active' : ''}" onclick="loadRecords(${i})">${i}</button>`;
+        }
+        
+        if (page < totalPages) {
+            html += `<button onclick="loadRecords(${page + 1})">下一页</button>`;
+        }
+        
+        pagination.innerHTML = html;
+    }
+    
+    // 查看档案
+    function viewRecord(recordId, recordType) {
+        window.location.href = `/records/${recordId}?type=${recordType}`;
+    }
+    
+    // 生成报告
+    function generateReport(recordId, recordType) {
+        if (!confirm('确定要为此档案生成报告吗？')) {
+            return;
+        }
+        
+        fetch('/api/b/reports/generate', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ 
+                record_id: recordId,
+                record_type: recordType 
+            })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('报告生成成功');
+                setTimeout(() => {
+                    window.location.href = `/reports/${result.data.id}?type=${recordType}`;
+                }, 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        })
+        .catch(err => {
+            console.error('生成报告失败:', err);
+            showMessage('生成报告失败，请稍后重试', 'error');
+        });
+    }
+    
+    // 页面加载时获取数据
+    loadRecords();
+</script>
+{% endblock %}
+

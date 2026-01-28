@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}档案录入 - 乳腺结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">📋 健康档案录入</div>
+    
+    <div style="background: #ecf5ff; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+        <strong>患者信息：</strong><span id="patientInfo">加载中...</span>
+    </div>
+    
+    <form id="recordForm" onsubmit="saveRecord(event)">
+        <input type="hidden" name="patient_id" value="{{ patient_id }}">
+        
+        <h3 style="margin: 20px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #409eff;">基本信息</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div class="form-group">
+                <label>年龄 *</label>
+                <input type="number" name="age" required min="0" max="120">
+            </div>
+            
+            <div class="form-group">
+                <label>BI-RADS分级 *</label>
+                <select name="birads_level" required>
+                    <option value="">请选择</option>
+                    <option value="1">1级</option>
+                    <option value="2">2级</option>
+                    <option value="3">3级</option>
+                    <option value="4">4级</option>
+                    <option value="5">5级</option>
+                    <option value="6">6级</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>家族史</label>
+                <select name="family_history">
+                    <option value="">请选择</option>
+                    <option value="无">无</option>
+                    <option value="有">有</option>
+                </select>
+            </div>
+        </div>
+        
+        <h3 style="margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #67c23a;">症状信息</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div class="form-group">
+                <label>症状</label>
+                <input type="text" name="symptoms" placeholder="如：疼痛、肿块等">
+            </div>
+            
+            <div class="form-group">
+                <label>疼痛等级（0-10）</label>
+                <input type="number" name="pain_level" min="0" max="10">
+            </div>
+            
+            <div class="form-group">
+                <label>疼痛类型</label>
+                <select name="pain_type">
+                    <option value="">请选择</option>
+                    <option value="钝痛">钝痛</option>
+                    <option value="刺痛">刺痛</option>
+                    <option value="胀痛">胀痛</option>
+                    <option value="隐痛">隐痛</option>
+                </select>
+            </div>
+        </div>
+        
+        <h3 style="margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #e6a23c;">影像学特征</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div class="form-group">
+                <label>结节位置</label>
+                <input type="text" name="nodule_location" placeholder="如：左乳外上象限">
+            </div>
+            
+            <div class="form-group">
+                <label>结节大小</label>
+                <input type="text" name="nodule_size" placeholder="如：1.2cm × 0.8cm">
+            </div>
+            
+            <div class="form-group">
+                <label>边界特征</label>
+                <select name="boundary_features">
+                    <option value="">请选择</option>
+                    <option value="清晰">清晰</option>
+                    <option value="模糊">模糊</option>
+                    <option value="不规则">不规则</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>内部回声</label>
+                <select name="internal_echo">
+                    <option value="">请选择</option>
+                    <option value="低回声">低回声</option>
+                    <option value="等回声">等回声</option>
+                    <option value="高回声">高回声</option>
+                    <option value="无回声">无回声</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>血流信号</label>
+                <select name="blood_flow_signal">
+                    <option value="">请选择</option>
+                    <option value="无">无</option>
+                    <option value="少量">少量</option>
+                    <option value="丰富">丰富</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>弹性评分</label>
+                <input type="text" name="elasticity_score" placeholder="如：3分">
+            </div>
+        </div>
+        
+        <h3 style="margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #909399;">生活方式</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div class="form-group">
+                <label>运动频率</label>
+                <select name="exercise_frequency">
+                    <option value="">请选择</option>
+                    <option value="很少">很少</option>
+                    <option value="偶尔">偶尔（1-2次/周）</option>
+                    <option value="经常">经常（3-5次/周）</option>
+                    <option value="每天">每天</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>睡眠质量</label>
+                <select name="sleep_quality">
+                    <option value="">请选择</option>
+                    <option value="良好">良好</option>
+                    <option value="一般">一般</option>
+                    <option value="较差">较差</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+            <button type="button" class="btn" onclick="history.back()">返回</button>
+            <button type="submit" class="btn btn-primary">保存档案</button>
+            <button type="button" class="btn btn-success" onclick="saveAndGenerateReport(event)">保存并生成报告</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 加载患者信息
+    fetch(`/api/patients/{{ patient_id }}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const p = data.data;
+                document.getElementById('patientInfo').innerHTML = 
+                    `${p.name} | ${p.gender || '-'} | ${p.age || '-'}岁 | ${p.phone || '-'}`;
+                
+                // 自动填充年龄
+                if (p.age) {
+                    document.querySelector('[name="age"]').value = p.age;
+                }
+            }
+        });
+    
+    // 保存档案
+    function saveRecord(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const data = Object.fromEntries(formData.entries());
+        
+        fetch('/api/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('档案保存成功');
+                setTimeout(() => {
+                    window.location.href = '/records';
+                }, 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        });
+    }
+    
+    // 保存并生成报告
+    function saveAndGenerateReport(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(document.getElementById('recordForm'));
+        const data = Object.fromEntries(formData.entries());
+        
+        // 先保存档案
+        fetch('/api/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                const recordId = result.data.id;
+                
+                // 生成报告
+                return fetch('/api/reports/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ record_id: recordId })
+                });
+            } else {
+                throw new Error(result.message);
+            }
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('报告生成成功');
+                setTimeout(() => {
+                    window.location.href = `/reports/${result.data.id}`;
+                }, 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage(error.message || '操作失败', 'error');
+        });
+    }
+</script>
+{% endblock %}
+

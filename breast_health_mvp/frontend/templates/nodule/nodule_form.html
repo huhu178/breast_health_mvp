@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}多结节管理 - 多结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">🔬 多结节健康管理</div>
+    
+    <div style="background: #ecf5ff; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h3 style="color: #409eff; margin-bottom: 15px;">📋 支持的结节类型</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px;">🫁</div>
+                <div style="margin-top: 10px; font-weight: 600;">肺结节</div>
+                <div style="font-size: 12px; color: #909399; margin-top: 5px;">Lung Nodule</div>
+            </div>
+            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px;">🦴</div>
+                <div style="margin-top: 10px; font-weight: 600;">甲状腺结节</div>
+                <div style="font-size: 12px; color: #909399; margin-top: 5px;">Thyroid Nodule</div>
+            </div>
+            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px;">👙</div>
+                <div style="margin-top: 10px; font-weight: 600;">乳腺结节</div>
+                <div style="font-size: 12px; color: #909399; margin-top: 5px;">Breast Nodule</div>
+            </div>
+        </div>
+
+        <h3 style="color: #409eff; margin-top: 25px; margin-bottom: 15px;">🔗 组合类型</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px;">🫁🦴</div>
+                <div style="margin-top: 10px; font-weight: 600;">肺 + 甲状腺</div>
+            </div>
+            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px;">👙🫁</div>
+                <div style="margin-top: 10px; font-weight: 600;">乳腺 + 肺</div>
+            </div>
+            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px;">👙🦴</div>
+                <div style="margin-top: 10px; font-weight: 600;">乳腺 + 甲状腺</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 15px; text-align: center;">
+            <div style="background: #fff; padding: 15px; border-radius: 8px; display: inline-block;">
+                <div style="font-size: 28px;">👙🫁🦴</div>
+                <div style="margin-top: 10px; font-weight: 600; color: #e6a23c;">三结节组合</div>
+                <div style="font-size: 12px; color: #909399; margin-top: 5px;">Triple Nodules</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+        <div style="font-weight: 600; margin-bottom: 5px;">💡 功能说明</div>
+        <ul style="margin: 10px 0 10px 20px; color: #606266; line-height: 1.8;">
+            <li>支持单结节或多结节组合管理</li>
+            <li>智能表单：根据选择的结节类型动态显示相应字段</li>
+            <li>完整病史记录：影像特征、症状、既往病史等</li>
+            <li>自动生成专业健康管理报告</li>
+            <li>支持 HTML 预览和 PDF 导出</li>
+        </ul>
+    </div>
+
+    <div style="background: #e7f4ff; padding: 15px; border-radius: 8px; border-left: 4px solid #409eff; margin-bottom: 20px;">
+        <div style="font-weight: 600; margin-bottom: 5px;">🚀 使用 Vue 前端获得最佳体验</div>
+        <p style="margin: 10px 0; color: #606266;">
+            当前显示的是传统模式。要使用完整的多结节表单功能，请：
+        </p>
+        <ol style="margin: 10px 0 10px 20px; color: #606266; line-height: 1.8;">
+            <li>启动 Vue 前端：<code style="background: #f5f7fa; padding: 2px 8px; border-radius: 4px;">cd frontend/vue-app && npm run dev</code></li>
+            <li>访问：<a href="http://localhost:5173/nodule-form" style="color: #409eff;">http://localhost:5173/nodule-form</a></li>
+        </ol>
+    </div>
+
+    <div style="display: flex; gap: 15px;">
+        <button class="btn btn-primary" onclick="window.location.href='/patients'">
+            📋 先添加患者
+        </button>
+        <button class="btn btn-success" onclick="openVueFrontend()">
+            🚀 打开 Vue 前端
+        </button>
+        <button class="btn" style="background: #909399; color: #fff;" onclick="viewApiDocs()">
+            📖 查看 API 文档
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">🔌 API 接口列表</div>
+    <table>
+        <thead>
+            <tr>
+                <th>接口</th>
+                <th>方法</th>
+                <th>说明</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>/api/nodule/patients</code></td>
+                <td><span class="badge badge-success">POST</span></td>
+                <td>创建患者</td>
+                <td><button class="btn btn-text" onclick="testAPI('/api/nodule/patients', 'POST')">测试</button></td>
+            </tr>
+            <tr>
+                <td><code>/api/nodule/patients</code></td>
+                <td><span class="badge badge-primary">GET</span></td>
+                <td>获取患者列表</td>
+                <td><button class="btn btn-text" onclick="testAPI('/api/nodule/patients', 'GET')">测试</button></td>
+            </tr>
+            <tr>
+                <td><code>/api/nodule/records</code></td>
+                <td><span class="badge badge-success">POST</span></td>
+                <td>创建健康档案</td>
+                <td><button class="btn btn-text" onclick="testAPI('/api/nodule/records', 'POST')">测试</button></td>
+            </tr>
+            <tr>
+                <td><code>/api/nodule/reports/generate</code></td>
+                <td><span class="badge badge-success">POST</span></td>
+                <td>生成报告</td>
+                <td><button class="btn btn-text" onclick="testAPI('/api/nodule/reports/generate', 'POST')">测试</button></td>
+            </tr>
+            <tr>
+                <td><code>/api/nodule/reports</code></td>
+                <td><span class="badge badge-primary">GET</span></td>
+                <td>获取报告列表</td>
+                <td><button class="btn btn-text" onclick="testAPI('/api/nodule/reports', 'GET')">测试</button></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    code {
+        background: #f5f7fa;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #67c23a;
+        color: #fff;
+    }
+
+    .badge-primary {
+        background: #409eff;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openVueFrontend() {
+        window.open('http://localhost:5173/nodule-form', '_blank');
+    }
+
+    function viewApiDocs() {
+        showMessage('API 文档正在开发中...', 'info');
+    }
+
+    function testAPI(endpoint, method) {
+        showMessage(`正在测试 ${method} ${endpoint}...`, 'info');
+        
+        fetch(endpoint, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log('API Response:', data);
+            if (data.success) {
+                showMessage('API 测试成功！查看控制台获取详细信息', 'success');
+            } else {
+                showMessage(`API 测试失败: ${data.message}`, 'error');
+            }
+        })
+        .catch(err => {
+            console.error('API Error:', err);
+            showMessage('API 测试失败，查看控制台获取详细信息', 'error');
+        });
+    }
+</script>
+{% endblock %}
+
+

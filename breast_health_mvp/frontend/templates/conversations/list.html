@@ -1,0 +1,721 @@
+{% extends "base.html" %}
+
+{% block title %}AI对话历史{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>AI对话历史</h2>
+    <div class="header-actions">
+        <span class="total-count">总计：<strong id="totalCount">0</strong> 条对话</span>
+    </div>
+</div>
+
+<!-- 筛选区域 -->
+<div class="filter-section">
+    <div class="filter-group">
+        <label>患者姓名：</label>
+        <input type="text" id="patientFilter" placeholder="输入患者姓名搜索">
+    </div>
+    <div class="filter-group">
+        <label>会话状态：</label>
+        <select id="statusFilter">
+            <option value="">全部</option>
+            <option value="active">进行中</option>
+            <option value="completed">已完成</option>
+            <option value="failed">失败</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>时间范围：</label>
+        <input type="date" id="startDate">
+        <span>至</span>
+        <input type="date" id="endDate">
+    </div>
+    <button class="btn btn-primary" onclick="loadConversations()">查询</button>
+    <button class="btn" onclick="resetFilters()">重置</button>
+</div>
+
+<!-- 对话列表 -->
+<div class="conversations-grid" id="conversationsList">
+    <div class="loading-state">
+        <p>加载中...</p>
+    </div>
+</div>
+
+<!-- 分页 -->
+<div class="pagination" id="pagination"></div>
+
+<!-- 对话详情模态框 -->
+<div id="conversationModal" class="modal">
+    <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+        <div class="modal-header">
+            <h3>对话详情</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+            <div id="conversationDetail"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.total-count {
+    font-size: 14px;
+    color: #606266;
+}
+
+.total-count strong {
+    font-size: 18px;
+    color: #409eff;
+}
+
+.filter-section {
+    background: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.conversations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.conversation-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.conversation-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.conversation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.patient-info h4 {
+    font-size: 16px;
+    margin-bottom: 5px;
+    color: #303133;
+}
+
+.session-id {
+    font-size: 12px;
+    color: #909399;
+    font-family: 'Courier New', monospace;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #e1f3d8;
+    color: #67c23a;
+}
+
+.status-badge.completed {
+    background: #d9ecff;
+    color: #409eff;
+}
+
+.status-badge.failed {
+    background: #fde2e2;
+    color: #f56c6c;
+}
+
+.conversation-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.meta-label {
+    font-size: 12px;
+    color: #909399;
+}
+
+.meta-value {
+    font-size: 14px;
+    color: #303133;
+    font-weight: 500;
+}
+
+.conversation-summary {
+    font-size: 13px;
+    color: #606266;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.conversation-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.message-count {
+    font-size: 13px;
+    color: #909399;
+}
+
+.view-detail-btn {
+    padding: 6px 16px;
+    background: #409eff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s;
+}
+
+.view-detail-btn:hover {
+    background: #66b1ff;
+}
+
+.loading-state,
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #909399;
+}
+
+.empty-state {
+    background: white;
+    border-radius: 8px;
+}
+
+/* 对话详情样式 */
+.detail-header {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.detail-header h4 {
+    margin-bottom: 15px;
+    color: #303133;
+}
+
+.detail-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.detail-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-meta-label {
+    font-size: 13px;
+    color: #909399;
+}
+
+.detail-meta-value {
+    font-size: 14px;
+    color: #303133;
+    font-weight: 500;
+}
+
+.messages-timeline {
+    position: relative;
+    padding-left: 40px;
+}
+
+.messages-timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dcdfe6;
+}
+
+.message-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border: 1px solid #ebeef5;
+    border-radius: 8px;
+}
+
+.message-item::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 20px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #dcdfe6;
+}
+
+.message-item.system::before {
+    background: #909399;
+    border-color: #909399;
+}
+
+.message-item.assistant::before {
+    background: #409eff;
+    border-color: #409eff;
+}
+
+.message-item.user::before {
+    background: #67c23a;
+    border-color: #67c23a;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.message-type {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.message-type.system {
+    background: #f4f4f5;
+    color: #909399;
+}
+
+.message-type.assistant {
+    background: #ecf5ff;
+    color: #409eff;
+}
+
+.message-type.user {
+    background: #f0f9ff;
+    color: #67c23a;
+}
+
+.message-time {
+    font-size: 12px;
+    color: #909399;
+}
+
+.message-content {
+    color: #606266;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.message-metadata {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #606266;
+}
+
+.message-metadata pre {
+    margin: 0;
+    font-family: 'Courier New', monospace;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 2% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #303133;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+</style>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadConversations();
+});
+
+async function loadConversations(page = 1) {
+    try {
+        currentPage = page;
+        
+        // 构建查询参数
+        let url = `/api/conversations?page=${page}&per_page=12`;
+        
+        const patientFilter = document.getElementById('patientFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        if (patientFilter) url += `&patient_name=${encodeURIComponent(patientFilter)}`;
+        if (statusFilter) url += `&status=${statusFilter}`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            renderConversations(result.data.items);
+            renderPagination(result.data.total, page, result.data.per_page);
+            document.getElementById('totalCount').textContent = result.data.total;
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('加载对话历史失败:', error);
+        showError('加载失败，请刷新重试');
+    }
+}
+
+function renderConversations(conversations) {
+    const container = document.getElementById('conversationsList');
+    
+    if (conversations.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p style="font-size: 16px;">📭 暂无对话记录</p>
+                <p style="margin-top: 10px; font-size: 14px;">生成报告时会自动记录AI对话过程</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = conversations.map(conv => {
+        const statusText = {
+            'active': '进行中',
+            'completed': '已完成',
+            'failed': '失败'
+        }[conv.status] || conv.status;
+        
+        const duration = conv.end_time ? 
+            calculateDuration(conv.start_time, conv.end_time) : 
+            '进行中';
+        
+        return `
+            <div class="conversation-card" onclick="viewConversation(${conv.id})">
+                <div class="conversation-header">
+                    <div class="patient-info">
+                        <h4>患者：${conv.patient_name || '未知'}</h4>
+                        <div class="session-id">${conv.session_id}</div>
+                    </div>
+                    <span class="status-badge ${conv.status}">${statusText}</span>
+                </div>
+                
+                <div class="conversation-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">开始时间</span>
+                        <span class="meta-value">${formatDateTime(conv.start_time)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">持续时间</span>
+                        <span class="meta-value">${duration}</span>
+                    </div>
+                </div>
+                
+                <div class="conversation-summary">
+                    ${conv.summary || '对话进行中...'}
+                </div>
+                
+                <div class="conversation-footer">
+                    <span class="message-count">💬 ${conv.message_count || 0} 条消息</span>
+                    <button class="view-detail-btn" onclick="event.stopPropagation(); viewConversation(${conv.id})">
+                        查看详情
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function viewConversation(convId) {
+    try {
+        const response = await fetch(`/api/conversations/${convId}`);
+        const result = await response.json();
+        
+        if (result.code === 0) {
+            renderConversationDetail(result.data);
+            document.getElementById('conversationModal').style.display = 'block';
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('加载对话详情失败:', error);
+        showError('加载详情失败');
+    }
+}
+
+function renderConversationDetail(conv) {
+    const duration = conv.end_time ? 
+        calculateDuration(conv.start_time, conv.end_time) : 
+        '进行中';
+    
+    const statusText = {
+        'active': '进行中',
+        'completed': '已完成',
+        'failed': '失败'
+    }[conv.status] || conv.status;
+    
+    let html = `
+        <div class="detail-header">
+            <h4>对话会话：${conv.session_id}</h4>
+            <div class="detail-meta">
+                <div class="detail-meta-item">
+                    <span class="detail-meta-label">患者姓名</span>
+                    <span class="detail-meta-value">${conv.patient_name || '未知'}</span>
+                </div>
+                <div class="detail-meta-item">
+                    <span class="detail-meta-label">状态</span>
+                    <span class="detail-meta-value">
+                        <span class="status-badge ${conv.status}">${statusText}</span>
+                    </span>
+                </div>
+                <div class="detail-meta-item">
+                    <span class="detail-meta-label">持续时间</span>
+                    <span class="detail-meta-value">${duration}</span>
+                </div>
+                <div class="detail-meta-item">
+                    <span class="detail-meta-label">开始时间</span>
+                    <span class="detail-meta-value">${formatDateTime(conv.start_time)}</span>
+                </div>
+                <div class="detail-meta-item">
+                    <span class="detail-meta-label">结束时间</span>
+                    <span class="detail-meta-value">${conv.end_time ? formatDateTime(conv.end_time) : '-'}</span>
+                </div>
+                <div class="detail-meta-item">
+                    <span class="detail-meta-label">消息数量</span>
+                    <span class="detail-meta-value">${conv.messages ? conv.messages.length : 0} 条</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="messages-timeline">
+    `;
+    
+    if (conv.messages && conv.messages.length > 0) {
+        conv.messages.forEach(msg => {
+            const typeText = {
+                'system': '系统',
+                'assistant': 'AI助手',
+                'user': '用户'
+            }[msg.message_type] || msg.message_type;
+            
+            html += `
+                <div class="message-item ${msg.message_type}">
+                    <div class="message-header">
+                        <span class="message-type ${msg.message_type}">${typeText}</span>
+                        <span class="message-time">${formatDateTime(msg.created_at)}</span>
+                    </div>
+                    <div class="message-content">${msg.content}</div>
+                    ${msg.extra_data && Object.keys(msg.extra_data).length > 0 ? `
+                        <div class="message-metadata">
+                            <strong>附加数据：</strong>
+                            <pre>${JSON.stringify(msg.extra_data, null, 2)}</pre>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+    } else {
+        html += '<p style="text-align: center; color: #909399; padding: 40px;">暂无消息记录</p>';
+    }
+    
+    html += '</div>';
+    
+    document.getElementById('conversationDetail').innerHTML = html;
+}
+
+function calculateDuration(startTime, endTime) {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diff = Math.floor((end - start) / 1000); // 秒
+    
+    if (diff < 60) return `${diff}秒`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`;
+    
+    const hours = Math.floor(diff / 3600);
+    const minutes = Math.floor((diff % 3600) / 60);
+    return `${hours}小时${minutes}分`;
+}
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function closeModal() {
+    document.getElementById('conversationModal').style.display = 'none';
+}
+
+function renderPagination(total, current, perPage) {
+    const totalPages = Math.ceil(total / perPage);
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let html = `<span>共 ${total} 条</span>`;
+    
+    if (current > 1) {
+        html += `<button onclick="loadConversations(${current - 1})">上一页</button>`;
+    }
+    
+    html += `<span>第 ${current} / ${totalPages} 页</span>`;
+    
+    if (current < totalPages) {
+        html += `<button onclick="loadConversations(${current + 1})">下一页</button>`;
+    }
+    
+    pagination.innerHTML = html;
+}
+
+function resetFilters() {
+    document.getElementById('patientFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    loadConversations(1);
+}
+
+function showError(message) {
+    alert('错误: ' + message);
+}
+
+// 点击模态框外部关闭
+window.onclick = function(event) {
+    const modal = document.getElementById('conversationModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}
+
+
+

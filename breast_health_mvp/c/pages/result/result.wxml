@@ -1,0 +1,64 @@
+<!-- pages/result/result.wxml -->
+<navigation-bar title="报告生成结果" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+
+<view class="container">
+  <view class="card">
+    <view class="title">报告已生成</view>
+
+    <view wx:if="{{need_review}}" class="status warn">
+      状态：待健康管理师审核后发送给您
+    </view>
+    <view wx:else class="status ok">
+      状态：已生成
+    </view>
+
+    <view class="rows">
+      <view class="row">
+        <view class="k">报告编号</view>
+        <view class="v">{{report_code}}</view>
+      </view>
+      <view class="row">
+        <view class="k">报告ID</view>
+        <view class="v">{{report_id}}</view>
+      </view>
+      <view class="row">
+        <view class="k">患者编号</view>
+        <view class="v">{{patient_code}}</view>
+      </view>
+    </view>
+
+    <view class="manager-card">
+      <view class="manager-title">健康管理师联系方式</view>
+
+      <view wx:if="{{manager_contact}}" class="manager-rows">
+        <view class="row">
+          <view class="k">姓名</view>
+          <view class="v">{{manager_contact.manager_name || '-'}}</view>
+        </view>
+        <view class="row">
+          <view class="k">电话</view>
+          <view class="v link" bindtap="callManager">{{manager_contact.manager_phone || '-'}}</view>
+        </view>
+        <view class="row">
+          <view class="k">微信</view>
+          <view class="v link" bindtap="copyManagerWechat">{{manager_contact.manager_wechat || '-'}}</view>
+        </view>
+        <view class="manager-tip">提示：点击电话可直接拨打；点击微信号可复制。</view>
+      </view>
+
+      <view wx:else class="manager-empty">
+        暂未分配健康管理师。审核完成后，健康管理师将通过电话/微信与您联系。
+      </view>
+    </view>
+
+    <view class="hint">
+      温馨提示：如需查询，请截图保存以上编号信息。
+    </view>
+
+    <button class="btn" type="primary" bindtap="backHome">返回首页</button>
+
+    <button wx:if="{{need_review}}" class="btn secondary" bindtap="goTongueCheck">进行舌诊拍照（可选）</button>
+  </view>
+</view>
+
+

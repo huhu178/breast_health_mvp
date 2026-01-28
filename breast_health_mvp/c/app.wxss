@@ -1,0 +1,8 @@
+/**app.wxss**/
+/* 全局样式重置，去除默认的内边距 */
+page {
+  height: 100%;
+  background-color: #f5f5f5;
+}
+
+/* 注意：这里的 .container 会被页面自己的样式覆盖 */ 

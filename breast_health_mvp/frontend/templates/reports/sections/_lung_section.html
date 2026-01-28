@@ -1,0 +1,164 @@
+<!-- ==========================================
+     肺结节专用部分
+     ========================================== -->
+
+{% if 'breast' not in nodule_types %}
+<h1>一、健康风险评估</h1>
+
+<!-- （一）基本信息（如果没有乳腺，显示基本信息） -->
+<h2>（一）基本信息</h2>
+<table>
+    <tr>
+        <th style="width: 15%;">姓名</th>
+        <td style="width: 35%;">{{ patient_name }}</td>
+        <th style="width: 15%;">性别</th>
+        <td style="width: 35%;">{{ patient_gender or '女' }}</td>
+    </tr>
+    <tr>
+        <th>年龄</th>
+        <td>{{ patient_age }}岁</td>
+        <th>联系电话</th>
+        <td>{{ phone or '-' }}</td>
+    </tr>
+</table>
+{% endif %}
+
+<!-- （二）肺部影像学特征 -->
+<h2>（{{ '二' if 'breast' not in nodule_types else '四' }}）肺部影像学特征</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 25%;">项目</th>
+            <th style="width: 75%;">肺结节数据</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>结节发现时间</td>
+            <td>{{ lung_discovery_date or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节症状</td>
+            <td>{{ lung_symptoms or '无症状' }}</td>
+        </tr>
+        <tr>
+            <td>Lung-RADS分级</td>
+            <td>{{ lung_rads_level or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节位置</td>
+            <td>{{ lung_nodule_location or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节大小</td>
+            <td>{{ lung_nodule_size or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节类型</td>
+            <td>{{ lung_nodule_type or '-' }}</td>
+        </tr>
+        <tr>
+            <td>边界/边缘特征</td>
+            <td>{{ lung_boundary_features or '-' }}</td>
+        </tr>
+        <tr>
+            <td>内部密度</td>
+            <td>{{ lung_internal_density or '-' }}</td>
+        </tr>
+        <tr>
+            <td>钙化情况</td>
+            <td>{{ lung_calcification or '无钙化' }}</td>
+        </tr>
+        <tr>
+            <td>结节数量</td>
+            <td>{{ lung_nodule_count or '1' }}个</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="conclusion-box">
+    <h3>肺部影像学综合结论：</h3>
+    <p>{{ lung_imaging_conclusion or '请结合病史和临床表现进行综合判断' }}</p>
+</div>
+
+<!-- （三）肺部基础病史与风险分层 -->
+<h2>（{{ '三' if 'breast' not in nodule_types else '五' }}）肺部基础病史与风险分层</h2>
+
+<h3>一、肺部基础病史</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 30%;">项目</th>
+            <th style="width: 50%;">选项/数据</th>
+            <th style="width: 20%;">风险权重</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>肺炎病史</td>
+            <td>{{ lung_pneumonia_history or '无' }}</td>
+            <td>★★★☆☆</td>
+        </tr>
+        <tr>
+            <td>肺结核病史</td>
+            <td>{{ lung_tuberculosis_history or '无' }}</td>
+            <td>★★★★☆</td>
+        </tr>
+        <tr>
+            <td>慢性阻塞性肺疾病</td>
+            <td>{{ lung_copd_history or '无' }}</td>
+            <td>★★★★☆</td>
+        </tr>
+        <tr>
+            <td>肺纤维化病史</td>
+            <td>{{ lung_fibrosis_history or '无' }}</td>
+            <td>★★★☆☆</td>
+        </tr>
+        <tr>
+            <td>肺癌病史</td>
+            <td>{{ lung_cancer_history or '无' }}</td>
+            <td>★★★★★</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>二、其他风险因素</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 30%;">项目</th>
+            <th style="width: 50%;">选项/数据</th>
+            <th style="width: 20%;">风险权重</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>粉尘/有害气体接触史</td>
+            <td>{{ dust_exposure_history or '无' }}</td>
+            <td>★★★☆☆</td>
+        </tr>
+        <tr>
+            <td>吸烟史</td>
+            <td>{{ smoking_risk_level or '无' }}</td>
+            <td>★★★★★</td>
+        </tr>
+        <tr>
+            <td>糖尿病</td>
+            <td>{{ diabetes_history or '无' }}</td>
+            <td>★★☆☆☆</td>
+        </tr>
+        <tr>
+            <td>辐射暴露史</td>
+            <td>{{ radiation_exposure_history or '无' }}</td>
+            <td>★★☆☆☆</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="conclusion-box">
+    <h3>肺结节风险评估：</h3>
+    <p>{{ lung_conclusion or '请根据患者具体情况进行综合评估' }}</p>
+    <p><strong>风险等级：</strong>{{ lung_risk_level or '未评估' }}</p>
+</div>
+
+<div class="page-break"></div>

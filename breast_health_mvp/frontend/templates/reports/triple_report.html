@@ -1,0 +1,1969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三结节（乳腺/甲状腺/肺）健康管理方案</title>
+    <style>
+        /* --- 样式完全复用 comprehensive_report.html (Com模板) --- */
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            width: 95%;
+            max-width: 100%;
+            margin: 10px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 封面页样式 */
+        .cover-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+        }
+        .cover-page h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        .cover-page h2 {
+            font-size: 36px;
+            font-weight: 300;
+            margin-top: 0;
+        }
+        .cover-page p {
+            font-size: 18px; 
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        
+        /* 寄语页样式 */
+        .greeting-page {
+            padding: 40px;
+            line-height: 2;
+            font-size: 14px;
+        }
+        .greeting-page h2 {
+            color: #3498db;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .greeting-page h3 {
+            color: #2c3e50;
+            font-size: 16px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        .greeting-page p {
+            text-indent: 2em;
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .greeting-page ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .greeting-page ul li {
+            padding-left: 2em;
+            margin-bottom: 10px;
+        }
+        .greeting-page ul li:before {
+            content: "● ";
+            color: #3498db;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        /* 复选框样式 */
+        .checkbox-label {
+            display: inline-block;
+            margin-right: 10px;
+            margin-bottom: 5px;
+            font-size: 11px;
+            cursor: default;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 3px;
+            cursor: default;
+            vertical-align: middle;
+        }
+        
+        .checkbox-label input[type="checkbox"]:disabled {
+            cursor: default;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4CAF50;
+        }
+        header h1 {
+            color: #2c3e50;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        header p {
+            font-size: 12px;
+            color: #555;
+        }
+        section {
+            margin-bottom: 25px;
+        }
+        section h2 {
+            color: #3498db;
+            font-size: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+        }
+        section h3 {
+            color: #5dade2;
+            font-size: 14px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 11px;
+            table-layout: fixed;
+        }
+        section th, section td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        section th {
+            background-color: #e9f5e9;
+            color: #2c3e50;
+            font-weight: 600;
+            min-width: 60px;
+        }
+        .disclaimer {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            font-size: 11px;
+            color: #777;
+            line-height: 1.8;
+        }
+        footer {
+            margin-top: 20px;
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+            color: white;
+            font-size: 10px;
+        }
+        footer p {
+            margin: 0;
+            color: rgba(255,255,255,0.95);
+        }
+        
+        /* 分页符 */
+        .page-break {
+            margin: 30px 0;
+            padding: 10px;
+            text-align: center;
+            background: linear-gradient(to right, #e3f2fd, #fff, #e3f2fd);
+            border-top: 2px dashed #90caf9;
+            border-bottom: 2px dashed #90caf9;
+            color: #1976d2;
+            font-size: 12px;
+        }
+        .page-break::after {
+            content: "━━━ 分页符（PDF导出时此处分页）━━━";
+        }
+
+        /* 打印优化 */
+        @media print {
+            @page { size: A4; margin: 10mm 12mm; }
+            body { background-color: white; margin: 0; padding: 0; }
+            .cover-page {
+                min-height: 100vh;
+                page-break-after: always;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color: white !important;
+            }
+            .greeting-page { page-break-after: always; page-break-inside: avoid; padding: 30px !important; }
+            .container { width: 100% !important; box-shadow: none !important; margin: 0 !important; padding: 8px 0 !important; }
+            header { page-break-after: avoid; }
+            section { page-break-inside: auto; }
+            h1, h2, h3 { page-break-after: avoid; page-break-inside: avoid; }
+            h2 + table, h2 + div, h2 + p { page-break-before: avoid; }
+            table { page-break-inside: auto; width: 100% !important; table-layout: auto !important; }
+            tr { page-break-inside: avoid; }
+            thead { display: table-header-group; }
+            .page-break { display: block !important; page-break-after: always !important; height: 0 !important; visibility: hidden !important; }
+            .page-break::after { display: none !important; }
+            footer { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="cover-page">
+        <h1>{{ patient_name }} {% if patient_gender == '男' %}先生{% else %}女士{% endif %}</h1>
+        <h2>结节健康管理方案</h2>
+    </div>
+    
+    <div class="page-break"></div>
+    
+    <div class="greeting-page">
+    <h2>结节健康管理团队给您的寄语</h2>
+    
+    <h3>尊敬的{{ patient_name }} {% if patient_gender == '男' %}先生{% else %}女士{% endif %}：</h3>
+    
+    <p>感谢您选择并信任我们的专业服务！我们致力于为您提供科学、系统的结节健康管理指导与全程管家式陪伴。我们坚持以“生理—心理—社会”新医学模式为核心，通过多维度、个体化的干预策略，帮助您有效管理结节风险、改善体质基础，提升整体健康水平。目前我们已建立起涵盖结节风险评估、生活方式干预、中医体质调理、影像复查跟踪、情绪与压力管理、长期随访计划等六大服务板块，为您提供持续、全面的健康守护。</p>
+    
+    <p>在开始服务前，请您仔细阅读并确认以下内容，这将帮助我们建立更清晰的协作关系：</p>
+    
+    <h3>知情同意说明：</h3>
+    <ul>
+        <li>您确认已阅读并理解本健康管理方案的内容，知晓该方案是基于您目前所提供的个人基本信息、影像学特征、舌苔特征、面部特征、家族史等进行综合评估后制定；</li>
+        <li>您知晓本方案为健康促进与风险干预建议，不能替代必要的临床诊疗，如出现结节相关症状或体征变化（如乳房肿块增大、疼痛、乳头溢液、颈部压迫感、声音嘶哑、咳嗽加重、胸痛等），请及时就医；</li>
+        <li>您理解个体差异存在，方案执行效果可能因人而异，我们鼓励您在实施过程中积极反馈身体反应与感受，以便我们动态调整策略；</li>
+        <li>您知晓您有权随时提出疑问，并可自主决定是否采纳方案中的各项建议。</li>
+    </ul>
+
+    <h3>结节健康管理团队郑重承诺：</h3>
+    <ul>
+        <li>健康管理师将严格遵守服务标准流程，秉持专业、负责的态度执行每一项服务内容；</li>
+        <li>我们高度重视您的隐私权益，承诺承担信息保密责任，未经您本人明确许可，不向任何第三方泄露您的个人信息；</li>
+        <li>我们乐于接受您的监督，并持续优化服务体验。</li>
+    </ul>
+    
+    <p>本方案秉承“结节可防可控，体质调理是根本”的理念，重点从饮食、运动、情绪三大维度入手，系统改善您的内环境、降低结节进展风险。若您有新的检查结果、症状变化或其他健康信息补充，欢迎随时联系您的专属健康管理师，我们将及时更新您的健康档案并优化管理策略。</p>
+    
+    
+    
+    <p style="text-align: right; margin-top: 40px; font-weight: bold;">结节健康管理团队</p>
+</div>
+
+<!-- 强制分页 -->
+<div class="page-break"></div>
+
+<div class="container">
+    <header>
+        <h1>三结节健康管理平台</h1>
+        <p>综合评估与管理方案</p>
+    </header>
+
+    <!-- 一、健康风险评估 -->
+    <section>
+        <h2>一、健康风险评估</h2>
+        
+        <!-- （一）基本信息 -->
+        <h3>（一）基本信息</h3>
+        <table style="table-layout: fixed;">
+            <colgroup>
+                <col style="width: 15%;">
+                <col style="width: 35%;">
+                <col style="width: 15%;">
+                <col style="width: 35%;">
+            </colgroup>
+            <tr>
+                <th>姓名</th>
+                <td>{{ patient_name }}</td>
+                <th>性别</th>
+                <td>{{ patient_gender }}</td>
+            </tr>
+            <tr>
+                <th>年龄</th>
+                <td>{{ patient_age }}岁</td>
+                <th>身高</th>
+                <td>{% if height %}{{ height }} cm{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+                <th>体重</th>
+                <td>{% if weight %}{{ weight }} kg{% else %}-{% endif %}</td>
+                <th>联系电话</th>
+                <td>{% if phone %}{{ phone }}{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+                <th>糖尿病史</th>
+                <td>
+                     <label class="checkbox-label">
+                        <input type="checkbox" disabled {% if not diabetes_history or diabetes_history == '无' %}checked{% endif %}> 无
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" disabled {% if diabetes_history and diabetes_history != '无' %}checked{% endif %}> 有
+                    </label>
+                </td>
+                <th>可接收膏方的收货地址</th>
+                <td>{% if gaofang_address %}{{ gaofang_address }}{% else %}-{% endif %}</td>
+            </tr>
+
+
+        </table>
+            
+            <h3>（二）三结节影像学特征</h3>
+            <table style="table-layout: fixed;">
+                <colgroup>
+                    <col style="width: 18%;">
+                    <col style="width: 27%;">
+                    <col style="width: 27%;">
+                    <col style="width: 27%;">
+                </colgroup>
+                <tr>
+                    <th>项目</th>
+                    <th>乳腺结节数据</th>
+                    <th>肺结节数据</th>
+                    <th>甲状腺结节数据</th>
+                </tr>
+                <tr>
+                    <td>结节发现时间</td>
+                    <td>{{ breast_discovery_date }}</td>
+                    <td>{{ lung_discovery_date }}</td>
+                    <td>{{ thyroid_discovery_date }}</td>
+                </tr>
+                <tr>
+                    <td>结节症状</td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '无症状' in symptoms_breast %}checked{% endif %}>无症状</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '肿块' in symptoms_breast %}checked{% endif %}>乳房肿块</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '疼痛' in symptoms_breast %}checked{% endif %}>乳房疼痛</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '胀满' in symptoms_breast %}checked{% endif %}>乳房胀满感</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '溢液' in symptoms_breast %}checked{% endif %}>乳头溢液</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '皮肤改变' in symptoms_breast %}checked{% endif %}>乳房皮肤改变</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_breast and '淋巴结' in symptoms_breast %}checked{% endif %}>腋下淋巴结肿大</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_symptoms_other or (symptoms_breast and '其他' in symptoms_breast) %}checked{% endif %}>其他{% if breast_symptoms_other %}：{{ breast_symptoms_other }}{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_lung and '无症状' in symptoms_lung %}checked{% endif %}>无症状</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_lung and '咳嗽' in symptoms_lung %}checked{% endif %}>咳嗽</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_lung and '胸痛' in symptoms_lung %}checked{% endif %}>胸痛</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_lung and '呼吸困难' in symptoms_lung %}checked{% endif %}>呼吸困难</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_lung and '咯血' in symptoms_lung %}checked{% endif %}>咯血</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_lung and '全身症状' in symptoms_lung %}checked{% endif %}>全身症状</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_symptoms_other or (symptoms_lung and '其他' in symptoms_lung) %}checked{% endif %}>其他{% if lung_symptoms_other %}：{{ lung_symptoms_other }}{% endif %}</label>
+
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_thyroid and '无症状' in symptoms_thyroid %}checked{% endif %}>无症状</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_thyroid and '颈部肿块' in symptoms_thyroid %}checked{% endif %}>颈部肿块</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_thyroid and '压迫症状' in symptoms_thyroid %}checked{% endif %}>压迫症状</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if symptoms_thyroid and '疼痛症状' in symptoms_thyroid %}checked{% endif %}>疼痛症状</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if thyroid_symptoms_other or (symptoms_thyroid and '其他' in symptoms_thyroid) %}checked{% endif %}>其他{% if thyroid_symptoms_other %}：{{ thyroid_symptoms_other }}{% endif %}</label>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td>分级</td>
+                    <td>BI-RADS {{ birads_level }}级</td>
+                    <td>Lung-RADS {{ lungrads_level }}级</td>
+                    <td>TI-RADS {{ tirads_level }}级</td>
+                </tr>
+                <tr>
+                    <td>数量</td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not nodule_quantity_breast or '多发' not in nodule_quantity_breast %}checked{% endif %}>单发</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if nodule_quantity_breast and '多发' in nodule_quantity_breast %}checked{% endif %}>多发{% if nodule_quantity_breast and '多发' in nodule_quantity_breast and nodule_count_breast %}（{{ nodule_count_breast }}个）{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not nodule_quantity_lung or '多发' not in nodule_quantity_lung %}checked{% endif %}>单发</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if nodule_quantity_lung and '多发' in nodule_quantity_lung %}checked{% endif %}>多发{% if nodule_quantity_lung and '多发' in nodule_quantity_lung and nodule_count_lung %}（{{ nodule_count_lung }}个）{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not nodule_quantity_thyroid or '多发' not in nodule_quantity_thyroid %}checked{% endif %}>单发</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if nodule_quantity_thyroid and '多发' in nodule_quantity_thyroid %}checked{% endif %}>多发{% if nodule_quantity_thyroid and '多发' in nodule_quantity_thyroid and nodule_count_thyroid %}（{{ nodule_count_thyroid }}个）{% endif %}</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>结节大小</td>
+                    <td>{{ breast_size }} mm</td>
+                    <td>{{ lung_size }} mm</td>
+                    <td>{{ thyroid_size }} mm</td>
+                </tr>
+                <tr>
+                    <td>基础疾病史</td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not breast_disease_history or breast_disease_history == '无' or '无' in breast_disease_history %}checked{% endif %}>无</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_disease_history and '乳腺增生' in breast_disease_history %}checked{% endif %}>乳腺增生病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_disease_history and '纤维瘤' in breast_disease_history %}checked{% endif %}>乳腺纤维瘤病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_disease_history and '囊肿' in breast_disease_history %}checked{% endif %}>乳腺囊肿病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_disease_history and '乳腺炎' in breast_disease_history %}checked{% endif %}>乳腺炎病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_disease_history and '乳腺癌' in breast_disease_history %}checked{% endif %}>乳腺癌病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if breast_disease_history_other %}checked{% endif %}>其他{% if breast_disease_history_other %}：{{ breast_disease_history_other }}{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not lung_cancer_history or lung_cancer_history == '无' or '无' in lung_cancer_history %}checked{% endif %}>无</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_cancer_history and '肺炎病史' in lung_cancer_history %}checked{% endif %}>肺炎病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_cancer_history and '肺结核病史' in lung_cancer_history %}checked{% endif %}>肺结核病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_cancer_history and '慢性阻塞性肺疾病' in lung_cancer_history %}checked{% endif %}>慢性阻塞性肺疾病(COPD)</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_cancer_history and '肺纤维化' in lung_cancer_history %}checked{% endif %}>肺纤维化</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_cancer_history and '肺癌病史' in lung_cancer_history %}checked{% endif %}>肺癌病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if lung_cancer_history_other %}checked{% endif %}>其他{% if lung_cancer_history_other %}：{{ lung_cancer_history_other }}{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not hypothyroidism_history or hypothyroidism_history == '无' or '无' in hypothyroidism_history %}checked{% endif %}>无</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if hypothyroidism_history and '甲状腺功能亢进（甲亢）' in hypothyroidism_history %}checked{% endif %}>甲状腺功能亢进（甲亢）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if hypothyroidism_history and '甲状腺功能减退（甲减）' in hypothyroidism_history %}checked{% endif %}>甲状腺功能减退（甲减）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if hypothyroidism_history and '桥本甲状腺炎' in hypothyroidism_history %}checked{% endif %}>桥本甲状腺炎</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if hypothyroidism_history and '亚急性甲状腺炎' in hypothyroidism_history %}checked{% endif %}>亚急性甲状腺炎</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if hypothyroidism_history and '甲状腺癌病史' in hypothyroidism_history %}checked{% endif %}>甲状腺癌病史</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if hypothyroidism_history_other %}checked{% endif %}>其他{% if hypothyroidism_history_other %}：{{ hypothyroidism_history_other }}{% endif %}</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>家族史</td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not family_history or family_history == '无' %}checked{% endif %}>无</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '一级' in family_history %}checked{% endif %}>一级亲属（父母、子女、亲兄弟姐妹）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '二级' in family_history %}checked{% endif %}>二级亲属（伯父、姑妈、舅舅、姨妈、祖父母）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '三级' in family_history %}checked{% endif %}>三级亲属（表/堂兄妹）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history_other %}checked{% endif %}>其他{% if family_history_other %}：{{ family_history_other }}{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not family_history or family_history == '无' %}checked{% endif %}>无</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '一级' in family_history %}checked{% endif %}>一级亲属（父母、子女、亲兄弟姐妹）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '二级' in family_history %}checked{% endif %}>二级亲属（伯父、姑妈、舅舅、姨妈、祖父母）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '三级' in family_history %}checked{% endif %}>三级亲属（表/堂兄妹）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history_other %}checked{% endif %}>其他{% if family_history_other %}：{{ family_history_other }}{% endif %}</label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if not family_history or family_history == '无' %}checked{% endif %}>无</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '一级' in family_history %}checked{% endif %}>一级亲属（父母、子女、亲兄弟姐妹）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '二级' in family_history %}checked{% endif %}>二级亲属（伯父、姑妈、舅舅、姨妈、祖父母）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history and '三级' in family_history %}checked{% endif %}>三级亲属（表/堂兄妹）</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if family_history_other %}checked{% endif %}>其他{% if family_history_other %}：{{ family_history_other }}{% endif %}</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>药物使用史</td>
+                    <td>
+                         <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not breast_medication_history or breast_medication_history == '无' %}checked{% endif %}> 无
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_medication_history and '中成药治疗' in breast_medication_history %}checked{% endif %}> 中成药治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_medication_history and '激素调节药物' in breast_medication_history %}checked{% endif %}> 激素调节药物
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_medication_history and '维生素辅助治疗' in breast_medication_history %}checked{% endif %}> 维生素辅助治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_medication_history and '乳腺癌治疗药物' in breast_medication_history %}checked{% endif %}> 乳腺癌治疗药物
+                        </label>
+                         <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_medication_other %}checked{% endif %}> 其他{% if breast_medication_other %}：{{ breast_medication_other }}{% endif %}
+                        </label>
+                    </td>
+                    <td>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not lung_medication_history or lung_medication_history == '无' %}checked{% endif %}> 无
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if lung_medication_history and '抗感染治疗' in lung_medication_history %}checked{% endif %}> 抗感染治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if lung_medication_history and '激素治疗' in lung_medication_history %}checked{% endif %}> 激素治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if lung_medication_history and '抗肿瘤治疗' in lung_medication_history %}checked{% endif %}> 抗肿瘤治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if lung_medication_history and '抗炎药物' in lung_medication_history %}checked{% endif %}> 抗炎药物
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if lung_medication_other %}checked{% endif %}> 其他{% if lung_medication_other %}：{{ lung_medication_other }}{% endif %}
+                        </label>
+                    </td>
+                    <td>
+                            <label class="checkbox-label"><input type="checkbox" disabled {% if not thyroid_medication_history or thyroid_medication_history == '无' %}checked{% endif %}> 无</label>
+                            <label class="checkbox-label"><input type="checkbox" disabled {% if thyroid_medication_history and '甲状腺激素治疗' in thyroid_medication_history %}checked{% endif %}> 甲状腺激素治疗</label>
+                            <label class="checkbox-label"><input type="checkbox" disabled {% if thyroid_medication_history and '抗甲状腺药物' in thyroid_medication_history %}checked{% endif %}> 抗甲状腺药物</label>
+                            <label class="checkbox-label"><input type="checkbox" disabled {% if thyroid_medication_history and '放射性碘治疗' in thyroid_medication_history %}checked{% endif %}> 放射性碘治疗</label>
+                            <label class="checkbox-label"><input type="checkbox" disabled {% if thyroid_medication_history and '中成药治疗' in thyroid_medication_history %}checked{% endif %}> 中成药治疗</label>
+                            <label class="checkbox-label"><input type="checkbox" disabled {% if thyroid_medication_other %}checked{% endif %}> 其他{% if thyroid_medication_other %}：{{ thyroid_medication_other }}{% endif %}</label>
+                        </td>
+                </tr>
+            </table>
+            
+            <div style="margin-top: 25px; background-color: #f8f9fa; border-left: 4px solid #3498db; border-radius: 4px;">
+                <div style="padding: 20px;">
+                    <h4 style="color: #2c3e50; font-size: 16px; margin-top: 0; margin-bottom: 15px;">分析结论：</h4>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #3498db; font-size: 14px; margin-bottom: 10px;">1. 总体评估与随访建议</h5>
+                        <div style="line-height: 1.8; color: #555; white-space: pre-line; font-size: 14px; text-indent: 0; padding: 0; margin: 0;">
+                            {{ imaging_conclusion|safe }}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #e67e22; font-size: 14px; margin-bottom: 10px;">2. 风险提示</h5>
+                        <div style="line-height: 1.8; color: #555; white-space: pre-line; font-size: 14px; text-indent: 0; padding: 0; margin: 0;">
+                            {{ imaging_risk_warning|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px;">（三）中医信息收集</h3>
+            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <p>（中医舌苔面部检测报告插图区域）</p>
+                <br><br><br>
+            </div>
+
+            <h3 style="margin-top: 30px;">（四）动态风险评级</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>风险维度</th>
+                        <th>低危</th>
+                        <th>中危</th>
+                        <th>高危</th>
+                        <th>处理措施</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>家族史</td>
+                        <td>无乳腺、甲状腺、肺部相关癌症或遗传性疾病家族史</td>
+                        <td>二级亲属乳腺、甲状腺或肺癌史（≥1人）</td>
+                        <td>一级亲属乳腺癌、甲状腺癌或肺癌史（≥1人）+家族聚集性或BRCA1/2等基因突变</td>
+                        <td>基因检测+强化三器官监测</td>
+                    </tr>
+                    <tr>
+                        <td>疾病史</td>
+                        <td>无乳腺、甲状腺、肺部慢性疾病史</td>
+                        <td>乳腺单发纤维瘤、甲亢/甲减（控制稳定）、肺炎（已治愈）</td>
+                        <td>乳腺不典型增生/多发纤维瘤+囊肿、桥本甲状腺炎（抗体显著升高）、肺纤维化、乳腺或甲状腺或肺癌病史</td>
+                        <td>多学科会诊（乳腺外科+甲乳外科+呼吸科+胸外科+内分泌科）</td>
+                    </tr>
+                    <tr>
+                        <td>影像学特征</td>
+                        <td>乳腺BI-RADS 1-2级（结节＜5mm）、甲状腺TI-RADS 1-2级（结节＜5mm，囊性为主）、肺Lung-RADS 1级（结节＜5mm，纯磨玻璃）</td>
+                        <td>乳腺BI-RADS 3级、甲状腺TI-RADS 3-4A级（5-10mm，实性低回声）、肺Lung-RADS 2-3级（5-10mm，混合磨玻璃）</td>
+                        <td>乳腺BI-RADS 4级及以上、甲状腺TI-RADS 4B-6级（＞10mm，伴微钙化/边缘模糊等高危特征）、肺Lung-RADS 4级及以上（＞10mm，伴毛刺 / 分叶等高危特征）</td>
+                        <td>三结节穿刺活检+三器官功能检测</td>
+                    </tr>
+                    <tr>
+                        <td>分子标志物 / 辐射相关</td>
+                        <td>乳腺CA15-3、甲状腺Tg、肺CYFRA21-1等正常且无辐射暴露史</td>
+                        <td>乳腺CA15-3、甲状腺Tg、肺CYFRA21-1等波动或既往头颈部/胸部低剂量放疗（＜10Gy）</td>
+                        <td>乳腺CA15-3、甲状腺Tg、肺CYFRA21-1等持续升高或童年期头颈部/胸部放疗史（≥10Gy）/核辐射接触史</td>
+                        <td>PET-CT全身筛查+加强三器官影像监测（每3个月1次）</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">（五）三结节医学监测矩阵</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>检查项目</th>
+                        <th>监测频率</th>
+                        <th>技术规范</th>
+                        <th>关键观察指标</th>
+                        <th>预警阈值</th>
+                        <th>后续处理建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>乳腺超声</td>
+                        <td>低危：每6个月；中危：每6个月；高危：每3个月</td>
+                        <td>-10MHz高频线阵探头<br>-弹性成像（应变率比值法）<br>-BI-RADS分类评估</td>
+                        <td>-结节形态（圆形/分叶/不规则）<br>-纵横比（＞1提示恶性）<br>-血流信号RI 值（＞0.7警惕）<br>-弹性评分（1-5分）</td>
+                        <td>弹性评分≥4分<br>RI值＞0.7<br>体积倍增时间＜6个月</td>
+                        <td>升级为BI-RADS 4级，建议穿刺活检；联合MRI检查</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>低危：每年1次；中危：每年1次；高危：每6个月1次</td>
+                        <td>-双侧加压摄影（头尾位+内外侧斜位）<br>-自动曝光控制（AEC）<br>-钙化灶放大摄影</td>
+                        <td>-微钙化灶（簇状/线状）<br>-结构扭曲<br>-腺体不对称<br>-BI-RADS分类</td>
+                        <td>钙化灶＞5 簇 /cm²<br>结构扭曲伴血供</td>
+                        <td>立即转诊乳腺外科，加做增强MRI</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺 MRI</td>
+                        <td>高危：每6个月</td>
+                        <td>-3.0T磁共振<br>-DWI序列（b值800）<br>-动态增强扫描（TIC曲线分析）</td>
+                        <td>- 动态增强曲线（Ⅱ型 /Ⅲ型提示恶性）<br>-ADC值（＜1.2×10⁻³mm²/s）<br>-时间-信号强度曲线</td>
+                        <td>TIC曲线Ⅲ型<br>ADC值下降＞20%</td>
+                        <td>多学科会诊（MDT），优先手术干预</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺超声</td>
+                        <td>低危：每年1次；中危：每6个月1次；高危：每3个月1次</td>
+                        <td>-高频探头（7.5-10MHz）<br>-测量三维径线（长×宽×高）<br>-评估血流阻力指数（RI）</td>
+                        <td>-结节直径变化（增大/缩小）<br>-回声变化（囊性→实性）<br>-新增微钙化/边缘模糊</td>
+                        <td>体积增大＞50% 或直径增加＞3mm<br>出现微钙化或边缘不规则</td>
+                        <td>升级为TI-RADS 4B级及以上，转诊甲乳外科评估穿刺</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺功能检测</td>
+                        <td>中高危患者：每6个月1次</td>
+                        <td>-检测TSH、FT3、FT4、TPOAb<br>-必要时加测 Tg、TgAb（甲状腺癌术后）</td>
+                        <td>TSH异常（＜0.1mIU/L 或＞4.0mIU/L）<br>TPOAb显著升高（＞300IU/ml）</td>
+                        <td>TSH进行性降低或升高<br>Tg水平持续升高（术后患者）</td>
+                        <td>调整左甲状腺素剂量（甲减患者）/评估恶性风险</td>
+                    </tr>
+                    <tr>
+                        <td>胸部低剂量 CT</td>
+                        <td>低危：每年1次；中危：每6个月1次；高危：每3个月1次</td>
+                        <td>-层厚≤1mm<br>-低剂量扫描（剂量＜5mSv）<br>-多平面重建</td>
+                        <td>-结节大小（长×宽×高）<br>-密度（磨玻璃/实性/混杂）<br>-边缘（毛刺/分叶/光滑）<br>-内部特征（钙化/空泡征）</td>
+                        <td>直径增大＞2mm<br>密度增加（磨玻璃→实性）<br>出现毛刺/分叶征</td>
+                        <td>升级为Lung-RADS4级及以上，转诊呼吸科或胸外科评估活检</td>
+                    </tr>
+                    <tr>
+                        <td>血清肿瘤标志物</td>
+                        <td>高危：每3个月</td>
+                        <td>-化学发光法检测<br>-参考实验室质控标准</td>
+                        <td>-CA15-3（＞35U/ml）<br>-CEA（＞5ng/ml）<br>-CA125（＞35U/ml）<br>-CYFRA21-1（＞3.3ng/ml）<br>-NSE（＞16.3ng/ml）</td>
+                        <td>CA15-3、CYFRA21-1等进行性升高＞20%/季度</td>
+                        <td>联合PET-CT全身筛查，排除转移</td>
+                    </tr>
+                    <tr>
+                        <td>细针穿刺活检</td>
+                        <td>乳腺BI-RADS4级及以上、甲状腺TI-RADS4级及以上、肺Lung-RADS 4级及以上患者</td>
+                        <td>-超声/CT 引导下穿刺<br>-获取足够组织量（≥3条）</td>
+                        <td>病理结果（良性/可疑恶性/恶性）</td>
+                        <td>病理提示可疑恶性或恶性</td>
+                        <td>手术切除（相应器官）+淋巴结清扫</td>
+                    </tr>
+                    <tr>
+                        <td>颈部/胸部CT/MRI</td>
+                        <td>甲状腺、肺高危患者必要时</td>
+                        <td>-薄层扫描（层厚≤1mm）<br>-增强扫描评估血管侵犯</td>
+                        <td>结节与周围组织关系（气管/食管/血管/胸膜侵犯）<br>颈部/纵隔淋巴结肿大</td>
+                        <td>发现淋巴结转移（短径＞5mm）</td>
+                        <td>扩大手术范围+术后相应辅助治疗（放射性碘/放化疗等）</td>
+                    </tr>
+                    <tr>
+                        <td>自我触诊监测</td>
+                        <td>每月</td>
+                        <td>-乳腺：经后7-10天检查，四指触诊法（指腹滑动触诊）<br>-甲状腺：颈部轻柔触诊<br>-肺部：关注呼吸症状变化</td>
+                        <td>乳腺：结节大小变化（增长＞20%）、质地变硬、皮肤橘皮样改变<br>甲状腺：颈部结节大小变化、压痛<br>肺：咳嗽性质改变、痰中带血、胸痛</td>
+                        <td>及时记录并反馈医生</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">（六）三结节医学监测频率分层管理表</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">风险分层</th>
+                        <th style="width: 20%;">检查项目</th>
+                        <th style="width: 15%;">初始诊断后（第1年）</th>
+                        <th style="width: 15%;">稳定期（第2-3年）</th>
+                        <th style="width: 15%;">高危持续期（≥4年）</th>
+                        <th style="width: 15%;">注意事项</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="6">低危（乳腺BI-RADS 2-3级，甲状腺TI-RADS 1-2级，肺Lung-RADS 1-2级，无高危因素）</td>
+                        <td>乳腺超声</td>
+                        <td>每6个月</td>
+                        <td>每12个月</td>
+                        <td>每12个月</td>
+                        <td>乳腺检查需在月经后7-10天，避开黄体期</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>第1年</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>致密型乳腺需联合超声检查</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺超声</td>
+                        <td>每12个月</td>
+                        <td>每12个月</td>
+                        <td>每12个月</td>
+                        <td>选择高频探头超声，由经验丰富的超声医师操作</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺功能（可选）</td>
+                        <td>不推荐</td>
+                        <td>不推荐</td>
+                        <td>不推荐</td>
+                        <td>无临床症状者无需常规检测</td>
+                    </tr>
+                    <tr>
+                        <td>胸部低剂量CT</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>采用低剂量扫描，减少辐射</td>
+                    </tr>
+                    <tr>
+                        <td>自我触诊</td>
+                        <td>每月</td>
+                        <td>每月</td>
+                        <td>每月</td>
+                        <td>记录三结节大小及症状变化（建议使用测量尺）</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="8">中危（乳腺BI-RADS 3级+1-2个危险因素，甲状腺TI-RADS 3-4A级+1-2个危险因素，肺Lung-RADS 2-3级+1-2个危险因素）</td>
+                        <td>乳腺超声</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>增加弹性成像评估（每半年1次）</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>第1年</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>若结节邻近胸壁，需加做侧斜位加压摄影</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺MRI（可选）</td>
+                        <td>第1年</td>
+                        <td>每2年1次</td>
+                        <td>每年1次</td>
+                        <td>适用于致密型乳腺或高风险随访</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺超声</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>需在同一家机构检查，便于影像对比</td>
+                    </tr>
+                    <tr>
+                        <td>细针穿刺活检（必要时）</td>
+                        <td>第1年1次（针对分级较高侧）</td>
+                        <td>按需进行</td>
+                        <td>按需进行</td>
+                        <td>用于结节性质不明时鉴别诊断</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺功能</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>检测TSH、FT3、FT4、TPOAb</td>
+                    </tr>
+                    <tr>
+                        <td>胸部低剂量CT</td>
+                        <td>每6个月1次</td>
+                        <td>每6个月1次</td>
+                        <td>每6个月1次</td>
+                        <td>注意结节大小、密度变化</td>
+                    </tr>
+                    <tr>
+                        <td>血清肿瘤标志物（肺相关）</td>
+                        <td>每6个月1次</td>
+                        <td>每6个月1次</td>
+                        <td>每6个月1次</td>
+                        <td>检测CYFRA21-1、NSE等</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="9">高危（乳腺BI-RADS 4级及以上或甲状腺TI-RADS 4B-6级或肺Lung-RADS 4 级及以上，或存在基因突变/家族史）</td>
+                        <td>乳腺超声</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>需动态测量体积变化（计算VDT）</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>第1年</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>配合放大摄影技术（×1.5-2 倍）</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺MRI</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>使用动态增强扫描（DCE-MRI）</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺超声</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>需测量结节体积变化（计算增长率）</td>
+                    </tr>
+                    <tr>
+                        <td>细针穿刺活检</td>
+                        <td>第1年2次（三结节分别评估）</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>评估三结节性质变化</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺功能</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>同步记录 TSH 变化趋势（绘制折线图）</td>
+                    </tr>
+                    <tr>
+                        <td>胸部低剂量 CT</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>详细观察结节形态、大小、密度等变化</td>
+                    </tr>
+                    <tr>
+                        <td>血清肿瘤标志物</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>联合检测CA15-3、CEA、CA125、CYFRA21-1、NSE</td>
+                    </tr>
+                    <tr>
+                        <td>颈部/胸部CT/MRI</td>
+                        <td>第1年1次</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>评估甲状腺、肺周围组织侵犯及淋巴结转移情况</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="5">特殊人群（妊娠期/哺乳期）</td>
+                        <td>乳腺超声</td>
+                        <td>每6周</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>禁用X线检查，优先选择弹性超声</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺触诊</td>
+                        <td>每月</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>避免挤压乳头，防止诱发溢液</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺超声</td>
+                        <td>每3个月</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>避免辐射检查，优先超声评估</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺功能</td>
+                        <td>每3个月</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>优先选择超声检查，避免CT等辐射检查</td>
+                    </tr>
+                    <tr>
+                        <td>胸部低剂量CT</td>
+                        <td>孕期尽量避免，哺乳期每6个月1次</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>必须检查时采用铅防护，尽量推迟至孕中期</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">（七）动态调整机制</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 升级标准（需立即转诊相关科室）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">类型</th>
+                        <th style="width: 50%;">升级条件</th>
+                        <th style="width: 30%;">后续处理</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>乳腺相关</td>
+                        <td>超声弹性评分≥4分（周边蓝色区域＞30%）；血流信号RI值≥0.7 且进行性升高；自我触诊结节体积增长＞20%（3个月内）；血清标志物CA15-3季度增幅＞20%</td>
+                        <td>72小时内穿刺活检；联合超声造影（CEUS）评估；启动 48小时急诊评估流程；PET-CT全身筛查</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺相关</td>
+                        <td>结节直径3个月内增大＞3mm；囊性结节出现实性成分；新增微钙化/边缘模糊；TSH进行性降低（＜0.1mIU/L）且结节增大；Tg水平持续升高（术后患者）；出现声音嘶哑（持续＞2周）、吞咽/呼吸困难、颈部淋巴结肿大</td>
+                        <td>48小时内完成甲乳外科会诊，评估穿刺活检或手术指征；启动全身评估（颈部CT+全身骨扫描）；急诊超声检查，排除肿瘤侵犯或压迫</td>
+                    </tr>
+                    <tr>
+                        <td>肺部相关</td>
+                        <td>结节直径3个月内增大＞2mm；磨玻璃结节出现实性成分或实性成分增加；新增毛刺征/分叶征/胸膜牵拉征；出现咯血、胸痛加重、呼吸困难；血清标志物CYFRA21-1等持续升高</td>
+                        <td>48小时内完成呼吸科或胸外科会诊，评估穿刺活检或手术指征；行胸部增强CT检查；必要时PET-CT评估全身情况</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+             <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">2. 降级标准（可延长监测间隔）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">稳定证据</th>
+                        <th style="width: 50%;">降级条件</th>
+                        <th style="width: 30%;">新监测频率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>乳腺相关</td>
+                        <td>连续2次超声形态无变化+RI 值＜0.6；MRI动态增强TI曲线保持 Ⅰ型（缓慢上升型）；标志物CA15-3连续3次稳定</td>
+                        <td>乳腺超声延长至每年1次；乳腺MRI缩短至每2年1次；取消乳腺血清学监测（维持影像学随访）</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺相关</td>
+                        <td>连续2次甲状腺超声结节连续12个月无大小、回声、形态变化（实性结节需连续24个月稳定）；甲状腺功能检测连续3次（每3-6个月1次）指标均在正常范围且无动态变化趋势；连续2次（间隔6个月）穿刺提示良性且超声无高危特征</td>
+                        <td>甲状腺超声：低危延长至每18个月1次，中危延长至每12个月1次；甲状腺功能：中危取消监测（仅维持超声随访），高危延长至每6个月1次；甲状腺超声监测高危延长至每6个月1次</td>
+                    </tr>
+                    <tr>
+                        <td>肺部相关</td>
+                        <td>连续2次胸部CT（间隔6个月）肺结节大小、密度、形态无变化；血清肿瘤标志物（肺相关）连续3次（每3-6个月1次）正常且无动态变化；无肺部相关症状且无高危因素</td>
+                        <td>胸部低剂量CT：低危延长至每18个月1次，中危延长至每 2个月1次；血清肿瘤标志物（肺相关）：中危取消监测（仅维持影像随访），高危延长至每6个月1次</td>
+                    </tr>
+                </tbody>
+            </table>
+
+             <h3 style="margin-top: 30px;">（八）分层监测策略</h3>
+             <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">风险分层</th>
+                        <th style="width: 25%;">初始1年</th>
+                        <th style="width: 25%;">稳定期(2-3年)</th>
+                        <th style="width: 20%;">高危持续期(≥4年)</th>
+                        <th style="width: 15%;">特殊人群（妊娠期）</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低危</td>
+                        <td>乳腺：超声6M+钼靶1Y+触诊1M<br>甲状腺：超声12M+触诊1M<br>肺：CT1Y+触诊1M</td>
+                        <td>乳腺：超声12M+触诊1M<br>甲状腺：超声12M+触诊1M<br>肺：CT1Y+触诊1M</td>
+                        <td>乳腺：超声12M+触诊1M<br>甲状腺：超声12M+触诊1M<br>肺：CT1Y+触诊1M</td>
+                        <td>乳腺：超声6W+触诊1M（禁X线）<br>甲状腺：超声3M+触诊1M（避免辐射）<br>肺：尽量避免CT，必要时孕中期防护下进行+症状监测</td>
+                    </tr>
+                    <tr>
+                        <td>中危</td>
+                        <td>乳腺：超声6M+钼靶1Y+MRI（可选）1Y+触诊1M<br>甲状腺：超声6M+功能6M+触诊1M<br>肺：CT6M+肿瘤标志物6M+触诊1M</td>
+                        <td>乳腺：超声6M+MRI2Y+触诊1M<br>甲状腺：超声6M+功能6M+触诊1M<br>肺：CT6M+肿瘤标志物6M+触诊1M</td>
+                        <td>乳腺：超声6M+MRI1Y+触诊 1M<br>甲状腺：超声6M+功能6M+触诊1M<br>肺：CT6M+肿瘤标志物6M+触诊1M</td>
+                        <td>乳腺：超声6W+触诊1M<br>甲状腺：超声3M+功能6M（TSH优先）+触诊1M（避免穿刺除非紧急）<br>肺：尽量避免CT，哺乳期恢复监测</td>
+                    </tr>
+                    <tr>
+                        <td>高危</td>
+                        <td>乳腺：超声3M+钼靶6M+MRI6M+标志物3M+触诊1M<br>甲状腺：超声3M+功能3M+穿刺活检（必要时）+颈部CT（1次/年）+触诊1M<br>肺：CT3M+肿瘤标志物3M+胸部CT/MRI（1次/年+触诊1M</td>
+                        <td>乳腺：超声3M+MRI6M+标志物3M+触诊1M<br>甲状腺：超声3M+功能3M+穿刺活检（按需）+颈部CT（1次/年）+触诊1M<br>肺：CT3M+肿瘤标志物3M+胸部CT/MRI（1次/年）+触诊1M</td>
+                        <td>乳腺：超声3M+MRI3M+标志物3M+触诊1M<br>甲状腺：超声3M +功能3M+穿刺活检（按需）+颈部 CT（1次/年）+ 触诊1M<br>肺：CT3M+肿瘤标志物3M+胸部CT/MRI（1次/年）+触诊1M</td>
+                        <td>由多学科会诊制定方案<br>乳腺超声6W+触诊1M<br>甲状腺超声3M+触诊1M<br>肺：尽量避免辐射检查，密切监测症状</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">（九）三结节分级管理要点</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>乳腺BI-RADS分级</th>
+                        <th>管理策略</th>
+                        <th>甲状腺TI-RADS分级</th>
+                        <th>管理策略</th>
+                        <th>肺Lung-RADS分级</th>
+                        <th>管理策略</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1-2级</td>
+                        <td>定期随访，观察为主</td>
+                        <td>1级</td>
+                        <td>年度甲状腺超声随访，无需特殊干预</td>
+                        <td>1级</td>
+                        <td>年度胸部低剂量CT随访</td>
+                    </tr>
+                    <tr>
+                        <td>3级</td>
+                        <td>短期随访（3-6个月），警惕恶变征兆</td>
+                        <td>2级</td>
+                        <td>6-12个月复查甲状腺超声，对比结节稳定性</td>
+                        <td>2级</td>
+                        <td>6-12个月复查胸部低剂量CT，观察结节变化</td>
+                    </tr>
+                    <tr>
+                        <td>4级</td>
+                        <td>活检，恶性倾向需手术</td>
+                        <td>3级</td>
+                        <td>3-6个月密切随访甲状腺超声，必要时甲状腺功能检测</td>
+                        <td>3级</td>
+                        <td>3-6 个月复查胸部低剂量 CT，评估是否需要活检</td>
+                    </tr>
+                    <tr>
+                        <td>5-6级</td>
+                        <td>手术治疗为主，结合放化疗</td>
+                        <td>4A级</td>
+                        <td>考虑细针穿刺活检，根据结果决定下一步处理</td>
+                        <td>4A级</td>
+                        <td>优先考虑活检，明确病理性质</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td>4B-5级</td>
+                        <td>优先细针穿刺活检，明确病理，恶性者手术切除</td>
+                        <td>4B-4X级</td>
+                        <td>强烈建议活检或手术切除，排除恶性</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td>6级</td>
+                        <td>确诊恶性，立即手术治疗（结合分期制定方案）</td>
+                        <td>6级</td>
+                        <td>确诊恶性，立即手术治疗+综合治疗</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="page-break"></div>
+
+        <section>
+            <h2>二、甲状腺合并肺合并乳腺结节三结节健康管理建议</h2>
+            
+            <h3>（一）饮食建议</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 核心饮食原则</h4>
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(1) 兼顾三结节需求的碘脂糖及肺部健康管理</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>控制总脂肪摄入＜总能量的30%；限制添加糖＜25g /日；</li>
+                <li>适宜碘摄入：每日150μg（普通成人），妊娠期/哺乳期增至250μg；</li>
+                <li>选择加碘盐（每日5g约含碘 200μg），避免无碘盐或过量补碘；每周食用1-2次富碘食物（海带5g /紫菜2g /海鱼150g），避免每日食用。</li>
+                <li>增加富含抗氧化物质的食物摄入，如新鲜蔬果，有助于肺部健康；</li>
+                <li>依据：高脂饮食促进雌激素合成加重乳腺结节风险（JAMA Oncology, 2021）；碘摄入异常（过量/不足）均可能促进甲状腺结节生长（《Thyroid》, 2021）；抗氧化物质可减轻肺部氧化应激损伤（《American Journal of Respiratory and Critical Care Medicine》, 2020）</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(2) 高纤维抗炎抗氧化</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>每日膳食纤维≥25g（全谷物+蔬菜+水果）；重点摄入深色蔬果（西兰花、蓝莓、胡萝卜）；</li>
+                <li>每周食用3-4次富含Omega-3脂肪酸的食物（三文鱼、核桃、亚麻籽）；减少精制糖及加工食品（香肠、罐头）摄入。</li>
+                <li>依据：膳食纤维降低雌激素重吸收率（American Journal of Clinical Nutrition, 2020）；慢性炎症与甲状腺结节恶变风险相关（《Journal of Clinical Endocrinology & Metabolism》, 2022）；抗炎饮食可降低肺部慢性炎症反应（《Thorax》, 2021）</li>
+            </ul>
+
+             <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(3) 优质蛋白与三器官保护</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>优选鱼类（三文鱼、鳕鱼）、禽类（去皮鸡胸肉）、豆类；减少红肉（猪牛羊肉）至＜1次/周；</li>
+                <li>每日摄入100g富含硒元素的食物（蘑菇、鸡蛋、巴西坚果1-2颗）；每周3-4次食用十字花科蔬菜（西兰花、羽衣甘蓝、萝卜），煮熟后食用（减少硫氰酸盐影响）。</li>
+                <li>增加富含优质蛋白的食物，如牛奶、豆制品，有助于维持肺部正常功能；</li>
+                <li>依据：红肉摄入与乳腺结节恶变风险正相关（WHO, 2015）；硒元素可调节甲状腺功能，降低自身免疫性甲状腺疾病风险（《European Journal of Endocrinology》, 2020）；优质蛋白有助于修复肺部组织（《Nutrition Reviews》, 2021）</li>
+            </ul>
+
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(4) 避免三重风险物质</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>禁用含雌激素保健品（蜂王浆、雪蛤）；限制深加工食品（罐头、腌制食品）；</li>
+                <li>避免长期大量食用高碘食物（如海带＞50g /日、紫菜＞10g /日）；减少辛辣刺激食物（辣椒、花椒）及酒精摄入（乙醇摄入量＜15g /日）；禁用霉变食物（如霉花生、霉玉米）。</li>
+                <li>避免食用被污染的食物，减少肺部负担；</li>
+                <li>依据：外源性雌激素可能刺激乳腺结节生长（Endocrine Reviews, 2018）；高碘暴露可诱发甲状腺功能异常及结节增生（《Endocrine Reviews》, 2019）；污染食物中的有害物质可损伤肺部细胞（《Environmental Health Perspectives》, 2020）</li>
+            </ul>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 每日饮食方案（1800kcal/日示例）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>餐次</th>
+                        <th>食物搭配</th>
+                        <th>热量分配</th>
+                        <th>营养重点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>早餐</td>
+                        <td>燕麦粥（50g）+水煮蛋（1个）+凉拌菠菜（100g）+无糖豆浆（200ml）</td>
+                        <td>30%</td>
+                        <td>膳食纤维+优质蛋白+适量碘+植物雌激素</td>
+                    </tr>
+                    <tr>
+                        <td>上午加餐</td>
+                        <td>苹果（1个）+巴西坚果（1颗）+核桃仁（10g）</td>
+                        <td>10%</td>
+                        <td>维生素+硒元素+抗氧化物质+健康脂肪</td>
+                    </tr>
+                    <tr>
+                        <td>午餐</td>
+                        <td>糙米饭（100g）+清蒸鲈鱼（150g）+蒜蓉西兰花（200g）+豆腐菌菇汤（100ml）</td>
+                        <td>40%</td>
+                        <td>优质蛋白+Omega-3脂肪酸+膳食纤维+植物营养素</td>
+                    </tr>
+                    <tr>
+                        <td>下午加餐</td>
+                        <td>无糖希腊酸奶（150g）+蓝莓（100g）</td>
+                        <td>10%</td>
+                        <td>益生菌+花青素+抗氧化物质</td>
+                    </tr>
+                    <tr>
+                        <td>晚餐</td>
+                        <td>杂粮馒头（80g）+西芹百合（150g）+冬瓜丸子汤（100ml）+橄榄油（10g）+亚麻籽（5g）</td>
+                        <td>20%</td>
+                        <td>复合碳水+植物雌激素+可溶性膳食纤维+健康油脂</td>
+                    </tr>
+                     <tr>
+                        <td>睡前加餐</td>
+                        <td>10颗杏仁+银耳莲子羹（100g）</td>
+                        <td>5%</td>
+                        <td>优质蛋白+维生素E+滋阴润燥成分</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 重点食材选择清单</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">类别</th>
+                        <th style="width: 42%;">推荐食材</th>
+                        <th style="width: 43%;">禁用/慎用食材</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>主食</td>
+                        <td>燕麦、糙米、藜麦、全麦面包、杂粮饭、小米</td>
+                        <td>精制白米面（白米饭、白面包）、高糖糕点、膨化食品</td>
+                    </tr>
+                    <tr>
+                        <td>蛋白质</td>
+                        <td>鲑鱼、鳕鱼、虾、鲈鱼、鲫鱼、去皮鸡胸肉、豆腐、鸡蛋、豆浆</td>
+                        <td>红肉（猪牛羊肉）、加工肉制品（香肠、培根、火腿）、肥肉</td>
+                    </tr>
+                    <tr>
+                        <td>蔬菜</td>
+                        <td>西兰花、菠菜、芦笋、胡萝卜、番茄、香菇、紫甘蓝、冬瓜、蘑菇、萝卜</td>
+                        <td>未煮熟的十字花科蔬菜（大量生食）、油炸蔬菜（如炸薯条）、腌制蔬菜</td>
+                    </tr>
+                    <tr>
+                        <td>水果</td>
+                        <td>蓝莓、草莓、猕猴桃、苹果、梨、柑橘类</td>
+                        <td>高糖水果（荔枝、榴莲、芒果）、果脯蜜饯</td>
+                    </tr>
+                     <tr>
+                        <td>油脂</td>
+                        <td>特级初榨橄榄油、亚麻籽油、紫苏油</td>
+                        <td>反式脂肪酸（人造奶油、植脂末、奶茶）、动物油脂（猪油、牛油）</td>
+                    </tr>
+                    <tr>
+                        <td>饮品</td>
+                        <td>白开水、淡茶（绿茶、菊花茶）、无糖黑咖啡、豆浆</td>
+                        <td>含糖饮料（可乐、奶茶）、酒精（白酒、啤酒）、浓咖啡</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 特殊人群饮食调整</h4>
+            <table>
+                 <thead>
+                    <tr>
+                        <th>人群特征</th>
+                        <th>调整方案</th>
+                        <th>医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>超重/肥胖患者</td>
+                        <td>每日热量控制在1500-1600kcal，增加饱腹感食材（魔芋、燕麦麸皮）</td>
+                        <td>BMI＞24时，乳腺结节恶变风险↑30%（AJOG, 2022）；肥胖增加肺部负担，影响呼吸功能（《American Journal of Respiratory and Critical Care Medicine》, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>糖尿病合并者</td>
+                        <td>选择低GI主食（如荞麦面），严格限制添加糖，增加膳食纤维（如菊芋）</td>
+                        <td>高血糖状态加速结节血管生成（Cancer Res, 2021）；高血糖影响肺部免疫功能（《Diabetes Care》, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>甲亢合并者</td>
+                        <td>限制碘摄入（避免富碘食物），增加蛋白质（1.2-1.5g/kg体重），补充B族维生素</td>
+                        <td>高碘会加重甲亢症状（《Thyroid》, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>甲减合并者</td>
+                        <td>保证适宜碘摄入（加碘盐+每周1次富碘食物），增加膳食纤维（预防便秘）</td>
+                        <td>碘缺乏可能加重甲减（《Journal of the American College of Nutrition》, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>肺部疾病（如慢阻肺）患者</td>
+                        <td>增加蛋白质摄入（1.2-1.5g/kg体重），选择易消化食物，避免过咸食物</td>
+                        <td>蛋白质有助于维持呼吸肌功能（《European Respiratory Journal》, 2021）；过咸食物加重肺部水肿</td>
+                    </tr>
+                     <tr>
+                        <td>胃肠道敏感者</td>
+                        <td>食材烹饪以蒸煮为主，减少粗纤维摄入（如竹笋、坚果），分餐制</td>
+                        <td>肠道菌群失衡影响雌激素代谢（Gut, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>桥本甲状腺炎患者</td>
+                        <td>适量碘摄入（每日150μg），增加硒元素（每日100μg），避免大量生食十字花科蔬菜</td>
+                        <td>硒可降低甲状腺抗体水平（《Nutrients》, 2019）</td>
+                    </tr>
+                    <tr>
+                        <td>备孕期/哺乳期</td>
+                        <td>增加碘摄入（每日250μg），补充叶酸（400μg /日），保证蛋白质（1.5g/kg体重）；避免大豆异黄酮过量（每日＜50mg）</td>
+                        <td>碘缺乏可能影响胎儿神经系统发育（《American Journal of Obstetrics & Gynecology》, 2022）；乳腺结节患者激素水平波动需精准调控</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">5. 关键注意事项</h4>
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(1) 烹饪方式</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>以蒸、煮、炖、凉拌为主，禁用油炸、烧烤、熏制；</li>
+                <li>十字花科蔬菜建议煮熟后食用（降低硫氰酸盐对甲状腺的影响）；</li>
+                <li>每日用盐＜5g，选择加碘盐（含碘量20-30mg/kg），警惕隐形盐（酱油、味精）。</li>
+                <li>避免过度烹饪导致食物中抗氧化物质流失，影响肺部健康。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(2) 进餐节奏</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>少食多餐（每日5-6餐），避免餐后血糖骤升及过饱导致颈部压迫感；</li>
+                <li>细嚼慢咽（每口咀嚼20次以上），减轻吞咽负担；</li>
+                <li>甲状腺肿大明显者，避免进食过快或食用过硬食物。</li>
+                <li>肺部功能较差者，避免进食时过急，防止呛咳。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(3) 监测指标</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>每月测量体重、腰围（目标：腰围＜85cm，BMI18.5-24.9kg/m²）；</li>
+                <li>每3个月复查血脂、血糖、胰岛素抵抗指标及甲状腺功能（TSH、FT3、FT4）；</li>
+                <li>每周记录饮食日记，评估碘摄入是否适宜（避免过量或不足）。</li>
+                <li>肺部疾病患者定期监测肺功能。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(4) 禁忌行为</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>禁用含雌激素的护肤品（如大豆精华面膜）及长期服用含碘保健品（如高碘蛋白粉）；</li>
+                <li>避免长期高温烹饪（如反复煎炸）及盲目节食或暴饮暴食（维持代谢稳定）；</li>
+                <li>禁用霉变食物及过期食品。</li>
+                <li>戒烟，避免吸入二手烟，减少肺部刺激。</li>
+            </ul>
+
+            <h3 style="margin-top: 30px;">（二）运动建议</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 核心运动原则</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>原则</th>
+                        <th>具体要求</th>
+                        <th>医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>三器官保护优先</td>
+                        <td>避免上肢负重及颈部过度后仰、旋转的运动，减少胸壁、甲状腺区域压迫与刺激，避免剧烈运动加重肺部负担</td>
+                        <td>乳腺：减少胸壁压迫防止结节刺激（ACSM, 2023）；<br>甲状腺：保护颈部避免刺激（《Journal of Clinical Endocrinology & Metabolism》, 2021）；<br>肺：适度运动避免肺部过度耗氧（《European Respiratory Journal》, 2022）</td>
+                    </tr>
+                    <tr>
+                        <td>低强度有氧为主</td>
+                        <td>选择快走、游泳、骑自行车等，心率控制在100-140次/分，每次30分钟</td>
+                        <td>促进代谢，降低雌激素水平（JAMA, 2021）；改善代谢状态，调节内分泌功能（《Endocrine Practice》, 2022）；增强肺功能，改善呼吸效率（《American Journal of Respiratory and Critical Care Medicine》, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>淋巴引流与循序渐进</td>
+                        <td>每日10分钟肩背拉伸，改善淋巴回流；初始运动强度控制在最大心率的50%-60%，每周增量不超过10%</td>
+                        <td>改善淋巴回流，降低水肿风险（Lymphology, 2022）；降低颈部不适及疲劳风险；逐步提升心肺功能，适应运动强度（《Medicine & Science in Sports & Exercise》, 2020）</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 分层运动方案</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>风险分层</th>
+                        <th>运动类型</th>
+                        <th>频率</th>
+                        <th>强度</th>
+                        <th>禁忌</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低危（乳腺BI-RADS 2-3级，甲状腺TI-RADS 1-2级，肺Lung-RADS 1-2级）</td>
+                        <td>快走（5-6km/h）、游泳、太极拳、瑜伽（温和式）</td>
+                        <td>每周5次</td>
+                        <td>中等强度（心率 120-140次/分，微微出汗）</td>
+                        <td>避免倒立/压迫胸部的动作及颈部过度后仰的动作（如仰泳、高抬腿跑）；禁止在颈部不适或呼吸不畅时强行运动</td>
+                    </tr>
+                    <tr>
+                        <td>中危（乳腺BI-RADS 3级+危险因素，甲状腺TI-RADS 3-4A级+危险因素，肺Lung-RADS 2-3级+危险因素）</td>
+                        <td>游泳（自由泳等颈部活动小的姿势）、弹力带训练、八段锦、普拉提</td>
+                        <td>每周4次</td>
+                        <td>低强度（心率 100-120次/分，无明显疲劳）</td>
+                        <td>禁止蝶泳/高强度间歇训练及颈部负重训练（如举重时颈部用力）；避免快速转头动作；运动时若出现胸部、颈部不适或呼吸困难立即停止</td>
+                    </tr>
+                    <tr>
+                        <td>高危（乳腺BI-RADS 4级及以上，甲状腺TI-RADS 4B-6级，肺Lung-RADS 4级及以上）</td>
+                        <td>散步、呼吸训练、水中康复、坐姿肢体活动</td>
+                        <td>每周3次</td>
+                        <td>极低强度（心率＜100次/分，以舒适为宜）</td>
+                        <td>禁止任何上肢负重/剧烈运动及可能压迫颈部、增加肺部负担的动作；避免低头时间过长（如玩手机）；穿刺/术后1个月内暂停运动</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 标准化运动处方（示例：低危患者）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>运动内容</th>
+                        <th>目标</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>热身（5分钟）</td>
+                        <td>肩颈旋转、手臂环绕、侧平举、腹式呼吸（吸气4秒→呼气6秒，重复5次）</td>
+                        <td>激活肩胛带及全身肌群，避免颈部过度活动，调整呼吸</td>
+                        <td>动作幅度以不引起胸、颈部不适及呼吸不畅为限</td>
+                    </tr>
+                    <tr>
+                        <td>有氧（20分钟）</td>
+                        <td>快走（心率120-130bpm，平坦路面）+太极拳简化式（云手、野马分鬃各4组）</td>
+                        <td>改善心肺功能，提升代谢水平，增强肺通气</td>
+                        <td>快走时保持头部自然位置，避免低头或后仰，呼吸均匀</td>
+                    </tr>
+                    <tr>
+                        <td>肢体训练（15分钟）</td>
+                        <td>弹力带推举（12次×3组）+坐姿抬腿（左右各10次/组，共 3 组）+踝关节屈伸（20次/组，共2组）</td>
+                        <td>增强核心及肢体肌群，避免胸颈负担</td>
+                        <td>训练时保持颈部放松，不做转头动作，避免屏气发力，注意呼吸节奏</td>
+                    </tr>
+                    <tr>
+                        <td>淋巴引流与放松（10分钟）</td>
+                        <td>颈部侧向拉伸（每侧30秒）+手臂上举拉伸（每侧30秒）+扩胸运动（10次×3组）+肩部拉伸（双手交叉举过头顶，向两侧伸展各10秒，重复3次）</td>
+                        <td>促进淋巴循环，缓解肩背肌肉紧张，改善肺部扩张</td>
+                        <td>配合深呼吸，拉伸时感受肌肉牵拉即可，不涉及颈部过度动作，扩胸运动时注意呼吸顺畅</td>
+                    </tr>
+                    <tr>
+                        <td>冷身（5分钟）</td>
+                        <td>慢走+靠墙静蹲（膝盖不超过脚尖）+平静呼吸调整（每分钟8-10次）</td>
+                        <td>预防肌肉酸痛，使心率和呼吸逐渐恢复静息状态</td>
+                        <td>冷身后观察1-2分钟，无胸、颈部不适及呼吸异常再结束运动</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 禁忌与风险预警</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">禁忌场景</th>
+                        <th style="width: 35%;">具体内容</th>
+                        <th style="width: 40%;">替代方案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>急性炎症期</td>
+                        <td>乳腺结节红肿热痛、甲状腺炎急性期或肺部感染期</td>
+                        <td>绝对卧床休息，局部冷敷（乳腺、甲状腺），遵医嘱进行呼吸训练（肺部）</td>
+                    </tr>
+                    <tr>
+                        <td>压迫明显</td>
+                        <td>甲状腺肿大导致吞咽/呼吸困难或肺部结节导致明显呼吸受限</td>
+                        <td>改为卧床腹式呼吸训练（每日3次，每次5分钟），避免任何增加负担的活动</td>
+                    </tr>
+                    <tr>
+                        <td>近期穿刺/术后</td>
+                        <td>乳腺、甲状腺或肺结节穿刺后1周内或手术后1个月内</td>
+                        <td>暂停运动，待医生评估后再逐步恢复（从缓慢散步开始）</td>
+                    </tr>
+                    <tr>
+                        <td>合并严重基础病</td>
+                        <td>未控制的甲亢（心率＞100次/分）、高血压（＞160/100mmHg）、严重骨质疏松（T值＜-2.5）、严重肺部功能不全</td>
+                        <td>仅进行坐姿平静呼吸练习或水中运动/坐姿训练，避免任何肢体负荷，必要时吸氧辅助</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <table style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">预警指标</th>
+                        <th style="width: 35%;">触发条件</th>
+                        <th style="width: 40%;">应对措施</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>运动中异常</td>
+                        <td>出现胸部疼痛、乳头溢液、颈部胀痛、声音嘶哑、头晕或呼吸困难、咳嗽加重</td>
+                        <td>立即停止运动，静坐休息，症状持续10分钟未缓解需就医</td>
+                    </tr>
+                    <tr>
+                        <td>运动后反应</td>
+                        <td>运动后胸部、颈部不适或肺部症状持续1小时以上或出现吞咽困难</td>
+                        <td>暂停运动计划，记录症状细节并联系主治医生，必要时完善三器官影像检查</td>
+                    </tr>
+                    <tr>
+                        <td>体征变化</td>
+                        <td>运动后心率＞120次/分且30分钟未恢复，或血压较运动前升高30mmHg以上，或呼吸频率明显加快</td>
+                        <td>降低运动强度至原水平的50%，下次运动前增加5分钟热身，持续异常需医学评估</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">（三）情绪管理</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 核心管理原则</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">原则</th>
+                        <th style="width: 35%;">具体要求</th>
+                        <th style="width: 35%;">医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>认知重构</td>
+                        <td>用“观察-接纳-重构”或“事实-担忧-证据”三步法应对三结节相关的负面思维</td>
+                        <td>CBT（认知行为疗法）核心理论；在甲状腺疾病中的应用（《Psychosomatics》, 2021）；对肺部疾病患者焦虑情绪的改善（《Chest》, 2022）</td>
+                    </tr>
+                    <tr>
+                        <td>压力分级管理</td>
+                        <td>根据三结节变化、检查结果等划分红/黄/绿等级，针对性调节</td>
+                        <td>压力管理优先级模型（PST）；与甲状腺功能异常的关联机制（《Journal of Psychosomatic Research》, 2022）；压力对肺部疾病进展的影响（《American Journal of Respiratory and Critical Care Medicine》, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>生理-心理联动</td>
+                        <td>每日监测情绪与三结节症状（乳腺疼痛/甲状腺胀痛/肺部不适等），识别触发因素</td>
+                        <td>心身医学双向调节原则；心理应激对激素分泌的影响（《Brain, Behavior, and Immunity》, 2020）；情绪与肺部功能的相互作用（《Psychosomatic Medicine》, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>家庭系统支持</td>
+                        <td>建立“患者-家属-医护（乳腺+甲状腺+呼吸科）”三角支持网络</td>
+                        <td>社会支持系统理论（SSS）；可降低双结节患者焦虑水平（《Health Psychology》, 2019）；对肺部疾病患者生活质量的提升（《Journal of Psychosomatic Research》, 2021）</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 分层情绪管理策略</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">风险分层</th>
+                        <th style="width: 25%;">情绪问题特征</th>
+                        <th style="width: 30%;">干预方案</th>
+                        <th style="width: 25%;">频率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低危</td>
+                        <td>偶发焦虑（如担心三结节性质）</td>
+                        <td>①正念呼吸（每日10分钟）②自助阅读（《焦虑自救手册》及双结节科普资料）</td>
+                        <td>每周1次心理咨询</td>
+                    </tr>
+                    <tr>
+                        <td>中危</td>
+                        <td>持续性担忧（如家族史影响、结节增大）</td>
+                        <td>①团体认知行为治疗（CBT）②渐进式肌肉放松训练</td>
+                        <td>每2周1次心理评估</td>
+                    </tr>
+                    <tr>
+                        <td>高危</td>
+                        <td>存在灾难化思维（如反复假设最坏结果）</td>
+                        <td>①正念减压疗法（MBSR）②危机干预心理支持</td>
+                        <td>每周2次心理咨询</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 日常情绪调节工具箱</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">工具类型</th>
+                        <th style="width: 35%;">具体方法</th>
+                        <th style="width: 15%;">执行频率</th>
+                        <th style="width: 35%;">医学证据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>即时缓解</td>
+                        <td>4-7-8呼吸法（吸气4秒→屏息7秒→呼气8秒）</td>
+                        <td>每日3次，每次5分钟</td>
+                        <td>降低皮质醇水平（J Psychosom Res, 2020）；降低交感神经活性，调节内分泌（《Journal of Alternative and Complementary Medicine》, 2020）；改善呼吸功能，缓解肺部不适（《Journal of Behavioral Medicine》, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>认知重塑</td>
+                        <td>ABC情绪记录表：A（事件）-B（信念）-C（结果）→挑战非理性信念</td>
+                        <td>每日1次，记录3件事件</td>
+                        <td>改变认知模式（Beck, 1979）；改善甲状腺疾病患者的灾难化思维（《Cognitive Therapy and Research》, 2018）；减轻肺部疾病患者的负面情绪（《Psychology & Health》, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>身体觉察</td>
+                        <td>每日晨起进行身体扫描冥想（从脚趾到头顶逐部位感知）</td>
+                        <td>每日1次，15 分钟</td>
+                        <td>降低躯体化症状（Mindfulness, 2018）</td>
+                    </tr>
+                    <tr>
+                        <td>身体放松</td>
+                        <td>渐进式肌肉放松训练（从脚趾到头部逐部位绷紧-放松，重点放松颈部肌肉）</td>
+                        <td>每日1次，15分钟</td>
+                        <td>缓解颈部肌肉紧张相关的躯体化症状（《Journal of Behavioral Medicine》, 2019）；放松胸部肌肉，改善呼吸（《Journal of Psychosomatic Research》, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>社交支持</td>
+                        <td>建立“3人互助小组”（患者+家属 + 医护人员），每周视频交流15分钟</td>
+                        <td>每周1次</td>
+                        <td>提升社会支持评分（SSRS 量表）；提升社会支持评分，降低焦虑水平（《Social Science & Medicine》, 2021）</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 心理预警与干预机制</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">预警信号</th>
+                        <th style="width: 30%;">触发条件</th>
+                        <th style="width: 45%;">响应流程</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>急性应激反应</td>
+                        <td>三结节短期内增大/穿刺结果等待期/医生建议手术</td>
+                        <td>启动“30分钟心理急救”（呼吸训练+正念音频）</td>
+                    </tr>
+                    <tr>
+                        <td>抑郁倾向</td>
+                        <td>PHQ-9量表≥10分</td>
+                        <td>转介精神科医生+药物治疗干预</td>
+                    </tr>
+                    <tr>
+                        <td>创伤后应激障碍（PTSD）</td>
+                        <td>反复闪回穿刺/手术场景</td>
+                        <td>眼动脱敏再处理（EMDR）治疗</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">5. 核心管理原则（每日必做）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">原则</th>
+                        <th style="width: 35%;">行动指令</th>
+                        <th style="width: 25%;">关键指标</th>
+                        <th style="width: 25%;">医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>认知重构</td>
+                        <td>①记录3件焦虑事件（例：“三结节增大”）②用“多数结节为良性”等事实替换灾难化思维</td>
+                        <td>每日重构成功次数≥2次</td>
+                        <td>CBT认知行为疗法（Beck, 1979）；在甲状腺疾病中的应用（《Psychosomatics》, 2021）；对肺部疾病患者情绪的改善（《Chest》, 2022）</td>
+                    </tr>
+                    <tr>
+                        <td>压力分级</td>
+                        <td>①晨起自评情绪等级（1-10分）②触发红色警报时（≥7分）立即启动急救流程</td>
+                        <td>红色警报≤1次/周</td>
+                        <td>PST压力管理模型；对甲状腺功能的影响（《Journal of Psychosomatic Research》, 2022）；压力与肺部疾病的关联（《American Journal of Respiratory and Critical Care Medicine》, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>身心联动</td>
+                        <td>①绘制“情绪-三结节症状曲线图”②标注乳腺触痛/甲状腺胀痛/肺部不适等异常变化</td>
+                        <td>症状波动幅度＜2分/周</td>
+                        <td>心身医学双向调节原则；心理应激与甲状腺症状的双向影响（《Brain, Behavior, and Immunity》, 2020）情绪与肺部功能的相互作用（《Psychosomatic Medicine》, 2020）</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">6. 分层干预策略（按风险等级执行）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">风险分层</th>
+                        <th style="width: 28%;">高危</th>
+                        <th style="width: 28%;">中危</th>
+                        <th style="width: 29%;">低危</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>每日必做</td>
+                        <td>①正念呼吸（10分钟）②危机干预心理支持通话</td>
+                        <td>①渐进式肌肉放松（15分钟）②团体CBT打卡</td>
+                        <td>①膝盖冥想（5分钟+颈部、胸部放松训练（5分钟）②自助阅读三结节科普文章</td>
+                    </tr>
+                    <tr>
+                        <td>每周重点</td>
+                        <td>①EMDR治疗（闪回场景处理）②与主治医生沟通病情预期</td>
+                        <td>①家庭沟通演练（角色扮演）②运动计划调整</td>
+                        <td>①症状自评量表（SCL-90）②饮食与情绪关联记录</td>
+                    </tr>
+                    <tr>
+                        <td>禁忌动作</td>
+                        <td>❌ 自行查阅晚期案例＞30分钟❌ 独自处理情绪危机</td>
+                        <td>❌ 长时间独处❌ 忽视身体信号</td>
+                        <td>❌ 高强度运动❌ 暴饮暴食❌ 因焦虑过度限制碘摄入</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">7. 情绪调节工具箱（直接执行）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">工具类型</th>
+                        <th style="width: 30%;">具体方法</th>
+                        <th style="width: 15%;">执行频率</th>
+                        <th style="width: 20%;">医学证据</th>
+                        <th style="width: 20%;">配套工具</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>即时缓解</td>
+                        <td>4-7-8呼吸法（吸气4秒→屏息7秒→呼气8秒）</td>
+                        <td>晨起/睡前各1组</td>
+                        <td>降低皮质醇水平（J Psychosom Res, 2020）；降低交感神经活性，调节内分泌（《Journal of Alternative and Complementary Medicine》, 2020）；改善呼吸（《Journal of Behavioral Medicine》, 2021）</td>
+                        <td>呼吸计时器</td>
+                    </tr>
+                    <tr>
+                        <td>认知重塑</td>
+                        <td>ABC记录表（A事件→B信念→C结果→挑战非理性信念）</td>
+                        <td>每日记录3件事</td>
+                        <td>改变认知模式（Beck, 1979）；改善甲状腺疾病患者的认知偏差（《Cognitive Therapy and Research》, 2018）；对肺部疾病患者的作用（《Psychology & Health》, 2020）</td>
+                        <td>《认知重塑练习册》</td>
+                    </tr>
+                    <tr>
+                        <td>身体觉察</td>
+                        <td>晨起身体扫描冥想（从脚趾到头顶逐部位感知，每部位5秒）</td>
+                        <td>每日15分钟</td>
+                        <td>降低躯体化症状（Mindfulness, 2018）</td>
+                        <td>冥想引导音频</td>
+                    </tr>
+                    <tr>
+                        <td>身体放松</td>
+                        <td>渐进式肌肉放松训练（重点放松颈部、肩部、胸部肌肉）</td>
+                        <td>每日15分钟</td>
+                        <td>缓解躯体化症状（《Journal of Behavioral Medicine》, 2019）；改善呼吸（《Journal of Psychosomatic Research》, 2020）</td>
+                        <td>放松训练引导音频</td>
+                    </tr>
+                    <tr>
+                        <td>社交支持</td>
+                        <td>“3人互助小组”（患者+家属+医生，每周视频交流15分钟）</td>
+                        <td>每周1次</td>
+                        <td>提升社会支持评分（SSRS量表）；提升社会支持评分（《Social Science & Medicine》, 2021）</td>
+                        <td>互助群二维码</td>
+                    </tr>
+                    <tr>
+                        <td>危机干预</td>
+                        <td>眼动脱敏再处理（EMDR）治疗+危机心理干预</td>
+                        <td>闪回发生时</td>
+                        <td>EMDR治疗指南；EMDR治疗指南（针对医疗相关创伤）</td>
+                        <td>EMDR治疗流程图</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">8. 关键数据看板（每日更新）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 18%;">指标</th>
+                        <th style="width: 22%;">目标范围</th>
+                        <th style="width: 15%;">今日数据</th>
+                        <th style="width: 15%;">预警阈值</th>
+                        <th style="width: 30%;">行动建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>晨起情绪评分</td>
+                        <td>1-3分（绿色）</td>
+                        <td></td>
+                        <td>≥4分</td>
+                        <td>启动10分钟正念呼吸</td>
+                    </tr>
+                    <tr>
+                        <td>复查焦虑指数</td>
+                        <td>≤5分（10分制）</td>
+                        <td></td>
+                        <td>≥7分</td>
+                        <td>查看《三结节复查须知》漫画版</td>
+                    </tr>
+                    <tr>
+                        <td>睡眠质量</td>
+                        <td>入睡≤30分钟，深度睡眠≥2小时</td>
+                        <td></td>
+                        <td>≥60分钟</td>
+                        <td>佩戴睡眠监测手环，睡前听引导冥想</td>
+                    </tr>
+                     <tr>
+                        <td>三结节症状与情绪关联度</td>
+                        <td>无明显关联（＜2分）</td>
+                        <td></td>
+                        <td>≥4分</td>
+                        <td>记录症状诱因，与医生沟通是否需对症处理</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3 style="margin-top: 30px;">（四）生活方式</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 饮食管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调整方向</th>
+                        <th style="width: 35%;">具体建议</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">执行要点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>三控管理</td>
+                        <td>控脂饮食：每日脂肪摄入＜总能量30%，减少动物脂肪；限糖饮食：添加糖＜25g /日，警惕隐形糖；碘摄入控制：每日150μg（普通成人），选择加碘盐（每日5g），每周1-2次富碘食物</td>
+                        <td>降低雌激素合成风险（JAMA, 2021）；抑制炎症反应（Cancer Res, 2020）；碘代谢异常与甲状腺结节密切相关（《Thyroid》, 2021）；控糖控脂有助于肺部健康（《American Journal of Respiratory and Critical Care Medicine》, 2021）</td>
+                        <td>用橄榄油替代动物油；阅读食品标签；避免无碘盐或过量补碘，定期检测尿碘水平</td>
+                    </tr>
+                    <tr>
+                        <td>三器官保护</td>
+                        <td>高纤维饮食：膳食纤维≥25g /日，重点：燕麦、西兰花、苹果；甲状腺保护：每日摄入富含硒的食物，每周3-4次煮熟的十字花科蔬菜；肺部保护：增加富含抗氧化物质的食物，如深色蔬果、坚果</td>
+                        <td>促进雌激素代谢（AJCN, 2020）；硒可调节甲状腺功能，降低自身免疫风险（《European Journal of Endocrinology》, 2020）；抗氧化物质保护肺部细胞（《Thorax》, 2021）</td>
+                        <td>每餐保证1种高纤维蔬菜；十字花科蔬菜避免大量生食；多食用新鲜蔬果</td>
+                    </tr>
+                    <tr>
+                        <td>禁忌食物</td>
+                        <td>❌蜂王浆、雪蛤、燕窝、高盐腌制食品；❌长期大量食用高碘食物（海带＞50g /日）、霉变食物；❌吸烟及接触二手烟</td>
+                        <td>减少外源性雌激素暴露（Endocrine Rev, 2018）；高碘及毒素暴露增加甲状腺疾病风险（《Endocrine Reviews》, 2019）；吸烟是肺部疾病主要危险因素（《Tobacco Control》, 2020）</td>
+                        <td>用坚果替代蜜饯；减少隐形盐摄入（酱油、味精）；远离吸烟环境</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 运动管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">运动类型</th>
+                        <th style="width: 35%;">推荐方案</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">禁忌</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>有氧运动</td>
+                        <td>每周5次快走（30分钟/次5-6km/h），心率控制在 100-120次/分</td>
+                        <td>改善代谢水平（WHO, 2020）；改善代谢状态，调节甲状腺功能（《Endocrine Practice》, 2022）；增强肺功能（《European Respiratory Journal》, 2022）</td>
+                        <td>避免爬山/跳绳及颈部过度后仰、旋转的运动（如仰泳、头球）；避免在空气污染严重时户外运动</td>
+                    </tr>
+                    <tr>
+                        <td>力量与放松训练</td>
+                        <td>每周2次弹力带训练（上肢/下肢，12次×3组）；每日10分钟颈部、胸部放松训练（缓慢低头-抬头-侧头，各方向5次；扩胸运动10次）及腹式呼吸</td>
+                        <td>增强肌肉对雌激素代谢调控（Med Sci Sports Exerc, 2021）；缓解颈部肌肉紧张，改善局部血液循环（《Journal of Physical Therapy Science》, 2021）；增强呼吸肌力量（《Respiratory Care》, 2021）</td>
+                        <td>避免卧推动作及颈部受力的动作（如举重、引体向上）；肺部功能较差者避免过度扩胸动作</td>
+                    </tr>
+                    <tr>
+                        <td>淋巴引流运动</td>
+                        <td>每日睡前手臂上举拉伸（10次×3组）+颈部侧向拉伸（每侧30秒）+胸部拉伸（每侧30秒）</td>
+                        <td>促进淋巴回流（Lymphology, 2022）；改善肺部血液循环（《Journal of Lymphoedema》, 2021）</td>
+                        <td>避免剧烈甩臂动作</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 作息管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调整方向</th>
+                        <th style="width: 35%;">具体建议</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">工具推荐</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>睡眠管理</td>
+                        <td>22:00-23:00前入睡，保证7-8小时深度睡眠（使用睡眠监测手环）</td>
+                        <td>降低夜间皮质醇峰值（Sleep Med, 2021）；良好睡眠可提升免疫功能（《Sleep Med》）；有助于肺部修复（《American Journal of Respiratory and Critical Care Medicine》, 2020）</td>
+                        <td>褪黑素（遵医嘱）</td>
+                    </tr>
+                    <tr>
+                        <td>午间休息</td>
+                        <td>15-20分钟闭目养神（避免趴睡）</td>
+                        <td>缓解压力激素（HRV 研究）；缓解呼吸肌疲劳（HRV 研究）</td>
+                        <td>舒适颈枕（保持颈椎自然曲度）</td>
+                    </tr>
+                    <tr>
+                        <td>避免熬夜</td>
+                        <td>熬夜次数＜1次/周，睡前1小时远离电子屏幕</td>
+                        <td>减少 DNA 损伤修复抑制（Cell, 2020）；熬夜影响修复功能（《Cell》）；影响肺部免疫功能（《Sleep》, 2021）</td>
+                        <td>睡眠日志记录</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 压力管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调节方法</th>
+                        <th style="width: 35%;">操作步骤</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">频率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>4-7-8呼吸法</td>
+                        <td>吸气4秒→屏息7秒→呼气8秒（每天3组）</td>
+                        <td>降低交感神经活性（J Psychosom Res, 2020）；改善甲状腺功能（《Journal of Psychosomatic Research》, 2022）；改善肺部通气（《Journal of Behavioral Medicine》, 2021）</td>
+                        <td>晨起/睡前各1组</td>
+                    </tr>
+                    <tr>
+                        <td>正念冥想</td>
+                        <td>晨起10分钟身体扫描冥想（从脚趾到头顶感知）</td>
+                        <td>缓解焦虑（Mindfulness, 2018）；缓解焦虑相关的内分泌紊乱（《Mindfulness》, 2021）；减轻肺部疾病患者的心理压力（《Chest》, 2022）</td>
+                        <td>每日1次</td>
+                    </tr>
+                    <tr>
+                        <td>社交支持</td>
+                        <td>加入“3人互助小组”（患者+家属+医生），每周视频交流15分钟</td>
+                        <td>提升社会支持评分（SSRS 量表）；降低甲状腺疾病心理负担（《Health Psychology》, 2019）；对肺部疾病患者情绪的积极影响（《Journal of Psychosomatic Research》, 2021）</td>
+                        <td>每周日20:00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">5. 环境管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调整方向</th>
+                        <th style="width: 35%;">具体建议</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">执行要点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>化学暴露与辐射防护</td>
+                        <td>避免接触杀虫剂/染发剂/塑化剂，使用玻璃/陶瓷餐具；减少头颈部、胸部CT检查（必要时选择MRI替代），远离放射性物质</td>
+                        <td>减少内分泌干扰物暴露（Environmental Health, 2021）；辐射暴露是甲状腺癌、肺癌明确危险因素（《Radiation Research》, 2021）</td>
+                        <td>采购前查看成分表；每年头颈部、胸部辐射检查不超过1次</td>
+                    </tr>
+                    <tr>
+                        <td>空气与肺部保护</td>
+                        <td>避免接触空气污染，外出佩戴口罩（PM2.5＞75μg/m³时）；室内使用空气净化器，保持 PM2.5＜35μg/m³；每日通风2次（每次30分钟），避免在雾霾天气通风</td>
+                        <td>空气污染损伤肺部组织（《Lancet Planetary Health》, 2021）；良好空气质量改善肺功能（《Thorax》, 2020）</td>
+                        <td>定期更换净化器滤网；关注空气质量指数</td>
+                    </tr>
+                    <tr>
+                        <td>电磁辐射与减少刺激</td>
+                        <td>手机远离床头60cm，微波炉运行时保持1m距离；避免颈部长期受压（如过紧的衣领），远离吸烟环境</td>
+                        <td>降低氧化应激水平（Radiation Res, 2022）；烟草中的有害物质可影响甲状腺、肺部功能（《Tobacco Control》, 2020）</td>
+                        <td>使用防辐射贴；选择宽松衣领的衣物，定期通风换气</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">6. 监测与记录</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">监测指标</th>
+                        <th style="width: 25%;">目标范围</th>
+                        <th style="width: 25%;">监测频率</th>
+                        <th style="width: 25%;">工具推荐</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>体重指数（BMI）</td>
+                        <td>18.5-24.9kg/m²</td>
+                        <td>每周1次（晨起空腹）</td>
+                        <td>体脂秤</td>
+                    </tr>
+                    <tr>
+                        <td>腰臀比</td>
+                        <td>＜0.85（女）</td>
+                        <td>每月1次</td>
+                        <td>软尺</td>
+                    </tr>
+                    <tr>
+                        <td>三结节症状变化</td>
+                        <td>无新发疼痛/溢液/皮肤改变/颈部胀痛/声音嘶哑/咳嗽/胸痛/呼吸困难</td>
+                        <td>每日记录</td>
+                        <td>《三结节症状日记》</td>
+                    </tr>
+                    <tr>
+                        <td>甲状腺功能</td>
+                        <td>TSH：0.27-4.2mIU/L；FT3：3.1-6.8pmol/L；FT4：12-22pmol/L</td>
+                        <td>每3-6个月1次</td>
+                        <td>医院生化检测</td>
+                    </tr>
+                    <tr>
+                        <td>肺功能</td>
+                        <td>FEV1/FVC＞70%；DLco 在正常范围</td>
+                        <td>每年 1 次（中高危）</td>
+                        <td>肺功能仪</td>
+                    </tr>
+                    <tr>
+                        <td>压力评分</td>
+                        <td>≤4分（10分制）</td>
+                        <td>每周自评</td>
+                        <td>Borg量表</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="disclaimer">
+            <p><strong>⚠️ 重要声明</strong></p>
+            <p>本报告由双结节健康管理平台根据用户提供的数据及通用医学知识生成，旨在提供健康管理参考和个性化建议，并非医疗诊断或治疗方案。任何医疗决策均需在专业医师指导下进行。如您有任何健康疑虑或症状加重，请立即就医。</p>
+        </section>
+
+        <footer>
+            <p style="text-align: center; margin: 0; font-size: 10px;">
+                © 2025 双结节健康管理平台 | 报告编号：{{ report_code }} | 生成日期：{{ current_date }}
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>乳腺结节综合评估与管理方案</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            width: 95%;
+            max-width: 100%;
+            margin: 10px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 封面页样式 */
+        .cover-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+        }
+        .cover-page h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        .cover-page h2 {
+            font-size: 36px;
+            font-weight: 300;
+            margin-top: 0;
+        }
+        
+        /* 寄语页样式 */
+        .greeting-page {
+            padding: 40px;
+            line-height: 2;
+            font-size: 14px;
+        }
+        .greeting-page h2 {
+            color: #3498db;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .greeting-page h3 {
+            color: #2c3e50;
+            font-size: 16px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        .greeting-page p {
+            text-indent: 2em;
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .greeting-page ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .greeting-page ul li {
+            padding-left: 2em;
+            margin-bottom: 10px;
+        }
+        .greeting-page ul li:before {
+            content: "● ";
+            color: #3498db;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        /* 复选框样式 */
+        .checkbox-label {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            cursor: default;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 5px;
+            cursor: default;
+        }
+        
+        .checkbox-label input[type="checkbox"]:disabled {
+            cursor: default;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4CAF50;
+        }
+        header h1 {
+            color: #2c3e50;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        header p {
+            font-size: 12px;
+            color: #555;
+        }
+        section {
+            margin-bottom: 25px;
+        }
+        section h2 {
+            color: #3498db;
+            font-size: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+        }
+        section h3 {
+            color: #5dade2;
+            font-size: 14px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 11px;
+            table-layout: fixed;
+        }
+        section th, section td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        section th {
+            background-color: #e9f5e9;
+            color: #2c3e50;
+            font-weight: 600;
+            min-width: 80px;
+        }
+        .disclaimer {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            font-size: 11px;
+            color: #777;
+            line-height: 1.8;
+        }
+        .disclaimer strong {
+            color: #333;
+            font-size: 13px;
+        }
+        footer {
+            margin-top: 20px;
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+            color: white;
+            font-size: 10px;
+        }
+        footer p {
+            margin: 0;
+            color: rgba(255,255,255,0.95);
+        }
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .risk-low { background-color: #67c23a; color: white; }
+        .risk-medium { background-color: #e6a23c; color: white; }
+        .risk-high { background-color: #f56c6c; color: white; }
+        
+        /* 分页符 - 屏幕上显示提示（方便调试） */
+        .page-break {
+            margin: 30px 0;
+            padding: 10px;
+            text-align: center;
+            background: linear-gradient(to right, #e3f2fd, #fff, #e3f2fd);
+            border-top: 2px dashed #90caf9;
+            border-bottom: 2px dashed #90caf9;
+            color: #1976d2;
+            font-size: 12px;
+        }
+        
+        .page-break::after {
+            content: "━━━ 分页符（PDF导出时此处分页）━━━";
+        }
+        
+        
+        /* 打印和PDF导出优化 */
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm 12mm;  /* 上下10mm（减小），左右12mm */
+            }
+            
+            body {
+                background-color: white;
+                margin: 0;
+                padding: 0;
+            }
+            
+            /* 封面页打印优化 */
+            .cover-page {
+                min-height: 100vh;
+                page-break-after: always;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color: white !important;
+            }
+            
+            /* 寄语页打印优化 */
+            .greeting-page {
+                page-break-after: always;
+                page-break-inside: avoid;
+                padding: 30px !important;
+                font-size: 13px !important;
+                line-height: 1.8 !important;
+            }
+            
+            .greeting-page h2 {
+                page-break-after: avoid;
+            }
+            
+            .greeting-page h3 {
+                page-break-after: avoid;
+            }
+            
+            .greeting-page ul {
+                page-break-inside: avoid;
+            }
+            
+            /* 打印时复选框样式 */
+            .checkbox-label {
+                display: inline-block;
+                margin-right: 12px !important;
+                margin-bottom: 5px !important;
+                font-size: 11px !important;
+            }
+            
+            .checkbox-label input[type="checkbox"] {
+                margin-right: 4px !important;
+            }
+            
+            .container {
+                width: 100% !important;
+                max-width: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 8px 0 !important;  /* 只保留上下小边距 */
+                border-radius: 0 !important;
+            }
+            
+            header {
+                margin-bottom: 12px !important;
+                padding-bottom: 8px !important;
+                page-break-after: avoid;
+            }
+            
+            /* section默认不强制分页 */
+            section {
+                margin-bottom: 12px !important;
+                padding: 0 !important;
+                page-break-inside: auto;  /* 允许内部分页 */
+            }
+            
+            /* 标题与内容不分离 */
+            h1, h2, h3 {
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+            
+            /* 标题后的第一个元素必须跟随 */
+            h2 + table,
+            h2 + div,
+            h2 + p {
+                page-break-before: avoid;
+            }
+            
+            /* 表格智能分页 */
+            table {
+                page-break-inside: auto;
+                margin-bottom: 10px;
+                width: 100% !important;
+                table-layout: auto !important;
+                font-size: 10px !important;
+            }
+            
+            /* 表格单元格自动换行 */
+            td, th {
+                word-wrap: break-word !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: normal !important;
+                padding: 6px !important;
+            }
+            
+            /* 表格行不被截断 */
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            
+            /* 表头重复显示（某些浏览器支持） */
+            thead {
+                display: table-header-group;
+            }
+            
+            /* 打印时分页符完全隐形但生效 */
+            .page-break {
+                display: block !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                background: none !important;
+                visibility: hidden !important;
+                line-height: 0 !important;
+                font-size: 0 !important;
+                overflow: hidden !important;
+            }
+            
+            .page-break::after {
+                display: none !important;
+                content: '' !important;
+            }
+            
+            /* 最后一个section优化：减少底部空白 */
+            section:last-of-type {
+                margin-bottom: 5px !important;
+            }
+            
+            section:last-of-type table {
+                margin-bottom: 5px !important;
+            }
+            
+            /* 免责声明和footer打印优化 */
+            .disclaimer {
+                page-break-before: avoid !important;  /* 🔥 禁止在前面分页 */
+                page-break-inside: avoid !important;  /* 内容不分页 */
+                page-break-after: avoid !important;   /* 尽量与footer在同页 */
+                background-color: #f5f5f5 !important;
+                padding: 10px !important;
+                margin-top: 5px !important;
+                font-size: 10px !important;
+                line-height: 1.5 !important;
+            }
+            
+            footer {
+                page-break-before: avoid !important;  /* 🔥 禁止在前面分页 */
+                page-break-inside: avoid !important;  /* footer不分页 */
+                -webkit-print-color-adjust: exact;  /* 确保背景色打印 */
+                print-color-adjust: exact;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: white !important;
+                padding: 12px 10px !important;
+                margin-top: 5px !important;
+            }
+            
+            footer h3 {
+                font-size: 12px !important;
+                margin-bottom: 6px !important;
+            }
+            
+            footer p {
+                margin: 2px 0 !important;
+                line-height: 1.4 !important;
+            }
+            
+            footer h3,
+            footer strong,
+            footer p {
+                color: white !important;
+            }
+            
+            footer .copyright {
+                border-top: 1px solid rgba(255,255,255,0.2) !important;
+                margin-top: 8px !important;
+                padding-top: 8px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面页 -->
+    <div class="cover-page">
+        <h1>{{ patient_name }} {% if patient_gender == '男' %}先生{% else %}女士{% endif %}</h1>
+        <h2>结节健康管理方案</h2>
+    </div>
+    
+    <!-- 强制分页 -->
+    <div class="page-break"></div>
+    
+    <!-- 寄语页 -->
+    <div class="greeting-page">
+        <h2>结节健康管理团队给您的寄语</h2>
+        
+        <h3>尊敬的{{ patient_name }} {% if patient_gender == '男' %}先生{% else %}女士{% endif %}：</h3>
+        
+        <p>感谢您选择并信任我们的专业服务！我们致力于为您提供科学、系统的结节健康管理指导与全程管家式陪伴。我们坚持以“生理—心理—社会”新医学模式为核心，通过多维度、个体化的干预策略，帮助您有效管理结节风险、改善体质基础，提升整体健康水平。目前我们已建立起涵盖结节风险评估、生活方式干预、中医体质调理、影像复查跟踪、情绪与压力管理、长期随访计划等六大服务板块，为您提供持续、全面的健康守护。</p>
+        
+        <p>在开始服务前，请您仔细阅读并确认以下内容，这将帮助我们建立更清晰的协作关系：</p>
+        
+        <h3>知情同意说明：</h3>
+        <ul>
+            <li>您确认已阅读并理解本健康管理方案的内容，知晓该方案是基于您目前所提供的个人基本信息、影像学特征、舌苔特征、面部特征、家族史等进行综合评估后制定；</li>
+            <li>您知晓本方案为健康促进与风险干预建议，不能替代必要的临床诊疗，如出现结节相关症状或体征变化（如乳房肿块增大、疼痛、乳头溢液、颈部压迫感、声音嘶哑、咳嗽加重、胸痛等），请及时就医；</li>
+            <li>您理解个体差异存在，方案执行效果可能因人而异，我们鼓励您在实施过程中积极反馈身体反应与感受，以便我们动态调整策略；</li>
+            <li>您知晓您有权随时提出疑问，并可自主决定是否采纳方案中的各项建议。</li>
+        </ul>
+
+        <h3>结节健康管理团队郑重承诺：</h3>
+        <ul>
+            <li>健康管理师将严格遵守服务标准流程，秉持专业、负责的态度执行每一项服务内容；</li>
+            <li>我们高度重视您的隐私权益，承诺承担信息保密责任，未经您本人明确许可，不向任何第三方泄露您的个人信息；</li>
+            <li>我们乐于接受您的监督，并持续优化服务体验。</li>
+        </ul>
+        
+        <p>本方案秉承“结节可防可控，体质调理是根本”的理念，重点从饮食、运动、情绪三大维度入手，系统改善您的内环境、降低结节进展风险。若您有新的检查结果、症状变化或其他健康信息补充，欢迎随时联系您的专属健康管理师，我们将及时更新您的健康档案并优化管理策略。</p>
+        
+        
+        
+        <p style="text-align: right; margin-top: 40px; font-weight: bold;">结节健康管理团队</p>
+    </div>
+    
+    <!-- 强制分页 -->
+    <div class="page-break"></div>
+    
+    <div class="container">
+        <header>
+            <h1>乳腺结节健康管理平台</h1>
+            <p>综合评估与管理方案</p>
+        </header>
+
+        <!-- 一、健康风险评估 -->
+        <section>
+            <h2>一、健康风险评估</h2>
+            
+            <!-- （一）基本信息 -->
+            <h3>（一）基本信息</h3>
+            <table style="table-layout: fixed;">
+                <colgroup>
+                    <col style="width: 15%;">
+                    <col style="width: 35%;">
+                    <col style="width: 15%;">
+                    <col style="width: 35%;">
+                </colgroup>
+                <tr>
+                    <th>姓名</th>
+                    <td>{{ patient_name }}</td>
+                    <th>性别</th>
+                    <td>{{ patient_gender }}</td>
+                </tr>
+                <tr>
+                    <th>年龄</th>
+                    <td>{{ patient_age }}岁</td>
+                    <th>身高</th>
+                    <td>{% if height %}{{ height }} cm{% else %}-{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>体重</th>
+                    <td>{% if weight %}{{ weight }} kg{% else %}-{% endif %}</td>
+                    <th>联系电话</th>
+                    <td>{% if phone %}{{ phone }}{% else %}-{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>糖尿病史</th>
+                    <td>
+                         <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not diabetes_history or diabetes_history == '无' %}checked{% endif %}> 无
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if diabetes_history and diabetes_history != '无' %}checked{% endif %}> 有
+                        </label>
+                    </td>
+                    <th>可接收膏方的收货地址</th>
+                    <td>{% if gaofang_address %}{{ gaofang_address }}{% else %}-{% endif %}</td>
+                </tr>
+
+
+            </table>
+            
+            <!-- （二）乳腺影像学特征 -->
+            <h3>（二）乳腺结节影像学与临床信息登记</h3>
+            <table style="table-layout: fixed;">
+                <colgroup>
+                    <col style="width: 20%;">
+                    <col style="width: 80%;">
+                </colgroup>
+                <tr>
+                    <th>项目</th>
+                    <th>乳腺结节数据</th>
+                </tr>
+                <tr>
+                    <td>结节发现时间</td>
+                    <td>{{ discovery_date }}</td>
+                </tr>
+                <tr>
+                    <td>结节症状</td>
+                    <td>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '无症状' in symptoms %}checked{% endif %}> 无症状
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '肿块' in symptoms %}checked{% endif %}> 乳房肿块
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '疼痛' in symptoms %}checked{% endif %}> 乳房疼痛
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '胀满' in symptoms %}checked{% endif %}> 乳房胀满感
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '溢液' in symptoms %}checked{% endif %}> 乳头溢液
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '皮肤改变' in symptoms %}checked{% endif %}> 乳房皮肤改变
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms and '淋巴结' in symptoms %}checked{% endif %}> 腋下淋巴结肿大
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if symptoms_other or (symptoms and '其他' in symptoms) %}checked{% endif %}> 其他{% if symptoms_other %}：{{ symptoms_other }}{% endif %}
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>BI-RADS 分级</td>
+                    <td>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if birads_level == '不清楚' %}checked{% endif %}>不清楚</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if birads_level == '1' %}checked{% endif %}> 1级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if birads_level == '2' %}checked{% endif %}> 2级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if birads_level == '3' %}checked{% endif %}> 3级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if '4A' in birads_level %}checked{% endif %}> 4A级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if '4B' in birads_level %}checked{% endif %}> 4B级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if '4C' in birads_level %}checked{% endif %}> 4C级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if birads_level == '5' %}checked{% endif %}> 5级</label>
+                        <label class="checkbox-label"><input type="checkbox" disabled {% if birads_level == '6' %}checked{% endif %}> 6级</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>数量</td>
+                    <td>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not nodule_quantity or '多发' not in nodule_quantity %}checked{% endif %}> 单发
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if nodule_quantity and '多发' in nodule_quantity %}checked{% endif %}> 多发{% if nodule_quantity and '多发' in nodule_quantity and nodule_count %}（{{ nodule_count }}个）{% endif %}
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>结节大小</td>
+                    <td>{{ nodule_size }} mm</td>
+                </tr>
+                <tr>
+                    <td>基础疾病史</td>
+                    <td>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not breast_disease_history or breast_disease_history == '无' or '无' in breast_disease_history %}checked{% endif %}> 无
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_disease_history and '乳腺增生' in breast_disease_history %}checked{% endif %}> 乳腺增生病史
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_disease_history and '纤维瘤' in breast_disease_history %}checked{% endif %}> 乳腺纤维瘤病史
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_disease_history and '囊肿' in breast_disease_history %}checked{% endif %}> 乳腺囊肿病史
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_disease_history and '乳腺炎' in breast_disease_history %}checked{% endif %}> 乳腺炎病史
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_disease_history and '乳腺癌' in breast_disease_history %}checked{% endif %}> 乳腺癌病史
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if breast_disease_history_other %}checked{% endif %}> 其他{% if breast_disease_history_other %}：{{ breast_disease_history_other }}{% endif %}
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>家族史</td>
+                    <td>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not family_history or family_history == '无' %}checked{% endif %}> 无
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if family_history and '一级' in family_history %}checked{% endif %}> 一级亲属（父母、子女、亲兄弟姐妹）
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if family_history and '二级' in family_history %}checked{% endif %}> 二级亲属（伯父、姑妈、舅舅、姨妈、祖父母）
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if family_history and '三级' in family_history %}checked{% endif %}> 三级亲属（表/堂兄妹）
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if family_history_other %}checked{% endif %}> 其他{% if family_history_other %}：{{ family_history_other }}{% endif %}
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>药物使用史</td>
+                    <td>
+                         <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if not medication_history or medication_history == '无' %}checked{% endif %}> 无
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if medication_history and '中成药治疗' in medication_history %}checked{% endif %}> 中成药治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if medication_history and '激素调节药物' in medication_history %}checked{% endif %}> 激素调节药物
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if medication_history and '维生素辅助治疗' in medication_history %}checked{% endif %}> 维生素辅助治疗
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if medication_history and '乳腺癌治疗药物' in medication_history %}checked{% endif %}> 乳腺癌治疗药物
+                        </label>
+                         <label class="checkbox-label">
+                            <input type="checkbox" disabled {% if medication_other %}checked{% endif %}> 其他{% if medication_other %}：{{ medication_other }}{% endif %}
+                        </label>
+                    </td>
+                </tr>
+            </table>
+
+            <div style="margin-top: 25px; background-color: #f8f9fa; border-left: 4px solid #3498db; border-radius: 4px;">
+                <div style="padding: 20px;">
+                    <h4 style="color: #2c3e50; font-size: 16px; margin-top: 0; margin-bottom: 15px;">分析结论：</h4>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #3498db; font-size: 14px; margin-bottom: 10px;">1. 总体评估与随访建议</h5>
+                        <div style="line-height: 1.8; color: #555; white-space: pre-line; font-size: 14px; text-indent: 0; padding: 0; margin: 0;">
+                            {{ imaging_conclusion|safe }}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #e67e22; font-size: 14px; margin-bottom: 10px;">2. 风险提示</h5>
+                        <div style="line-height: 1.8; color: #555; white-space: pre-line; font-size: 14px; text-indent: 0; padding: 0; margin: 0;">
+                            {{ imaging_risk_warning|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px;">（三）中医信息收集</h3>
+            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <p>（中医舌苔面部检测报告插图区域）</p>
+                <br><br><br>
+            </div>
+
+            <!-- （四）动态风险评级 -->
+            <h3 style="margin-top: 30px;">（四）动态风险评级</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>风险维度</th>
+                        <th>低危</th>
+                        <th>中危</th>
+                        <th>高危</th>
+                        <th>处理措施</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>家族史</td>
+                        <td>无乳腺癌/卵巢癌家族史</td>
+                        <td>二级亲属乳腺癌</td>
+                        <td>一级亲属乳腺癌+BRCA突变</td>
+                        <td>基因检测+强化监测</td>
+                    </tr>
+                    <tr>
+                        <td>疾病史</td>
+                        <td>无不典型增生</td>
+                        <td>单发纤维瘤</td>
+                        <td>多发纤维瘤+囊肿</td>
+                        <td>手术干预+病理活检</td>
+                    </tr>
+                    <tr>
+                        <td>影像学</td>
+                        <td>BI-RADS 2级</td>
+                        <td>BI-RADS 3级</td>
+                        <td>BI-RADS 4级</td>
+                        <td>穿刺活检+多模态影像监测</td>
+                    </tr>
+                    <tr>
+                        <td>分子标志物</td>
+                        <td>CA15-3正常</td>
+                        <td>CA15-3波动</td>
+                        <td>CA15-3持续升高</td>
+                        <td>PET-CT全身筛查</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- （五）乳腺结节医学监测矩阵 -->
+            <h3 style="margin-top: 30px;">（五）乳腺结节医学监测矩阵</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>检查项目</th>
+                        <th>监测频率</th>
+                        <th>技术规范</th>
+                        <th>关键观察指标</th>
+                        <th>预警阈值</th>
+                        <th>后续处理建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>乳腺超声</td>
+                        <td>每6个月</td>
+                        <td>- 10MHz高频线阵探头<br/>- 弹性成像（应变率比值法）<br/>- BI-RADS分类评估</td>
+                        <td>- 结节形态（圆形/分叶/不规则）<br/>- 纵横比（＞1提示恶性）<br/>- 血流信号RI值（＞0.7警惕）<br/>- 弹性评分（1-5分）</td>
+                        <td>弹性评分≥4分<br/>RI值＞0.7<br/>体积倍增时间＜6个月</td>
+                        <td>升级为BI-RADS 4级，建议穿刺活检；联合MRI检查</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>每年1次</td>
+                        <td>- 双侧加压摄影（头尾位+内外侧斜位）<br/>- 自动曝光控制（AEC）<br/>- 钙化灶放大摄影</td>
+                        <td>- 微钙化灶（簇状/线状）<br/>- 结构扭曲<br/>- 腺体不对称<br/>- BI-RADS分类</td>
+                        <td>钙化灶＞5簇/cm²<br/>结构扭曲伴血供</td>
+                        <td>立即转诊乳腺外科，加做增强MRI</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺MRI</td>
+                        <td>每年1次（高危）</td>
+                        <td>- 3.0T磁共振<br/>- DWI序列（b值800）<br/>- 动态增强扫描（TIC曲线分析）</td>
+                        <td>- 动态增强曲线（Ⅱ型/Ⅲ型提示恶性）<br/>- ADC值（＜1.2×10⁻³mm²/s）<br/>- 时间-信号强度曲线</td>
+                        <td>TIC曲线Ⅲ型<br/>ADC值下降＞20%</td>
+                        <td>多学科会诊（MDT），优先手术干预</td>
+                    </tr>
+                    <tr>
+                        <td>血清肿瘤标志物</td>
+                        <td>每季度</td>
+                        <td>- 化学发光法检测<br/>- 参考实验室质控标准</td>
+                        <td>- CA15-3（＞35 U/ml）<br/>- CEA（＞5 ng/ml）<br/>- CA125（＞35 U/ml）</td>
+                        <td>CA15-3进行性升高＞20%/季度</td>
+                        <td>联合PET-CT全身筛查，排除转移</td>
+                    </tr>
+                    <tr>
+                        <td>自我触诊监测</td>
+                        <td>每月</td>
+                        <td>- 经后7-10天检查<br/>- 四指触诊法（指腹滑动触诊）</td>
+                        <td>- 结节大小变化（增长＞20%）<br/>- 质地变硬<br/>- 皮肤橘皮样改变</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- （六）乳腺结节医学监测频率分层管理表 -->
+            <h3 style="margin-top: 30px;">（六）乳腺结节医学监测频率分层管理表</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>风险分层</th>
+                        <th>检查项目</th>
+                        <th>初始诊断后（第1年）</th>
+                        <th>稳定期（第2-3年）</th>
+                        <th>高危持续期（≥4年）</th>
+                        <th>注意事项</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="3">低危（BI-RADS 2-3级，无高危因素）</td>
+                        <td>乳腺超声</td>
+                        <td>每6个月</td>
+                        <td>每12个月</td>
+                        <td>每12个月</td>
+                        <td>需在月经后7-10天检查，避开黄体期</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>第1年</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>致密型乳腺需联合超声检查</td>
+                    </tr>
+                    <tr>
+                        <td>自我触诊</td>
+                        <td>每月</td>
+                        <td>每月</td>
+                        <td>每月</td>
+                        <td>记录结节大小变化（建议使用量尺）</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="5">中危（BI-RADS 3级，存在1-2个危险因素）</td>
+                        <td>乳腺超声</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>增加弹性成像评估（每半年1次）</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>第1年</td>
+                        <td>每年1次</td>
+                        <td>每年1次</td>
+                        <td>若结节邻近胸壁，需加做侧位摄影</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺MRI（可选）</td>
+                        <td>第1年</td>
+                        <td>每2年1次</td>
+                        <td>每年1次</td>
+                        <td>适用于致密型乳腺或高风险随访</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺超声</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>需动态测量体积和变化（计算VDT）</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺钼靶</td>
+                        <td>第1年</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>配合放大摄影技术（×1.5-2倍）</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="3">高危（BI-RADS 4级，或存在基因突变/家族史）</td>
+                        <td>乳腺MRI</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>每6个月</td>
+                        <td>使用动态增强扫描（DCE-MRI）</td>
+                    </tr>
+                    <tr>
+                        <td>血清肿瘤标志物</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>每3个月</td>
+                        <td>联合检测CA15-3、CEA、CA125</td>
+                    </tr>
+                    <tr>
+                        <td>乳腺超声</td>
+                        <td>每6周</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>禁用×线检查，优先选择弹性超声</td>
+                    </tr>
+                    <tr>
+                        <td>特殊人群（妊娠期/哺乳期）</td>
+                        <td>乳腺触诊</td>
+                        <td>每月</td>
+                        <td>暂停</td>
+                        <td>恢复常规监测</td>
+                        <td>避免挤压乳头，防止诱发溢液</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- （七）动态调整机制 -->
+            <h3 style="margin-top: 30px;">（七）动态调整机制</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 升级标准（需立即转诊乳腺外科）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">指标异常</th>
+                        <th style="width: 45%;">升级条件</th>
+                        <th style="width: 30%;">后续处理</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>超声弹性评分</td>
+                        <td>≥4 分（周边蓝色区域＞30%）</td>
+                        <td>72小时内穿刺活检</td>
+                    </tr>
+                    <tr>
+                        <td>血流信号 RI 值</td>
+                        <td>≥0.7 且进行性升高</td>
+                        <td>联合超声造影（CEUS）评估</td>
+                    </tr>
+                    <tr>
+                        <td>自我触诊</td>
+                        <td>结节体积增长＞20%（3个月内）</td>
+                        <td>启动48小时急诊评估流程</td>
+                    </tr>
+                    <tr>
+                        <td>血清标志物</td>
+                        <td>CA15-3 季度增幅＞20%</td>
+                        <td>PET-CT 全身筛查</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">2. 降级标准（可延长监测间隔）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">稳定证据</th>
+                        <th style="width: 45%;">降级条件</th>
+                        <th style="width: 30%;">新监测频率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>连续2次超声</td>
+                        <td>形态无变化+RI值＜0.6</td>
+                        <td>延长至每年1次</td>
+                    </tr>
+                    <tr>
+                        <td>MRI 动态增强</td>
+                        <td>TIC曲线保持Ⅰ型（缓慢上升型）</td>
+                        <td>缩短至每2年1次</td>
+                    </tr>
+                    <tr>
+                        <td>标志物趋势</td>
+                        <td>CA15-3 连续3次稳定</td>
+                        <td>取消血清学监测（维持影像学随访）</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- （八）分层监测策略 -->
+            <h3 style="margin-top: 30px;">（八）分层监测策略</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">风险分层</th>
+                        <th style="width: 20%;">初始1年</th>
+                        <th style="width: 25%;">稳定期(2-3年)</th>
+                        <th style="width: 20%;">高危持续期(≥4年)</th>
+                        <th style="width: 15%;">特殊人群(妊娠期)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低危（BI-RADS 2-3级）</td>
+                        <td>超声 6M+ 钼靶 1Y</td>
+                        <td>超声 1Y+ 触诊 1M</td>
+                        <td>超声 1Y+触诊 1M</td>
+                        <td>超声 6W+触诊 1M（禁×线）</td>
+                    </tr>
+                    <tr>
+                        <td>中危（BI-RADS 3级+危险因素）</td>
+                        <td>超声 6M+ 钼靶 1Y</td>
+                        <td>超声 6M+MRI2Y</td>
+                        <td>超声 6M+MRI1Y</td>
+                        <td>超声 6W+触诊 1M</td>
+                    </tr>
+                    <tr>
+                        <td>高危（BI-RADS 4级+基因突变）</td>
+                        <td>超声 3M+ 钼靶 6M</td>
+                        <td>超声 3M+MRI6M</td>
+                        <td>超声 3M+MRI3M</td>
+                        <td>超声 6W+触诊 1M</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- （九）乳腺结节分级管理要点 -->
+            <h3 style="margin-top: 30px;">（九）乳腺结节分级管理要点</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">BI-RADS 分级</th>
+                        <th style="width: 70%;">管理策略</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1-2级</td>
+                        <td>定期随访，观察为主</td>
+                    </tr>
+                    <tr>
+                        <td>3级</td>
+                        <td>短期随访（3-6个月），警惕恶变征兆</td>
+                    </tr>
+                    <tr>
+                        <td>4级</td>
+                        <td>活检，恶性倾向需手术</td>
+                    </tr>
+                    <tr>
+                        <td>5-6级</td>
+                        <td>手术治疗为主，结合放化疗</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ========== 强制分页 ========== -->
+        <div class="page-break"></div>
+
+        <section>
+            <h2>二、乳腺结节健康管理建议</h2>
+            
+            <h3>（一）饮食建议</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 核心饮食原则</h4>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(1) 低脂低糖</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>控制总脂肪摄入＜总能量的30%。</li>
+                <li>限制添加糖＜25g/日。</li>
+                <li>依据：高脂饮食促进雌激素合成，加重内分泌紊乱（JAMA Oncology, 2021）。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(2) 高纤维抗氧化</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>每日膳食纤维≥25g（全谷物+蔬菜+水果）。</li>
+                <li>重点摄入深色蔬果（西兰花、蓝莓、胡萝卜）。</li>
+                <li>依据：膳食纤维降低雌激素重吸收率（American Journal of Clinical Nutrition, 2020）。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(3) 优质蛋白优先</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>优选鱼类（三文鱼、鳕鱼）、禽类（去皮鸡胸肉）、豆类。</li>
+                <li>减少红肉（猪牛羊肉）至＜1次/周。</li>
+                <li>依据：红肉摄入与乳腺结节恶变风险正相关（WHO, 2015）。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(4) 避免激素干扰物</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>禁用含雌激素保健品（蜂王浆、雪蛤）。</li>
+                <li>限制深加工食品（罐头、腌制食品）。</li>
+                <li>依据：外源性雌激素可能刺激结节生长（Endocrine Reviews, 2018）。</li>
+            </ul>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 每日饮食方案（1800kcal/日示例）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">餐次</th>
+                        <th style="width: 40%;">食物搭配</th>
+                        <th style="width: 15%;">热量分配</th>
+                        <th style="width: 30%;">营养重点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>早餐</td>
+                        <td>燕麦粥（50g）+水煮蛋（1个）+西兰花（100g）+无糖豆浆（200ml）</td>
+                        <td>30%</td>
+                        <td>膳食纤维+植物雌激素</td>
+                    </tr>
+                    <tr>
+                        <td>上午加餐</td>
+                        <td>苹果（1个）+核桃仁（10g）</td>
+                        <td>10%</td>
+                        <td>抗氧化物质+健康脂肪</td>
+                    </tr>
+                    <tr>
+                        <td>午餐</td>
+                        <td>糙米饭（100g）+清蒸鲈鱼（150g）+凉拌菠菜（200g）+橄榄油（10g）</td>
+                        <td>40%</td>
+                        <td>Ω-3 脂肪酸+复合型碳水</td>
+                    </tr>
+                    <tr>
+                        <td>下午加餐</td>
+                        <td>无糖希腊酸奶（150g）+蓝莓（100g）</td>
+                        <td>10%</td>
+                        <td>益生菌+花青素</td>
+                    </tr>
+                    <tr>
+                        <td>晚餐</td>
+                        <td>杂粮馒头（80g）+西芹百合（150g）+豆腐羹（100g）+亚麻籽（5g）</td>
+                        <td>20%</td>
+                        <td>植物雌激素+可溶性膳食纤维</td>
+                    </tr>
+                    <tr>
+                        <td>睡前加餐</td>
+                        <td>10 颗杏仁</td>
+                        <td>5%</td>
+                        <td>优质蛋白+维生素 E</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 重点食材选择清单</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">类别</th>
+                        <th style="width: 42.5%;">推荐食材</th>
+                        <th style="width: 42.5%;">禁用/慎用食材</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>主食</td>
+                        <td>燕麦、糙米、藜麦、全麦面包、杂粮饭</td>
+                        <td>精制白米面、膨化食品</td>
+                    </tr>
+                    <tr>
+                        <td>蛋白质</td>
+                        <td>鲑鱼、鳕鱼、虾、去皮鸡胸肉、豆腐、鸡蛋</td>
+                        <td>红肉（猪牛羊肉）、加工肉制品（培根、火腿）</td>
+                    </tr>
+                    <tr>
+                        <td>蔬菜</td>
+                        <td>西兰花、菠菜、芦笋、胡萝卜、番茄、香菇、紫甘蓝</td>
+                        <td>油炸蔬菜（如炸薯条）、腌制蔬菜</td>
+                    </tr>
+                    <tr>
+                        <td>水果</td>
+                        <td>蓝莓、草莓、猕猴桃、苹果、柑橘类</td>
+                        <td>高糖水果（如荔枝、榴莲）</td>
+                    </tr>
+                    <tr>
+                        <td>油脂</td>
+                        <td>特级初榨橄榄油、亚麻籽油、紫苏油</td>
+                        <td>反式脂肪酸（如人造奶油、奶茶）</td>
+                    </tr>
+                    <tr>
+                        <td>饮品</td>
+                        <td>白开水、淡茶（绿茶、菊花茶）、无糖黑咖啡</td>
+                        <td>含糖饮料、酒精、浓咖啡</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 特殊人群饮食调整</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">人群特征</th>
+                        <th style="width: 35%;">调整方案</th>
+                        <th style="width: 45%;">医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>超重/肥胖患者</td>
+                        <td>每日热量控制在1500-1600kcal，增加粗膳感食材（魔芋、燕麦麸皮）</td>
+                        <td>BMI＞24时，结节恶变风险↑30%（AJOG, 2022）</td>
+                    </tr>
+                    <tr>
+                        <td>糖尿病合并者</td>
+                        <td>选择低GI主食（如荞麦面）、严格限制添加糖、增加膳食纤维（如菊芋）</td>
+                        <td>高血糖状态加速结节血管生成（Cancer Res, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>胃肠道敏感者</td>
+                        <td>食材烹饪以蒸煮为主，减少粗纤维摄入（如竹笋、坚果），分餐制</td>
+                        <td>肠道菌群失衡影响雌激素代谢（Gut, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>备孕期/哺乳期</td>
+                        <td>增加碘摄入（海带、紫菜），避免大豆异黄酮过量（每日＜50mg）</td>
+                        <td>激素水平波动需精准调控</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">5. 关键注意事项</h4>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(1) 烹饪方式</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>以蒸、煮、炖、凉拌为主，禁用油炸、烧烤、熏制。</li>
+                <li>每日用盐＜5g，警惕隐形盐（酱油、味精）。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(2) 进餐节奏</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>少食多餐（每日5-6餐），避免暴食后血糖骤升。</li>
+                <li>细嚼慢咽（每日咀嚼20次以上）。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(3) 监测指标</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>每月测量体重、腰围（目标：腰围＜85cm）。</li>
+                <li>每3个月复查血脂、血糖、胰岛素抵抗指标。</li>
+            </ul>
+            
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">(4) 禁忌行为</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>禁用含雌激素的护肤品（如大豆异黄酮面膜）。</li>
+                <li>避免长期高温烹饪（如反复煎炸）。</li>
+            </ul>
+            
+            <h3 style="margin-top: 30px;">（二）运动建议</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 核心运动原则</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">原则</th>
+                        <th style="width: 35%;">具体要求</th>
+                        <th style="width: 40%;">医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低强度有氧优先</td>
+                        <td>心率控制在100-140次/分</td>
+                        <td>促进代谢，降低雌激素水平（JAMA, 2021）</td>
+                    </tr>
+                    <tr>
+                        <td>避免上肢负重</td>
+                        <td>禁用哑铃/杠铃胸部训练</td>
+                        <td>减少胸壁压迫，防止结节刺激（ACSM, 2023）</td>
+                    </tr>
+                    <tr>
+                        <td>淋巴引流强化</td>
+                        <td>每日10分钟肩背拉伸</td>
+                        <td>改善淋巴回流，降低水肿风险（Lymphology, 2022）</td>
+                    </tr>
+                    <tr>
+                        <td>循序渐进</td>
+                        <td>每周运动增量不超过10%</td>
+                        <td>避免运动损伤，提高依从性（WHO, 2020）</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 分层运动方案</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">风险分层</th>
+                        <th style="width: 25%;">运动类型</th>
+                        <th style="width: 15%;">频率</th>
+                        <th style="width: 20%;">强度</th>
+                        <th style="width: 20%;">禁忌</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低危(BI-RADS 2-3级)</td>
+                        <td>快走/游泳/瑜伽/太极拳</td>
+                        <td>每周5次</td>
+                        <td>中等强度（心率120-140bpm）</td>
+                        <td>避免倒立/压迫胸部的动作</td>
+                    </tr>
+                    <tr>
+                        <td>中危(BI-RADS 3级+危险因素)</td>
+                        <td>游泳/慢力量训练/普拉提</td>
+                        <td>每周5次</td>
+                        <td>低强度（心率100-120bpm）</td>
+                        <td>禁止蹦床/高强度间歇训练</td>
+                    </tr>
+                    <tr>
+                        <td>高危(BI-RADS 4级/基因突变)</td>
+                        <td>散步/呼吸训练/水中康复</td>
+                        <td>每周3次</td>
+                        <td>极低强度（心率＜100bpm）</td>
+                        <td>禁止任何上肢负重/剧烈运动</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 标准化运动方案</h4>
+            <p style="font-weight: bold; margin-top: 12px; margin-bottom: 8px;">示例（低危患者）：</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">时间</th>
+                        <th style="width: 40%;">运动内容</th>
+                        <th style="width: 20%;">目标</th>
+                        <th style="width: 20%;">备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>热身(5分钟)</td>
+                        <td>肩颈旋转、手臂环绕、侧平举</td>
+                        <td>激活肩膀带肌肉</td>
+                        <td>避免快速用力</td>
+                    </tr>
+                    <tr>
+                        <td>有氧(20分钟)</td>
+                        <td>快走(心率120-130bpm)+游泳(自由泳50米×4组)</td>
+                        <td>改善心肺功能</td>
+                        <td>每周递增5分钟</td>
+                    </tr>
+                    <tr>
+                        <td>力量训练(15分钟)</td>
+                        <td>弹力带推举(12次×3组)+俯卧撑(宽距版缩小幅度×10×3组)</td>
+                        <td>增强核心/肌群</td>
+                        <td>避免屏气用力</td>
+                    </tr>
+                    <tr>
+                        <td>淋巴引流(10分钟)</td>
+                        <td>深呼吸同步+手臂上抬(10×3组)</td>
+                        <td>促进淋巴回流</td>
+                        <td>配合深呼吸</td>
+                    </tr>
+                    <tr>
+                        <td>冷身(5分钟)</td>
+                        <td>慢走+靠墙静态(跟腱不超过膝盖)</td>
+                        <td>预防肌肉酸痛</td>
+                        <td>每日坚持</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 禁忌与风险预警</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">禁忌场景</th>
+                        <th style="width: 35%;">具体内容</th>
+                        <th style="width: 40%;">替代方案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>急性炎症期</td>
+                        <td>结节红肿热痛时</td>
+                        <td>绝对卧床休息，局部冷敷</td>
+                    </tr>
+                    <tr>
+                        <td>严重骨质疏松</td>
+                        <td>T值＜-2.5（骨密度检测）</td>
+                        <td>改为水中运动站立训练</td>
+                    </tr>
+                    <tr>
+                        <td>心血管疾病史</td>
+                        <td>冠心病、心律失常</td>
+                        <td>需心电监护下运动</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <table style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">预警指标</th>
+                        <th style="width: 35%;">触发条件</th>
+                        <th style="width: 40%;">应对措施</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>运动后疼痛</td>
+                        <td>新发/持续＞24小时</td>
+                        <td>立即就医，暂停运动1周</td>
+                    </tr>
+                    <tr>
+                        <td>乳头溢液</td>
+                        <td>运动后单侧血性/浆液性溢液</td>
+                        <td>72小时内乳腺超声检查</td>
+                    </tr>
+                    <tr>
+                        <td>皮肤改变</td>
+                        <td>运动后出现橘皮样皮肤/凹陷</td>
+                        <td>立即影像复查，评估病情进展</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3 style="margin-top: 30px;">（三）情绪管理</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 核心管理原则</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">原则</th>
+                        <th style="width: 70%;">具体要求</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>认知重构</td>
+                        <td>用"观察-接纳-重构"三步法应对负面思维</td>
+                    </tr>
+                    <tr>
+                        <td>压力分级管理</td>
+                        <td>根据事件影响程度划分红/黄/绿等级</td>
+                    </tr>
+                    <tr>
+                        <td>生理-心理联动</td>
+                        <td>每日监测情绪与生理症状（如失眠、疼痛）</td>
+                    </tr>
+                    <tr>
+                        <td>家庭系统支持</td>
+                        <td>建立"患者-家属-医护"三角支持网络</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 分层情绪管理策略</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">风险分层</th>
+                        <th style="width: 25%;">情绪问题特征</th>
+                        <th style="width: 30%;">干预方案</th>
+                        <th style="width: 25%;">频率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>低危（BI-RADS 2-3级）</td>
+                        <td>偶发性焦虑（如担心体检结果）</td>
+                        <td>①正念呼吸（每日10分钟）<br/>②自助阅读（＜焦虑自助手册＞）</td>
+                        <td>每2周1次心理咨询</td>
+                    </tr>
+                    <tr>
+                        <td>中危（BI-RADS 3级+危险因素）</td>
+                        <td>持续性焦虑（如反复查阅癌症信息）</td>
+                        <td>①团体认知行为治疗（CBT）<br/>②请进式肌肉放松训练</td>
+                        <td>每周1次</td>
+                    </tr>
+                    <tr>
+                        <td>高危（BI-RADS 4级/建议穿刺活检）</td>
+                        <td>存在灾难化思维（如反复联想设备环结果）</td>
+                        <td>①正念减压疗法（MBSR）<br/>②危机干预心理支持</td>
+                        <td>每周2次心理咨询</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 日常情绪管理工具箱</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">工具类型</th>
+                        <th style="width: 35%;">具体方法</th>
+                        <th style="width: 20%;">执行频率</th>
+                        <th style="width: 25%;">医学证据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>即时缓解</td>
+                        <td>4-7-8呼吸法（吸气4秒→屏息7秒→呼气8秒）</td>
+                        <td>每日3次，每次5分钟</td>
+                        <td>降低皮质醇水平（J Psychosom Res, 2020）</td>
+                    </tr>
+                    <tr>
+                        <td>认知重塑</td>
+                        <td>ABC情绪记录表：A（事件）→B（信念）→C（结果）→挑战非理性信念</td>
+                        <td>每日1次，记录3件事件</td>
+                        <td>改变认知模式（Beck, 1979）</td>
+                    </tr>
+                    <tr>
+                        <td>身体觉察</td>
+                        <td>晨起身体扫描冥想（从脚趾到头顶逐步感知，每部分停留5秒）</td>
+                        <td>每日1次，15分钟</td>
+                        <td>降低焦虑化症状（Mindfulness, 2018）</td>
+                    </tr>
+                    <tr>
+                        <td>社交支持</td>
+                        <td>建立"3人互助小组"（患者+家属+医生），每周视频交流15分钟</td>
+                        <td>每周1次</td>
+                        <td>提升社会支持评分（SSRS量表）</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 心理预警与干预机制</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">预警信号</th>
+                        <th style="width: 30%;">触发条件</th>
+                        <th style="width: 45%;">响应流程</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>急性应激反应</td>
+                        <td>突发性严重焦虑/穿刺结果异常伴期</td>
+                        <td>启动"30分钟心理急救"（呼吸训练+正念音频）</td>
+                    </tr>
+                    <tr>
+                        <td>抑郁倾向</td>
+                        <td>PHQ-9量表≥10分</td>
+                        <td>转介精神科医生+药物治疗干预</td>
+                    </tr>
+                    <tr>
+                        <td>创伤后应激障碍（PTSD）</td>
+                        <td>反复回忆穿刺/手术场景</td>
+                        <td>眼动脱敏再处理（EMDR）治疗</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">5. 核心管理原则（每日必做）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">原则</th>
+                        <th style="width: 35%;">行动指令</th>
+                        <th style="width: 25%;">关键指标</th>
+                        <th style="width: 25%;">医学依据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>认知重构</td>
+                        <td>1. 记录3件焦虑事件（例，"结果提前出"）<br/>2. 用"可能良性"替换灾难化思维</td>
+                        <td>每日重构成功次数≥2次</td>
+                        <td>CBT认知行为疗法（Beck, 1979）</td>
+                    </tr>
+                    <tr>
+                        <td>压力分级</td>
+                        <td>1. 晨起日评情绪等级（1-10分）<br/>2. 触发红色警报时立即启动急救流程</td>
+                        <td>红色警报≤1次/周</td>
+                        <td>PST压力管理模型</td>
+                    </tr>
+                    <tr>
+                        <td>身心联动</td>
+                        <td>1. 绘制「情绪-症状曲线图」<br/>2. 标注结节触痛/泌尿违等异常变化</td>
+                        <td>症状减动幅度＜2分/周</td>
+                        <td>心身医学双向调节原则</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">6. 分层干预策略（按风险等级执行）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">风险分层</th>
+                        <th style="width: 28%;">高危（BI-RADS 4级/基因突变）</th>
+                        <th style="width: 28%;">中危（BI-RADS 3级+危险因素）</th>
+                        <th style="width: 29%;">低危（BI-RADS 2-3级）</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>每日必做</td>
+                        <td>1. 正念呼吸（10分钟）<br/>2. 危机干预心理支持通话</td>
+                        <td>1. 渐进式肌肉放松（15分钟）<br/>2. 团体CBT打卡</td>
+                        <td>1. 睡盖冥想（5分钟）<br/>2. 自助阅读</td>
+                    </tr>
+                    <tr>
+                        <td>每周重点</td>
+                        <td>1. EMDR治疗（闪回场景处理）<br/>2. 药物剂量调整</td>
+                        <td>1. 家庭沟通演练（角色扮演）<br/>2. 运动计划调整</td>
+                        <td>1. 症状自评量表（SCL-90）<br/>2. 饮食打卡</td>
+                    </tr>
+                    <tr>
+                        <td>禁忌动作</td>
+                        <td>× 自行查阅医学文献＞30分钟<br/>× 独自处理情绪危机</td>
+                        <td>× 长时间独处<br/>× 忽视身体信号</td>
+                        <td>× 高强度运动<br/>× 暴饮暴食</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">7. 情绪调节工具箱（直接执行）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">工具类型</th>
+                        <th style="width: 30%;">具体方法</th>
+                        <th style="width: 15%;">执行频率</th>
+                        <th style="width: 20%;">医学证据</th>
+                        <th style="width: 20%;">配套工具</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>即时缓解</td>
+                        <td>4-7-8呼吸法（吸气4秒→屏息7秒→呼气8秒）</td>
+                        <td>晨起/睡前各1组</td>
+                        <td>降低皮质醇（J Psychosom Res, 2020）</td>
+                        <td>呼吸计时器</td>
+                    </tr>
+                    <tr>
+                        <td>认知重塑</td>
+                        <td>ABC记录表（A事件→B信念→C结果→挑战非理性信念）</td>
+                        <td>每日记录3件事</td>
+                        <td>Beck认知疗法（Beck, 1979）</td>
+                        <td>《认知重塑练习册》</td>
+                    </tr>
+                    <tr>
+                        <td>身体觉察</td>
+                        <td>晨起身体扫描冥想（从脚趾到头顶逐部位感知，每部位5秒）</td>
+                        <td>每日15分钟</td>
+                        <td>缓解躯体化症状（Mindfulness, 2018）</td>
+                        <td>冥想引导音频</td>
+                    </tr>
+                    <tr>
+                        <td>社交支持</td>
+                        <td>"3人互助小组"（患者+家属+医生，每周视频交流15分钟）</td>
+                        <td>每周1次</td>
+                        <td>提升社会支持评分（SSRS量表）</td>
+                        <td>互助群二维码</td>
+                    </tr>
+                    <tr>
+                        <td>危机干预</td>
+                        <td>眼动脱敏再处理（EMDR）治疗+危机心理干预</td>
+                        <td>闪回发生时</td>
+                        <td>EMDR治疗指南</td>
+                        <td>EMD疗法流程图</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">8. 关键数据看板（每日更新）</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 18%;">指标</th>
+                        <th style="width: 22%;">目标范围</th>
+                        <th style="width: 15%;">今日数据</th>
+                        <th style="width: 15%;">预警阈值</th>
+                        <th style="width: 30%;">行动建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>晨起情绪评分</td>
+                        <td>1-3分（绿色）</td>
+                        <td>2分</td>
+                        <td>≥4分</td>
+                        <td>启动正念呼吸</td>
+                    </tr>
+                    <tr>
+                        <td>复查焦虑指数</td>
+                        <td>≤5分（10分制）</td>
+                        <td>3分</td>
+                        <td>≥7分</td>
+                        <td>查看《复查须知》漫画版</td>
+                    </tr>
+                    <tr>
+                        <td>睡眠质量</td>
+                        <td>入睡≤30分钟，深度睡眠≥2小时</td>
+                        <td>45分钟</td>
+                        <td>≥60分钟</td>
+                        <td>佩戴睡眠监测手环</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3 style="margin-top: 30px;">（四）生活方式</h3>
+            
+            <h4 style="font-size: 14px; margin-top: 15px; margin-bottom: 10px;">1. 饮食管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调整方向</th>
+                        <th style="width: 35%;">具体建议</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">执行要点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>控脂饮食</td>
+                        <td>每日脂肪摄入＜总能量30%<br/>减少动物脂肪（猪油、牛油）</td>
+                        <td>降低雌激素合成风险（JAMA, 2021）</td>
+                        <td>用橄榄油替代动物油</td>
+                    </tr>
+                    <tr>
+                        <td>限糖饮食</td>
+                        <td>添加糖＜25g/日<br/>警惕隐形糖（饮料、甜点）</td>
+                        <td>抑制炎症反应（Cancer Res, 2020）</td>
+                        <td>阅读食品标签</td>
+                    </tr>
+                    <tr>
+                        <td>高纤维饮食</td>
+                        <td>膳食纤维≥25g/日<br/>重点：燕麦、西兰花、苹果</td>
+                        <td>促进雌激素代谢（AJCN, 2020）</td>
+                        <td>早餐保证1种高纤维蔬菜</td>
+                    </tr>
+                    <tr>
+                        <td>禁忌食物</td>
+                        <td>× 蜂王浆、雪蛤、燕窝<br/>× 高盐腌制食品（咸菜、腊肉）</td>
+                        <td>减少外源性雌激素暴露（Endocrine Rev, 2018）</td>
+                        <td>用坚果替代零食</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">2. 运动管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">运动类型</th>
+                        <th style="width: 35%;">推荐方案</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">禁忌</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>有氧运动</td>
+                        <td>每周5次快走（30分钟/次）<br/>心率控制在100-120次/分</td>
+                        <td>改善代谢水平（WHO, 2020）</td>
+                        <td>避免爬山/跳绳</td>
+                    </tr>
+                    <tr>
+                        <td>力量训练</td>
+                        <td>每周2次哑铃推举（5kg×12次×3组）<br/>弹力带划船（15次×3组）</td>
+                        <td>增强肌肉对雌激素代谢调控（Med Sci Sports Exerc, 2021）</td>
+                        <td>避免卧推动作</td>
+                    </tr>
+                    <tr>
+                        <td>淋巴引流运动</td>
+                        <td>每日睡前手臂上举拉伸（10次×3组）<br/>颈部侧向拉伸（每侧30秒）</td>
+                        <td>促进淋巴回流（Lymphology, 2022）</td>
+                        <td>避免剧烈甩臂动作</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">3. 作息管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调整方向</th>
+                        <th style="width: 35%;">具体建议</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">工具推荐</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>睡眠管理</td>
+                        <td>22:00-22:30前入睡<br/>保证7-8小时深度睡眠（使用睡眠监测手环）</td>
+                        <td>降低夜间皮质醇峰值（Sleep Med, 2021）</td>
+                        <td>褪黑素（遵医嘱）</td>
+                    </tr>
+                    <tr>
+                        <td>午间休息</td>
+                        <td>15-20分钟闭目养神</td>
+                        <td>缓解压力激素（HRV研究）</td>
+                        <td>舒适颈枕</td>
+                    </tr>
+                    <tr>
+                        <td>避免熬夜</td>
+                        <td>熬夜次数＜1次/周</td>
+                        <td>减少DNA损伤修复抑制（Cell, 2020）</td>
+                        <td>睡眠日志记录</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">4. 压力管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调节方法</th>
+                        <th style="width: 35%;">操作步骤</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">频率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>4-7-8呼吸法</td>
+                        <td>吸气4秒→屏息7秒→呼气8秒（每天3组）</td>
+                        <td>降低交感神经活性（J Psychosom Res, 2020）</td>
+                        <td>晨起/睡前</td>
+                    </tr>
+                    <tr>
+                        <td>正念冥想</td>
+                        <td>晨起10分钟身体扫描冥想（从脚趾到头顶感知）</td>
+                        <td>缓解焦虑（Mindfulness, 2018）</td>
+                        <td>每日1次</td>
+                    </tr>
+                    <tr>
+                        <td>社交支持</td>
+                        <td>加入"3人互助小组"（患者+家属+医生），每周视频交流15分钟</td>
+                        <td>提升社会支持评分（SSRS量表）</td>
+                        <td>每周日20:00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">5. 环境管理</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">调整方向</th>
+                        <th style="width: 35%;">具体建议</th>
+                        <th style="width: 25%;">医学依据</th>
+                        <th style="width: 20%;">执行要点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>化学暴露</td>
+                        <td>避免接触杀虫剂/染发剂/塑化剂<br/>使用玻璃/陶瓷餐具代替塑料容器</td>
+                        <td>减少内分泌干扰物暴露（Environmental Health, 2021）</td>
+                        <td>采购前查看成分表</td>
+                    </tr>
+                    <tr>
+                        <td>电磁辐射</td>
+                        <td>手机远离床头60cm<br/>微波炉运行时保持1m距离</td>
+                        <td>降低氧化应激水平（Radiation Res, 2022）</td>
+                        <td>使用防辐射贴</td>
+                    </tr>
+                    <tr>
+                        <td>空气质量</td>
+                        <td>室内PM2.5＜35μg/m³<br/>每日通风2次（每次30分钟）</td>
+                        <td>改善免疫微环境（Thorax, 2020）</td>
+                        <td>使用空气净化器</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">6. 监测与记录</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">监测指标</th>
+                        <th style="width: 25%;">目标范围</th>
+                        <th style="width: 25%;">监测频率</th>
+                        <th style="width: 25%;">工具推荐</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>体重指数（BMI）</td>
+                        <td>18.5-24.9 kg/m²</td>
+                        <td>晨起空腹测量</td>
+                        <td>体脂秤</td>
+                    </tr>
+                    <tr>
+                        <td>腰臀比</td>
+                        <td>＜0.85（女）</td>
+                        <td>每月1次</td>
+                        <td>软尺</td>
+                    </tr>
+                    <tr>
+                        <td>压力评分</td>
+                        <td>≤4分（10分制）</td>
+                        <td>每周自评</td>
+                        <td>Borg量表</td>
+                    </tr>
+                    <tr>
+                        <td>症状记录</td>
+                        <td>无新发疼痛/溢液/皮肤改变</td>
+                        <td>每日记录</td>
+                        <td>《症状日记》</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="disclaimer">
+            <p><strong>⚠️ 重要声明</strong></p>
+            <p>本报告由乳腺结节健康管理平台根据用户提供的数据及通用医学知识生成，旨在提供健康管理参考和个性化建议，并非医疗诊断或治疗方案。任何医疗决策均需在专业医师指导下进行。如您有任何健康疑虑或症状加重，请立即就医。</p>
+        </section>
+
+        <footer>
+            <p style="text-align: center; margin: 0; font-size: 10px;">
+                © 2025 乳腺结节健康管理平台 | 报告编号：{{ report_code }} | 生成日期：{{ current_date }}
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
+
+
+
+
