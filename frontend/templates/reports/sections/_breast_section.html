@@ -1,0 +1,186 @@
+<!-- ==========================================
+     乳腺结节专用部分
+     ========================================== -->
+
+<h1>一、健康风险评估</h1>
+
+<!-- （一）基本信息 -->
+<h2>（一）基本信息</h2>
+<table>
+    <tr>
+        <th style="width: 15%;">姓名</th>
+        <td style="width: 35%;">{{ patient_name }}</td>
+        <th style="width: 15%;">性别</th>
+        <td style="width: 35%;">{{ patient_gender or '女' }}</td>
+    </tr>
+    <tr>
+        <th>年龄</th>
+        <td>{{ patient_age }}岁</td>
+        <th>联系电话</th>
+        <td>{{ phone or '-' }}</td>
+    </tr>
+</table>
+
+<!-- （二）乳腺影像学特征 -->
+<h2>（二）乳腺影像学特征</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 25%;">项目</th>
+            <th style="width: 75%;">乳腺结节数据</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>结节发现时间</td>
+            <td>{{ discovery_date or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节症状</td>
+            <td>{{ symptoms or '无任何症状' }}</td>
+        </tr>
+        <tr>
+            <td>BI-RADS分级</td>
+            <td>{{ birads_level or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节位置</td>
+            <td>{{ nodule_location or '-' }}</td>
+        </tr>
+        <tr>
+            <td>结节大小</td>
+            <td>{{ nodule_size or '-' }}</td>
+        </tr>
+        <tr>
+            <td>边界/边缘特征</td>
+            <td>{{ boundary_features or '-' }}</td>
+        </tr>
+        <tr>
+            <td>内部/回声特征</td>
+            <td>{{ internal_echo or '-' }}</td>
+        </tr>
+        <tr>
+            <td>血流信号</td>
+            <td>{{ blood_flow_signal or '-' }}</td>
+        </tr>
+        <tr>
+            <td>弹性评分</td>
+            <td>{{ elasticity_score or '-' }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="conclusion-box">
+    <h3>影像学综合结论：</h3>
+    <p>{{ imaging_conclusion or '请结合病史和临床表现进行综合判断' }}</p>
+</div>
+
+<!-- （三）既往病史与风险分层 -->
+<h2>（三）既往病史与风险分层</h2>
+
+<h3>一、乳腺基础疾病史</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 30%;">项目</th>
+            <th style="width: 50%;">选项/数据</th>
+            <th style="width: 20%;">风险权重</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>乳腺增生病史</td>
+            <td>{{ breast_hyperplasia_history or '无' }}</td>
+            <td>★★★★☆</td>
+        </tr>
+        <tr>
+            <td>乳腺纤维瘤病史</td>
+            <td>{{ breast_fibroadenoma_history or '无' }}</td>
+            <td>★★★☆☆</td>
+        </tr>
+        <tr>
+            <td>乳腺囊肿病史</td>
+            <td>{{ breast_cyst_history or '无' }}</td>
+            <td>★★☆☆☆</td>
+        </tr>
+        <tr>
+            <td>乳腺炎病史</td>
+            <td>{{ breast_inflammation_history or '无' }}</td>
+            <td>★☆☆☆☆</td>
+        </tr>
+        <tr>
+            <td>乳腺癌病史</td>
+            <td>{{ breast_cancer_history or '无' }}</td>
+            <td>★★★★★</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>二、其他风险因素</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 30%;">项目</th>
+            <th style="width: 50%;">选项/数据</th>
+            <th style="width: 20%;">风险权重</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>粉尘/有害气体接触史</td>
+            <td>{{ dust_exposure_history or '无' }}</td>
+            <td>★★★☆☆</td>
+        </tr>
+        <tr>
+            <td>糖尿病</td>
+            <td>{{ diabetes_history or '无' }}</td>
+            <td>★★☆☆☆</td>
+        </tr>
+        <tr>
+            <td>辐射暴露史</td>
+            <td>{{ radiation_exposure_history or '无' }}</td>
+            <td>★★☆☆☆</td>
+        </tr>
+        <tr>
+            <td>自身免疫疾病</td>
+            <td>{{ autoimmune_disease_history or '无' }}</td>
+            <td>-</td>
+        </tr>
+        <tr>
+            <td>药物使用史</td>
+            <td>{{ medication_history or '无' }}</td>
+            <td>-</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>三、现病史与家族史</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 30%;">项目</th>
+            <th style="width: 50%;">选项/数据</th>
+            <th style="width: 20%;">风险权重</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>肿瘤标志物检查</td>
+            <td>{{ tumor_marker_test or '无' }}</td>
+            <td>★★★★★</td>
+        </tr>
+        <tr>
+            <td>遗传性乳腺病史</td>
+            <td>{{ hereditary_breast_history or '无' }}</td>
+            <td>★★★★★</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="conclusion-box">
+    <h3>综合分析结论：</h3>
+    <p>{{ conclusion or '请根据患者具体情况进行综合评估' }}</p>
+    <p><strong>风险等级：</strong>{{ risk_level or '未评估' }}</p>
+</div>
+
+<div class="page-break"></div>

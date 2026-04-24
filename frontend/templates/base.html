@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}乳腺结节健康管理系统{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+        }
+        
+        /* 顶部导航栏 */
+        .top-nav {
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #409eff;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            width: 200px;
+            background: #304156;
+            padding-top: 20px;
+        }
+        
+        .menu-item {
+            padding: 15px 20px;
+            color: #bfcbd9;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .menu-item:hover {
+            background: #263445;
+            color: #fff;
+        }
+        
+        .menu-item.active {
+            background: #409eff;
+            color: #fff;
+        }
+        
+        /* 主内容区 */
+        .main-content {
+            margin-left: 200px;
+            margin-top: 60px;
+            padding: 20px;
+            min-height: calc(100vh - 60px);
+        }
+        
+        /* 按钮 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #409eff;
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: #66b1ff;
+        }
+        
+        .btn-danger {
+            background: #f56c6c;
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: #f78989;
+        }
+        
+        .btn-success {
+            background: #67c23a;
+            color: #fff;
+        }
+        
+        .btn-text {
+            background: none;
+            color: #409eff;
+            padding: 5px 10px;
+        }
+        
+        /* 卡片 */
+        .card {
+            background: #fff;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ebeef5;
+        }
+        
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ebeef5;
+        }
+        
+        table th {
+            background: #f5f7fa;
+            font-weight: 600;
+        }
+        
+        table tr:hover {
+            background: #f5f7fa;
+        }
+        
+        /* 表单 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #606266;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #409eff;
+        }
+        
+        /* 搜索栏 */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+        }
+        
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 20px;
+        }
+        
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #dcdfe6;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .pagination button.active {
+            background: #409eff;
+            color: #fff;
+            border-color: #409eff;
+        }
+        
+        /* 消息提示 */
+        .message {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            z-index: 2000;
+            display: none;
+        }
+        
+        .message.success {
+            border-left: 4px solid #67c23a;
+        }
+        
+        .message.error {
+            border-left: 4px solid #f56c6c;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <div class="logo">🏥 乳腺结节健康管理系统</div>
+        <div class="user-info">
+            <span id="username">加载中...</span>
+            <button class="btn btn-text" onclick="logout()">退出</button>
+        </div>
+    </div>
+    
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <a href="/dashboard" class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+            📊 工作台
+        </a>
+        <a href="/patients" class="menu-item {% if active_page == 'patients' %}active{% endif %}">
+            👥 患者管理
+        </a>
+        <a href="/records" class="menu-item {% if active_page == 'records' %}active{% endif %}">
+            📋 档案管理
+        </a>
+        <a href="/reports" class="menu-item {% if active_page == 'reports' %}active{% endif %}">
+            📄 报告管理
+        </a>
+        <a href="/followups" class="menu-item {% if active_page == 'followups' %}active{% endif %}">
+            📝 患者跟进
+        </a>
+        <a href="/conversations" class="menu-item {% if active_page == 'conversations' %}active{% endif %}">
+            💬 AI对话历史
+        </a>
+        <a href="/knowledge" class="menu-item {% if active_page == 'knowledge' %}active{% endif %}">
+            📚 知识库管理
+        </a>
+    </div>
+    
+    <!-- 主内容 -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+    
+    <script>
+        // 全局API基础URL
+        const API_BASE = '/api';
+        
+        // 获取当前用户信息
+        fetch(`${API_BASE}/auth/me`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('username').textContent = data.data.real_name || data.data.username;
+                }
+            });
+        
+        // 退出登录
+        function logout() {
+            fetch(`${API_BASE}/auth/logout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '/login';
+                }
+            });
+        }
+        
+        // 显示消息
+        function showMessage(text, type = 'success') {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+            msgEl.style.display = 'block';
+            
+            setTimeout(() => {
+                msgEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 格式化日期
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleString('zh-CN');
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

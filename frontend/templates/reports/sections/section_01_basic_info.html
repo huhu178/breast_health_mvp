@@ -1,0 +1,31 @@
+<!--
+    （一）基本信息 - 所有报告通用
+    使用方式：{% include 'reports/sections/section_01_basic_info.html' %}
+-->
+<h3>（一）基本信息</h3>
+<table style="table-layout: fixed;">
+    <colgroup>
+        <col style="width: 15%;">
+        <col style="width: 35%;">
+        <col style="width: 15%;">
+        <col style="width: 35%;">
+    </colgroup>
+    <tr>
+        <th>姓名</th>
+        <td>{{ patient_name }}</td>
+        <th>性别</th>
+        <td>{{ patient_gender }}</td>
+    </tr>
+    <tr>
+        <th>年龄</th>
+        <td>{{ patient_age }}岁</td>
+        <th>身高</th>
+        <td>{{ height if height else '-' }} {% if height %}cm{% endif %}</td>
+    </tr>
+    <tr>
+        <th>体重</th>
+        <td>{{ weight if weight else '-' }} {% if weight %}kg{% endif %}</td>
+        <th>联系电话</th>
+        <td>{{ phone if phone else '-' }}</td>
+    </tr>
+</table>

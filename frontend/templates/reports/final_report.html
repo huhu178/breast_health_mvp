@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>乳腺健康管理报告 - {{ report_code }}</title>
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm 12mm;  /* 上下10mm（减小），左右12mm */
+            }
+            
+            body { 
+                margin: 0; 
+                padding: 0; 
+            }
+            .no-print { 
+                display: none; 
+            }
+            .report-container {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 8px 0 !important;
+                box-shadow: none !important;
+            }
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #333;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .report-container {
+            background: white;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 100%;
+        }
+        
+        .report-header {
+            text-align: center;
+            border-bottom: 3px solid #e91e63;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .report-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e91e63;
+            margin-bottom: 15px;
+        }
+        
+        .report-meta {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .report-meta span {
+            margin: 0 15px;
+        }
+        
+        .patient-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #e91e63;
+        }
+        
+        .patient-info h3 {
+            margin: 0 0 12px 0;
+            color: #e91e63;
+            font-size: 15px;
+        }
+        
+        .patient-info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .patient-info td {
+            padding: 6px;
+            font-size: 12px;
+        }
+        
+        .patient-info td:first-child {
+            color: #666;
+            width: 120px;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .risk-low { background: #d4edda; color: #155724; }
+        .risk-medium { background: #fff3cd; color: #856404; }
+        .risk-high { background: #f8d7da; color: #721c24; }
+        
+        .report-content {
+            font-size: 12px;
+            line-height: 1.6;
+            text-align: justify;
+            margin: 25px 0;
+        }
+        
+        .report-content p {
+            margin-bottom: 12px;
+            text-indent: 2em;
+        }
+        
+        .report-footer {
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 2px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        
+        .signature {
+            text-align: right;
+        }
+        
+        .signature p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .signature-line {
+            display: inline-block;
+            width: 150px;
+            border-bottom: 1px solid #333;
+            margin-left: 10px;
+        }
+        
+        .contact-info {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .contact-info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="report-header">
+            <div class="report-title">乳腺健康管理报告</div>
+            <div class="report-meta">
+                <span>报告编号：{{ report_code }}</span>
+                <span>生成日期：{{ report_date }}</span>
+            </div>
+        </div>
+        
+        <div class="patient-info">
+            <h3>📋 患者信息</h3>
+            <table>
+                <tr>
+                    <td>姓名：</td>
+                    <td><strong>{{ patient_name }}</strong></td>
+                    <td>年龄：</td>
+                    <td><strong>{{ patient_age }}岁</strong></td>
+                </tr>
+                <tr>
+                    <td>BI-RADS分级：</td>
+                    <td><strong>{{ birads_level }}级</strong></td>
+                    <td>风险等级：</td>
+                    <td>
+                        {% if risk_level == '低风险' or risk_level == '低危' %}
+                            <span class="risk-badge risk-low">{{ risk_level }}</span>
+                        {% elif risk_level == '中风险' or risk_level == '中危' %}
+                            <span class="risk-badge risk-medium">{{ risk_level }}</span>
+                        {% else %}
+                            <span class="risk-badge risk-high">{{ risk_level }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>结节大小：</td>
+                    <td>{{ nodule_size }}</td>
+                    <td>症状：</td>
+                    <td>{{ symptoms }}</td>
+                </tr>
+                <tr>
+                    <td>家族史：</td>
+                    <td colspan="3">{{ family_history }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="report-content">
+            {{ final_content | safe }}
+        </div>
+        
+        <div class="report-footer">
+            <div class="contact-info">
+                <p><strong>咨询服务</strong></p>
+                <p>📞 咨询电话：400-xxx-xxxx</p>
+                <p>📧 电子邮箱：health@example.com</p>
+                <p>🏥 如有疑问，请及时联系您的健康管理师</p>
+            </div>
+            
+            <div class="signature">
+                <p>健康管理师签名：<span class="signature-line"></span></p>
+                <p>日期：{{ report_date }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+
+

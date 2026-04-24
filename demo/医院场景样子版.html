@@ -1,0 +1,2259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多结节随访管理系统样子版</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif;background:#f3f6fb;color:#111827;font-size:13px}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .login-page{position:fixed;inset:0;z-index:1000;display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);background:#f6f9ff;overflow:hidden}
+    .login-page::before{content:"";position:absolute;left:0;right:0;bottom:0;height:34%;pointer-events:none;background:
+      radial-gradient(ellipse at 26% 100%,rgba(21,94,239,.24),transparent 52%),
+      repeating-linear-gradient(165deg,rgba(21,94,239,.18) 0 1px,transparent 1px 18px);
+      opacity:.5}
+    .login-page.hide{display:none}
+    .login-visual{position:relative;overflow:hidden;background:
+      radial-gradient(circle at 20% 18%,rgba(255,255,255,.95),transparent 12%),
+      radial-gradient(circle at 38% 34%,rgba(21,94,239,.1),transparent 28%),
+      linear-gradient(155deg,#f8fbff 0%,#eaf4ff 48%,#d8eaff 100%);
+      color:#155eef;display:flex;align-items:center;justify-content:center;padding:48px}
+    .login-visual::before{content:"";position:absolute;inset:0;background-image:
+      linear-gradient(rgba(21,94,239,.055) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(21,94,239,.055) 1px,transparent 1px);
+      background-size:34px 34px;mask-image:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.18));}
+    .login-visual::after{content:"";position:absolute;right:-22%;top:-12%;width:50%;height:124%;background:#f6f9ff;border-radius:50%;box-shadow:-18px 0 0 rgba(21,94,239,.06)}
+    .login-visual-inner{position:relative;z-index:1;width:min(420px,80%);display:flex;flex-direction:column;align-items:center;text-align:center;transform:translateX(-52px)}
+    .login-pattern{position:absolute;inset:0;z-index:0;pointer-events:none}
+    .login-pattern span{position:absolute;width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.35)}
+    .login-pattern span::after{content:"";position:absolute;left:7px;top:3px;width:118px;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.85),transparent)}
+    .login-pattern span:nth-child(1){left:10%;top:22%}
+    .login-pattern span:nth-child(2){left:28%;top:14%}
+    .login-pattern span:nth-child(3){left:12%;bottom:30%}
+    .login-pattern span:nth-child(4){right:26%;top:32%}
+    .login-pattern span:nth-child(5){right:20%;bottom:22%}
+    .login-wave{position:absolute;left:0;right:0;bottom:0;height:34%;z-index:0;opacity:.78}
+    .login-wave svg{width:100%;height:100%;display:block}
+    .login-visual-icon{width:156px;height:112px;border-radius:14px;background:rgba(255,255,255,.92);border:1px solid #d8e8fb;display:flex;align-items:center;justify-content:center;margin-bottom:28px;box-shadow:0 22px 44px rgba(21,94,239,.14)}
+    .login-monitor{width:96px;height:64px;border-radius:8px;background:#334155;position:relative;box-shadow:0 12px 0 -7px rgba(21,94,239,.22)}
+    .login-monitor::before{content:"";position:absolute;inset:9px 12px;background:#fff;border-radius:3px}
+    .login-monitor::after{content:"";position:absolute;left:43px;bottom:-18px;width:10px;height:18px;background:#4b5563}
+    .login-dots{position:absolute;z-index:2;width:6px;height:6px;background:#155eef;border-radius:50%;box-shadow:0 14px 0 #80b7ff,0 28px 0 #b5d7ff;left:43px;top:18px}
+    .login-visual-title{font-size:22px;font-weight:850;letter-spacing:.2px;color:#0f172a;white-space:nowrap}
+    .login-visual-sub{font-size:13px;color:#64748b;margin-top:10px;white-space:nowrap}
+    .login-panel-wrap{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:48px;background:#f6f9ff}
+    .login-panel-wrap::before{content:"";position:absolute;left:-28%;top:-15%;width:54%;height:130%;border-radius:50%;background:#f6f9ff;box-shadow:-20px 0 0 rgba(21,94,239,.05);z-index:-1}
+    .login-panel{width:390px;background:#fff;border:1px solid #e1e9f5;border-radius:14px;padding:32px 34px;box-shadow:0 26px 70px rgba(15,23,42,.08)}
+    .login-title{font-size:24px;font-weight:900;color:#111827;margin-bottom:8px}
+    .login-sub{color:#64748b;margin-bottom:24px}
+    .login-field{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+    .login-field label{font-weight:750;color:#334155}
+    .login-field input,.login-field select{height:40px;border:1px solid #d9e2ef;border-radius:5px;padding:0 12px;outline:none;background:#fff;color:#111827}
+    .login-field input:focus,.login-field select:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.1)}
+    .login-submit{width:100%;height:42px;border:0;border-radius:5px;background:#155eef;color:#fff;font-weight:850;margin-top:8px}
+    .login-submit:hover{background:#0f4fd4}
+    .login-hint{display:flex;justify-content:space-between;color:#94a3b8;font-size:12px;margin-top:12px}
+    .login-hint button{border:0;background:transparent;color:#155eef;padding:0}
+    .topbar{height:56px;background:#fff;border-bottom:1px solid #e6edf7;display:flex;align-items:center;padding:0 18px;gap:14px}
+    .brand{display:flex;align-items:center;gap:10px;min-width:300px}
+    .mark{width:34px;height:34px;border-radius:8px;background:#155eef;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+    .brand-title{font-size:16px;font-weight:800}
+    .top-spacer{flex:1}
+    .top-right{display:flex;align-items:center;gap:14px;color:#64748b;font-weight:750}
+    .top-pill{height:32px;border:1px solid #d9e2ef;border-radius:8px;padding:0 12px;display:flex;align-items:center;color:#334155;background:#fff;font-weight:750;gap:8px}
+    .top-icon{width:32px;height:32px;border-radius:10px;border:1px solid #e6edf7;background:#fff;display:grid;place-items:center;color:#64748b}
+    .top-icon.dot{position:relative}
+    .top-icon.dot::after{content:"";position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:50%;background:#ef4444;border:2px solid #fff}
+    .layout{height:calc(100% - 56px);display:grid;grid-template-columns:200px minmax(0,1fr)}
+    .sidebar{background:#fff;border-right:1px solid #e6edf7;display:flex;flex-direction:column;min-height:0}
+    .side-head{padding:16px 15px 8px;color:#94a3b8;font-size:12px;font-weight:800}
+    .nav{display:flex;flex-direction:column;padding:4px 0}
+    .nav button{border:0;background:#fff;text-align:left;display:flex;align-items:center;gap:10px;padding:10px 16px;color:#526175;font-weight:750;border-left:3px solid transparent}
+    .nav .nav-ico{width:30px;height:30px;border-radius:10px;background:#f1f5f9;display:grid;place-items:center;color:#64748b;border:1px solid #e6edf7;font-weight:900}
+    .nav button.active{background:#eef5ff;color:#155eef;border-left-color:#155eef}
+    .nav button.active .nav-ico{background:#e7f0ff;border-color:#cfe0ff;color:#155eef}
+    .nav button:hover{background:#f8fbff;color:#155eef}
+    .nav .num{margin-left:auto;background:#eef2f7;color:#64748b;border-radius:999px;padding:1px 7px;font-size:11px}
+    .nav button.active .num{background:#155eef;color:#fff}
+    .nodule-entry{display:none}
+    .entry-title{font-size:12px;color:#94a3b8;font-weight:850;margin:0 4px 8px}
+    .entry-help{font-size:11px;color:#94a3b8;line-height:1.5;margin:0 4px 8px}
+    .entry-grid{display:grid;gap:6px}
+    .entry-btn{border:1px solid #e1e8f2;background:#fff;border-radius:6px;padding:8px 9px;text-align:left;color:#334155;font-weight:750;display:flex;align-items:center;justify-content:space-between}
+    .entry-btn:hover,.entry-btn.active{border-color:#155eef;background:#eef5ff;color:#155eef}
+    .entry-btn span:last-child{font-size:11px;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 7px}
+    .entry-btn.active span:last-child{background:#155eef;color:#fff}
+    .side-note{display:none}
+    .workspace{display:flex;flex-direction:column;min-width:0;min-height:0}
+    .summary{height:104px;background:#f3f6fb;border-bottom:1px solid #e6edf7;display:grid;grid-template-columns:repeat(6,minmax(138px,1fr));gap:14px;flex-shrink:0;padding:14px 22px 12px}
+    .kpi{position:relative;padding:13px 15px;border:1px solid #dbe6f4;border-radius:8px;background:#fff;min-width:0;box-shadow:0 4px 14px rgba(15,23,42,.04);overflow:hidden;display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:10px}
+    .kpi:last-child{border-right:1px solid #d9e2ef}
+    .kpi .label{color:#526175;font-weight:800;font-size:11px}
+    .kpi .value{font-size:21px;font-weight:950;margin-top:7px;color:#155eef;line-height:1}
+    .kpi .hint{font-size:10px;color:#8a9bb1;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+    .kpi-icon{grid-row:1 / span 3;width:27px;height:27px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#eef5ff;color:#155eef;font-weight:900;font-size:14px;margin-top:8px}
+    .kpi-icon.orange{background:#fff4e8;color:#f97316}.kpi-icon.green{background:#ecfdf5;color:#16a34a}.kpi-icon.purple{background:#f5f0ff;color:#8b5cf6}.kpi-icon.cyan{background:#eafcff;color:#0ea5b7}
+    .spark{position:absolute;right:12px;bottom:12px;width:62px;height:22px}
+    .spark path{fill:none;stroke:#5b8ff9;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .spark.orange path{stroke:#f97316}.spark.green path{stroke:#16a34a}.spark.purple path{stroke:#8b5cf6}.spark.cyan path{stroke:#0ea5b7}
+    .contextbar{height:38px;background:#fff;border-bottom:1px solid #e6edf7;display:flex;align-items:center;gap:8px;padding:0 14px;color:#64748b;font-weight:750;flex-shrink:0}
+    .contextbar .strong{color:#111827;font-weight:850}
+    .contextbar .arrow{color:#94a3b8}
+    .content{flex:1;min-height:0;display:grid;grid-template-columns:minmax(520px,.95fr) minmax(0,1.05fr) 310px}
+    .dashboard{flex:1;min-height:0;overflow:auto;padding:16px 22px 22px;background:#f3f6fb}
+    .dash-top{display:none}
+    .page-title{font-size:22px;font-weight:950;color:#0f172a;letter-spacing:0}
+    .page-sub{font-size:13px;color:#64748b;margin-top:8px;font-weight:700}
+    .dash-actions{display:flex;gap:8px;align-items:center}
+    .dash-chip{border:1px solid #d2deee;background:#fff;border-radius:7px;padding:8px 13px;color:#475569;font-weight:850;font-size:13px}
+    .dash-card{background:#fff;border:1px solid #e6edf7;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+    .dash-head{height:46px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+    .dash-title{font-weight:900;color:#0f172a}
+    .source-row{display:none}
+    .source-card{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;min-height:92px}
+    .source-card .big{font-size:28px;font-weight:950;color:#0f172a;margin-top:8px;line-height:1}
+    .dash-grid{display:grid;grid-template-columns:1.35fr .85fr;gap:12px;margin-top:12px}
+    .nodule-board{padding:0 10px 10px}
+    .dash-table{width:100%;border-collapse:collapse}
+    .dash-table th{background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 8px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+    .dash-table td{padding:10px 8px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .dash-table tr:last-child td{border-bottom:0}
+    .type-cell{display:flex;align-items:center;gap:8px;font-weight:800}
+    .type-icon{width:22px;height:22px;border-radius:6px;background:#eef5ff;color:#155eef;display:flex;align-items:center;justify-content:center;font-size:12px}
+    .metric-red{color:#dc2626}.metric-orange{color:#ea580c}.metric-green{color:#15803d}.metric-blue{color:#155eef}
+    .progress{width:78px;height:6px;background:#e8eef8;border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+    .progress span{display:block;height:100%;background:#4f83f1;border-radius:99px}
+    .link-btn{border:1px solid #cddcf4;background:#f8fbff;color:#155eef;border-radius:5px;padding:4px 10px}
+    .chart-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+    .chart-card{padding:14px 16px;min-height:168px}
+    .donut{width:104px;height:104px;border-radius:50%;background:conic-gradient(#5b8ff9 0 32%,#5ad8a6 32% 57%,#f6bd16 57% 73%,#6dc8ec 73% 89%,#d3adf7 89%);display:grid;place-items:center;margin:8px auto}
+    .donut::after{content:"12,486\\A总患者数";white-space:pre;text-align:center;width:62px;height:62px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:900;font-size:12px;color:#0f172a}
+    .bar-row{display:grid;grid-template-columns:72px minmax(0,1fr) 44px;gap:8px;align-items:center;margin:10px 0;color:#64748b}
+    .bar{height:8px;background:#edf2f7;border-radius:99px;overflow:hidden}.bar span{display:block;height:100%;border-radius:99px}
+    .todo-list{display:grid;gap:8px;padding:12px}
+    .todo-row{display:grid;grid-template-columns:92px 44px minmax(0,1fr);gap:10px;align-items:center;background:#f8fafc;border-radius:6px;padding:8px 10px}
+    .todo-row .muted{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .remind-row{border-top:1px solid #edf2f7;padding:10px 0;color:#475569;display:flex;justify-content:space-between;gap:12px}
+    .pane{min-height:0;background:#fff;border-right:1px solid #d9e2ef;display:flex;flex-direction:column}
+    .pane:last-child{border-right:0;border-left:1px solid #d9e2ef}
+    .pane-head{height:48px;border-bottom:1px solid #e4ebf5;display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0}
+    .pane-title{font-size:15px;font-weight:850}
+    .muted{color:#64748b}
+    .head-actions{margin-left:auto;display:flex;gap:6px}
+    .btn,.primary,.ghost{border:1px solid #d9e2ef;border-radius:6px;background:#fff;color:#475569;padding:6px 10px}
+    .primary{background:#155eef;border-color:#155eef;color:#fff;font-weight:750}
+    .ghost{border:0;background:transparent;color:#155eef}
+    .filters{display:flex;gap:7px;padding:10px 12px;border-bottom:1px solid #edf2f7;flex-wrap:wrap}
+    .filters input,.filters select{height:32px;border:1px solid #d9e2ef;border-radius:6px;padding:0 9px;background:#fff;outline:none;min-width:0}
+    .status-tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #edf2f7;overflow-x:auto}
+    .status-tabs button{border:1px solid #d9e2ef;background:#fff;border-radius:6px;padding:7px;color:#526175;font-weight:700}
+    .status-tabs button.active{border-color:#155eef;background:#eef5ff;color:#155eef}
+    .patient-list{overflow:auto;flex:1;min-height:0}
+    .patient-table{width:100%;border-collapse:collapse;min-width:760px;background:#fff}
+    .patient-table th{position:sticky;top:0;z-index:1;background:#f8fafc;border-bottom:1px solid #d9e2ef;color:#64748b;font-size:12px;text-align:left;padding:9px 10px;font-weight:850;white-space:nowrap}
+    .patient-table td{border-bottom:1px solid #edf2f7;padding:9px 10px;vertical-align:middle;white-space:nowrap}
+    .patient-table tr{cursor:pointer}
+    .patient-table tbody tr:hover{background:#f8fbff}
+    .patient-table tbody tr.active{background:#eef5ff}
+    .patient-cell-name{font-weight:850;color:#111827}
+    .patient-cell-sub{font-size:11px;color:#64748b;margin-top:3px}
+    .tag{display:inline-flex;align-items:center;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:900;line-height:1.4}
+    .tag.high{background:#fff1f1;color:#dc2626}
+    .tag.mid{background:#fff7e6;color:#c26a00}
+    .tag.low{background:#ecfff3;color:#14843b}
+    .tag.blue{background:#eef5ff;color:#155eef}
+    .tag.orange{background:#fff4e8;color:#d35a00}
+    .tag.gray{background:#f1f5f9;color:#64748b}
+    .tag.green{background:#ecfff3;color:#14843b}
+    .entry-summary{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #edf2f7;background:#fbfdff}
+    .main{min-height:0;display:flex;flex-direction:column;background:#f3f6fb}
+    .patient-strip{background:#fff;border-bottom:1px solid #d9e2ef;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+    .person{min-width:210px}
+    .person .name{font-size:18px;font-weight:900}
+    .person .sub{color:#64748b;margin-top:3px}
+    .strip-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;flex:1}
+    .mini{border:1px solid #e4ebf5;background:#f8fafc;border-radius:7px;padding:8px 10px}
+    .mini .k{font-size:11px;color:#7c8da5}
+    .mini .v{font-weight:850;margin-top:4px}
+    .flow{background:#fff;border-bottom:1px solid #d9e2ef;padding:12px 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex-shrink:0}
+    .step{border:1px solid #d9e2ef;border-radius:7px;background:#fff;padding:9px 10px;position:relative;min-height:64px}
+    .step.done{border-color:#37a66a;background:#f1fff6}
+    .step.active{border-color:#155eef;background:#eef5ff}
+    .step .step-title{font-weight:850}
+    .step .step-sub{font-size:11px;color:#64748b;margin-top:5px;line-height:1.5}
+    .work-area{flex:1;min-height:0;overflow:auto;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:12px}
+    .section{background:#fff;border:1px solid #d9e2ef;border-radius:8px;overflow:hidden}
+    .section-head{height:42px;border-bottom:1px solid #edf2f7;display:flex;align-items:center;padding:0 13px;gap:8px}
+    .section-title{font-weight:850}
+    .section-body{padding:12px 13px}
+    .report-grid{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px 12px}
+    .report-grid .k{color:#7c8da5}
+    .report-grid .v{line-height:1.65}
+    .ai-box{background:#f8fbff;border:1px solid #dce8f8;border-radius:7px;padding:11px 12px;line-height:1.7;color:#253247}
+    .action-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .right-body{overflow:auto;padding:10px 12px}
+    .queue-page{flex:1;min-height:0;overflow:auto;padding:14px 18px 18px;background:#f3f6fb}
+    .queue-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .queue-title{font-size:20px;font-weight:950;color:#0f172a}
+    .crumb{color:#64748b;font-weight:700}
+    .queue-filters{padding:14px 16px;margin-bottom:12px}
+    .filter-grid{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr 1fr;gap:12px 18px;align-items:end}
+    .filter-item{display:flex;flex-direction:column;gap:6px;color:#475569;font-weight:750}
+    .filter-item input,.filter-item select{height:34px;border:1px solid #d9e2ef;border-radius:8px;padding:0 10px;background:#fff;color:#111827;outline:none}
+    .filter-item input:focus,.filter-item select:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.10)}
+    .date-pair{display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:center}
+    .queue-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(390px,.9fr);gap:12px;align-items:stretch}
+    .queue-table-wrap{overflow:auto}
+    .queue-table{width:100%;border-collapse:collapse;min-width:850px}
+    .queue-table th{background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 9px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+    .queue-table td{padding:10px 9px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .queue-table tbody tr.active{background:#eef5ff}
+    .queue-table tbody tr:hover{background:#f8fbff}
+    .queue-actions{display:flex;gap:6px;color:#155eef;font-size:12px;font-weight:750}
+    .pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-top:1px solid #edf2f7}
+    .page-btn{border:1px solid #d9e2ef;background:#fff;border-radius:8px;padding:6px 10px;color:#475569;font-weight:850}
+    .page-btn.active{background:#155eef;color:#fff;border-color:#155eef}
+    .detail-card{min-height:420px}
+    .detail-body{padding:14px 16px}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:14px}
+    .detail-k{color:#64748b}.detail-v{font-weight:850;color:#0f172a;margin-top:4px}
+    .detail-line{line-height:1.75;color:#334155;margin:10px 0}
+    .flow-line{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:14px 0}
+    .flow-node{text-align:center;font-size:11px;color:#64748b;position:relative}
+    .flow-dot{width:18px;height:18px;border-radius:50%;background:#cbd5e1;margin:0 auto 6px;display:grid;place-items:center;color:#fff;font-size:11px}
+    .flow-node.done .flow-dot{background:#22c55e}.flow-node.active .flow-dot{background:#155eef}
+    .report-page{flex:1;min-height:0;overflow:auto;padding:14px 18px 18px;background:#f3f6fb}
+    .report-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(420px,.85fr);gap:12px;align-items:stretch}
+    .report-filters{padding:14px 16px;margin-bottom:12px}
+    .report-filter-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr 1fr;gap:12px 18px;align-items:end}
+    .report-filter-grid .span2{grid-column:span 2}
+    .report-table-wrap{overflow:auto}
+    .report-table{width:100%;border-collapse:collapse;min-width:980px}
+    .report-table th{background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 9px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+    .report-table td{padding:10px 9px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .report-table tbody tr.active{background:#eef5ff}
+    .report-table tbody tr:hover{background:#f8fbff}
+    .report-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .ico-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid #d9e2ef;background:#fff;color:#64748b}
+    .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:8px}
+    .kv .k{color:#94a3b8;font-size:12px}
+    .kv .v{font-weight:900;color:#0f172a;margin-top:4px}
+    .badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .hline{height:1px;background:#edf2f7;margin:12px 0}
+    .review-page{flex:1;min-height:0;overflow:auto;padding:14px 18px 18px;background:#f3f6fb}
+    .review-filters{padding:14px 16px;margin-bottom:12px}
+    .review-filter-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr 1fr 1fr;gap:12px 18px;align-items:end}
+    .review-filter-grid .span2{grid-column:span 2}
+    .review-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(440px,.9fr);gap:12px;align-items:stretch}
+    .review-table-wrap{overflow:auto}
+    .review-table{width:100%;border-collapse:collapse;min-width:1040px}
+    .review-table th{background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 9px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+    .review-table td{padding:10px 9px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .review-table tbody tr.active{background:#eef5ff}
+    .review-table tbody tr:hover{background:#f8fbff}
+    .review-detail{padding:14px 16px}
+    .review-sections{display:grid;gap:10px}
+    .review-top2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .review-section{border:1px solid #eef2f7;border-radius:10px;padding:12px 12px;background:#fff}
+    .review-section .t{font-weight:950;color:#0f172a;display:flex;align-items:center;gap:8px}
+    .review-section .t .idx{width:18px;height:18px;border-radius:6px;background:#eef5ff;color:#155eef;display:grid;place-items:center;font-size:12px;font-weight:950}
+    .review-section .txt{margin-top:8px;line-height:1.75;color:#334155}
+    .review-mini-kv{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:10px}
+    .review-mini-kv .k{color:#94a3b8;font-size:12px}
+    .review-mini-kv .v{font-weight:900;color:#0f172a;margin-top:4px}
+    .file-card{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .file-ico{width:40px;height:40px;border-radius:12px;border:1px solid #e6edf7;background:#f8fbff;color:#155eef;display:grid;place-items:center;font-weight:950}
+    .review-side-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:10px}
+    .switch-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .sw{display:flex;align-items:center;justify-content:space-between;border:1px solid #eef2f7;border-radius:10px;padding:10px 12px;background:#fff}
+    .toggle{width:38px;height:22px;border-radius:999px;background:#e5e7eb;position:relative;transition:.2s;flex:0 0 auto}
+    .toggle::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(15,23,42,.15);transition:.2s}
+    .toggle.on{background:#155eef}
+    .toggle.on::after{left:19px}
+
+    .flow-dot{width:18px;height:18px;border-radius:50%;background:#cbd5e1;margin:0 auto 6px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:900}
+    .flow-node.done .flow-dot{background:#22c55e}
+    .flow-node.active .flow-dot{background:#155eef}
+
+    .follow-page{flex:1;min-height:0;overflow:auto;padding:14px 18px 18px;background:#f3f6fb}
+    .follow-filters{padding:14px 16px;margin-bottom:12px}
+    .follow-filter-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:12px 18px;align-items:end}
+    .follow-filter-grid .span2{grid-column:span 2}
+    .follow-filter-grid .btns{grid-column:6 / span 2;display:flex;justify-content:flex-end;gap:10px;align-items:end}
+    .follow-filter-grid .btns .btn,.follow-filter-grid .btns .primary{height:34px;padding:0 14px;border-radius:8px}
+    .follow-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(460px,.95fr);gap:12px;align-items:stretch}
+    .follow-table-wrap{overflow:auto}
+    .follow-table{width:100%;border-collapse:collapse;min-width:1100px}
+    .follow-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 10px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+    .follow-table td{padding:10px 10px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .follow-table tbody tr.active{background:#eef5ff}
+    .follow-table tbody tr:hover{background:#f8fbff}
+    .follow-detail{padding:14px 16px}
+    .follow-tip{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:8px 10px;font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .follow-tip .muted{color:#c2410c}
+    .follow-tip .x{border:0;background:transparent;color:#c2410c;font-weight:950}
+    .seg{border:1px solid #eef2f7;border-radius:10px;background:#fff;padding:12px 12px}
+    .seg + .seg{margin-top:10px}
+    .seg .t{font-weight:950;color:#0f172a;display:flex;align-items:center;gap:8px}
+    .seg .t .idx{width:18px;height:18px;border-radius:6px;background:#eef5ff;color:#155eef;display:grid;place-items:center;font-size:12px;font-weight:950}
+    .seg .txt{margin-top:8px;line-height:1.75;color:#334155}
+    .kvs{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:10px}
+    .kvs .k{color:#94a3b8;font-size:12px}
+    .kvs .v{font-weight:900;color:#0f172a;margin-top:4px}
+    .task-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:10px}
+    .task-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:10px}
+
+    .stats-page{flex:1;min-height:0;overflow:auto;padding:14px 18px 18px;background:#f3f6fb}
+    .stats-tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .stats-tabs button{border:1px solid #e6edf7;background:#fff;border-radius:10px;padding:7px 12px;color:#526175;font-weight:900}
+    .stats-tabs button.active{border-color:#155eef;background:#eef5ff;color:#155eef}
+    .stats-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .stats-bar .chip{border:1px solid #e6edf7;background:#fff;border-radius:10px;padding:7px 12px;color:#526175;font-weight:900}
+    .stats-bar .chip.active{border-color:#155eef;background:#eef5ff;color:#155eef}
+    .stats-filters{padding:12px 14px;margin-bottom:12px}
+    .stats-filter-row{display:grid;grid-template-columns:1fr;gap:12px}
+    .stats-filter-row + .stats-filter-row{margin-top:12px;padding-top:12px;border-top:1px solid #eef2f7}
+    .stats-time-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .stats-time-row .date-pair{max-width:280px}
+    .stats-chip-wrap{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .stats-chip-wrap .muted{margin-right:4px;font-weight:750}
+    .stats-filter-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px 18px;align-items:end}
+    .stats-filter-grid .btns{grid-column:5 / span 2;display:flex;justify-content:flex-end;gap:10px;align-items:end;flex-wrap:wrap}
+    .stats-kpi-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-top:12px}
+    .stats-chart-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+    .stats-bottom{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.85fr);gap:12px;margin-top:12px;align-items:start}
+    .mini-chart{height:200px}
+    .chart-pad{padding:12px 14px}
+    .stat-ring{width:140px;height:140px;border-radius:50%;margin:0 auto;background:conic-gradient(#5b8ff9 0 32%,#5ad8a6 32% 57%,#f6bd16 57% 73%,#6dc8ec 73% 89%,#d3adf7 89%);position:relative}
+    .stat-ring::after{content:"12,486\\A总患者数";white-space:pre;text-align:center;position:absolute;inset:0;display:grid;place-items:center;font-weight:950;font-size:11px;color:#0f172a;background:radial-gradient(circle at center,#fff 0 55%,transparent 56%)}
+    .stat-ring.blank::after{content:"";font-size:0;color:transparent;background:radial-gradient(circle at center,#fff 0 55%,transparent 56%)}
+    .stats-table{width:100%;border-collapse:collapse;min-width:920px}
+    .stats-table th{position:sticky;top:0;background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 9px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+    .stats-table td{padding:10px 9px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .warn-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid #edf2f7}
+    .warn-ico{width:26px;height:26px;border-radius:10px;display:grid;place-items:center;font-weight:950}
+    .warn-ico.orange{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+    .warn-ico.red{background:#fff1f2;color:#dc2626;border:1px solid #fecdd3}
+    .warn-ico.yellow{background:#fefce8;color:#a16207;border:1px solid #fde047}
+    .warn-ico.blue{background:#eef5ff;color:#155eef;border:1px solid #cfe0ff}
+    .warn-ico.purple{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+    .warn-link{margin-top:6px;color:#155eef;font-weight:850;background:transparent;border:0;padding:0;cursor:pointer}
+
+    /** 患者建档页：左侧表单 + 右侧流程/预览（对齐高保真原型） */
+    .record-page{flex:1;min-height:0;overflow:auto;padding:14px 18px 96px;background:#f3f6fb}
+    .record-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);gap:12px;align-items:start}
+    .record-form .form-sec{border:1px solid #eef2f7;border-radius:10px;background:#fff;padding:14px 14px;margin-bottom:12px}
+    .record-form .sec-h{font-weight:950;color:#0f172a;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .record-form .sec-h .no{width:22px;height:22px;border-radius:6px;background:#eef5ff;color:#155eef;display:grid;place-items:center;font-size:12px;font-weight:950}
+    .req::after{content:" *";color:#ef4444;font-weight:900}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+    .form-grid.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .form-grid .full{grid-column:1 / -1}
+    .method-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .method-card{border:1px solid #e6edf7;border-radius:10px;background:#fff;padding:12px 12px;position:relative;cursor:pointer;text-align:left}
+    .method-card.active{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.12)}
+    .method-card .ico{width:34px;height:34px;border-radius:10px;background:#f8fbff;border:1px solid #dbeafe;display:grid;place-items:center;color:#155eef;font-weight:950}
+    .method-card .t{margin-top:8px;font-weight:950;color:#0f172a}
+    .method-card .s{margin-top:4px;color:#64748b;font-size:12px;line-height:1.55}
+    .method-card .chk{position:absolute;right:10px;top:10px;width:18px;height:18px;border-radius:6px;border:1px solid #e6edf7;display:grid;place-items:center;color:#fff;font-weight:950;font-size:12px}
+    .method-card.active .chk{background:#155eef;border-color:#155eef}
+    .tag-row{display:flex;flex-wrap:wrap;gap:8px}
+    .tag-btn{border:1px solid #e6edf7;background:#fff;border-radius:999px;padding:6px 12px;color:#475569;font-weight:850}
+    .tag-btn.active{border-color:#155eef;background:#eef5ff;color:#155eef}
+    .upload-zone{border:1px dashed #cbd5e1;border-radius:10px;padding:16px;text-align:center;color:#64748b;background:#fbfdff}
+    .file-card2{display:flex;align-items:center;gap:10px;border:1px solid #eef2f7;border-radius:10px;padding:10px 12px;background:#fff}
+    .file-card2 .fi{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:950;color:#fff}
+    .file-card2 .fi.pdf{background:#ef4444}.file-card2 .fi.zip{background:#f97316}
+    .record-side .side-card{border:1px solid #eef2f7;border-radius:10px;background:#fff;padding:12px 14px;margin-bottom:12px}
+    .wf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:start}
+    .wf-node{border:1px solid #eef2f7;border-radius:10px;padding:10px;text-align:center;background:#fbfdff}
+    .wf-node .ic{width:34px;height:34px;border-radius:10px;margin:0 auto 6px;display:grid;place-items:center;background:#eef5ff;color:#155eef;font-weight:950}
+    .wf-arrow{text-align:center;color:#94a3b8;font-weight:950;padding:6px 0}
+    .record-foot{position:sticky;bottom:0;left:0;right:0;margin:12px -18px -14px;padding:12px 18px;background:#fff;border-top:1px solid #e6edf7;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .warn-title{font-weight:950;color:#0f172a}
+    .warn-text{color:#64748b;line-height:1.6;margin-top:4px}
+    .task{border-bottom:1px solid #edf2f7;padding:10px 0}
+    .task:last-child{border-bottom:0}
+    .task-title{font-weight:850;display:flex;align-items:center;gap:6px}
+    .task-text{color:#64748b;line-height:1.6;margin-top:5px}
+    .timeline{margin-top:6px}
+    .event{display:grid;grid-template-columns:72px minmax(0,1fr);gap:9px;padding:8px 0;border-bottom:1px solid #edf2f7}
+    .event:last-child{border-bottom:0}
+    .event .time{color:#94a3b8;font-size:12px}
+    .event .text{line-height:1.6}
+    .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(16px);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    @media(max-width:1280px){
+      .summary{grid-template-columns:repeat(7,minmax(96px,1fr));height:88px}
+      .content{grid-template-columns:minmax(460px,1fr) minmax(0,1fr)}
+      .pane:last-child{display:none}
+      .stats-chart-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:900px){
+      .login-page{grid-template-columns:1fr}
+      .login-visual{display:none}
+      .login-panel-wrap{padding:28px}
+    }
+  </style>
+</head>
+<body>
+  <section class="login-page" id="loginPage">
+    <div class="login-visual">
+      <div class="login-pattern"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="login-wave" aria-hidden="true">
+        <svg viewBox="0 0 800 260" preserveAspectRatio="none">
+          <path d="M0 172 C130 128 235 210 360 158 C500 100 620 150 800 92 L800 260 L0 260 Z" fill="rgba(21,94,239,.20)"/>
+          <path d="M0 206 C150 150 270 220 420 170 C560 122 650 170 800 130 L800 260 L0 260 Z" fill="rgba(21,94,239,.14)"/>
+          <path d="M0 115 C90 76 168 145 245 104 C340 54 418 136 520 92 C645 38 708 92 800 58" fill="none" stroke="rgba(255,255,255,.72)" stroke-width="2"/>
+          <path d="M0 150 C110 105 190 178 305 128 C420 78 515 155 638 105 C720 72 760 83 800 75" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5" stroke-dasharray="3 8"/>
+          <g fill="rgba(255,255,255,.9)">
+            <circle cx="72" cy="118" r="4"/><circle cx="198" cy="134" r="3"/><circle cx="346" cy="110" r="4"/><circle cx="510" cy="112" r="3"/><circle cx="670" cy="92" r="4"/>
+          </g>
+        </svg>
+      </div>
+      <div class="login-visual-inner">
+        <div class="login-visual-icon">
+          <div class="login-monitor"><span class="login-dots"></span></div>
+        </div>
+        <div class="login-visual-title">多结节随访管理系统</div>
+        <div class="login-visual-sub">多机构统一登录，按场景进入对应工作台</div>
+      </div>
+    </div>
+    <div class="login-panel-wrap">
+      <div class="login-panel">
+        <div class="login-title">登录</div>
+        <div class="login-sub">请选择登录名称并输入管理员账号</div>
+        <div class="login-field">
+          <label for="loginOrg">登录名称</label>
+          <select id="loginOrg">
+            <option value="平邑县中医院">医院</option>
+            <option value="北城社区卫生服务中心">社区</option>
+            <option value="康宁大药房">药店</option>
+            <option value="瑞康体检中心">体检中心</option>
+          </select>
+        </div>
+        <div class="login-field">
+          <label for="loginAccount">管理员账户</label>
+          <input id="loginAccount" value="admin" autocomplete="username">
+        </div>
+        <div class="login-field">
+          <label for="loginPassword">密码</label>
+          <input id="loginPassword" type="password" value="123456" autocomplete="current-password">
+        </div>
+        <button class="login-submit" id="loginSubmit">登录</button>
+        <div class="login-hint">
+          <span>默认账户：admin</span>
+          <button type="button" id="loginReset">重置</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">医</div>
+      <div>
+        <div class="brand-title">医院多结节随访管理系统</div>
+      </div>
+    </div>
+    <div class="top-spacer"></div>
+    <div class="top-right">
+      <div class="top-pill"><span style="color:#94a3b8">当前机构：</span><span id="orgName">平邑县中医院</span> ▾</div>
+      <div class="top-pill" id="nowText">2026-04-23 09:30</div>
+      <div class="top-icon dot" title="通知">铃</div>
+      <div class="top-pill">管理员 ▾</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-head">医院多结节管理</div>
+      <nav class="nav" id="nav"></nav>
+      <div class="nodule-entry">
+        <div class="entry-title">多结节入口</div>
+        <div class="entry-help">按结节类型筛选患者队列</div>
+        <div class="entry-grid" id="noduleEntries"></div>
+      </div>
+      <div class="side-note">
+        <strong>主线闭环</strong><br>
+        医院登录 → 今日任务 → 患者队列表单 → 报告处理 → AI生成报告 → 医生复核 → 推送患者 → 随访闭环。
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <section class="summary" id="summary"></section>
+      <section class="contextbar" id="contextbar"></section>
+
+      <section class="content" id="content">
+        <aside class="pane">
+          <div class="pane-head">
+            <div class="pane-title">患者队列</div>
+            <div class="head-actions"><button class="primary" id="newPatient">新建档案</button></div>
+          </div>
+          <div class="filters">
+            <input id="search" placeholder="姓名/手机号/结节类型">
+            <select id="noduleFilter">
+              <option value="all">全部结节入口</option>
+            </select>
+            <select id="riskFilter">
+              <option value="all">全部风险</option>
+              <option value="high">高风险</option>
+              <option value="mid">中风险</option>
+              <option value="low">低风险</option>
+            </select>
+          </div>
+          <div class="entry-summary" id="entrySummary"></div>
+          <div class="status-tabs" id="statusTabs"></div>
+          <div class="patient-list" id="patientList"></div>
+        </aside>
+
+        <section class="main">
+          <div class="patient-strip" id="patientStrip"></div>
+          <div class="flow" id="flow"></div>
+          <div class="work-area">
+            <section class="section">
+              <div class="section-head">
+                <div class="section-title">当前处理区</div>
+                <span class="tag blue" id="activeStageTag">待处理报告</span>
+              </div>
+              <div class="section-body" id="workPanel"></div>
+            </section>
+
+            <section class="section">
+              <div class="section-head">
+                <div class="section-title">AI与人工边界</div>
+                <span class="muted">医生确认后才推送</span>
+              </div>
+              <div class="section-body">
+                <div class="ai-box" id="aiBoundary"></div>
+                <div class="timeline" id="timeline"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <aside class="pane">
+          <div class="pane-head">
+            <div class="pane-title">今日任务</div>
+            <span class="muted" id="taskScope">医院工作台</span>
+          </div>
+          <div class="right-body" id="taskList"></div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const modules = [
+      ["workbench","运行看板",""],
+      ["queue","患者队列",""],
+      ["record","患者建档",""],
+      ["report","报告处理",""],
+      ["review","医生复核",""],
+      ["push","患者触达",""],
+      ["followup","随访任务",""],
+      ["stats","管理统计",""]
+    ];
+
+    const noduleTypes = [
+      ["all","全部结节",68],
+      ["breast","乳腺结节",16],
+      ["thyroid","甲状腺结节",21],
+      ["lung","肺部结节",18],
+      ["lung_breast","肺部合并乳腺结节",7],
+      ["lung_thyroid","肺部合并甲状腺结节",4],
+      ["thyroid_breast","甲状腺合并乳腺结节",5],
+      ["thyroid_breast_lung","甲状腺、乳腺合并肺部结节",2],
+      ["triple","三合并结节",2]
+    ];
+
+    const stageLabels = {
+      intake:"待补资料",
+      report:"待处理报告",
+      parsed:"AI解析完成",
+      review:"待医生复核",
+      push:"待推送患者",
+      followup:"随访中",
+      alert:"异常待处理",
+      done:"已闭环"
+    };
+
+    const moduleLabels = {
+      workbench:"运行看板",
+      queue:"患者队列",
+      record:"患者建档",
+      report:"报告处理",
+      review:"医生复核",
+      push:"患者触达",
+      followup:"随访任务",
+      stats:"管理统计"
+    };
+
+    const patients = [
+      {
+        id:"p1",name:"王先生",age:58,phone:"138****4256",noduleType:"lung_thyroid",nodule:"肺部合并甲状腺结节",risk:"high",stage:"report",owner:"健康管理师",
+        report:"胸部CT提示右上肺磨玻璃结节 8mm；甲状腺超声提示 TI-RADS 4A。",
+        ai:"AI已提取肺结节大小、密度、位置、甲状腺分级，并建议进入高风险随访路径。诊疗判断需医生复核。",
+        next:"今天 15:30",events:["建档完成","问卷已回收","影像报告待处理"]
+      },
+      {
+        id:"p2",name:"李女士",age:43,phone:"136****8831",noduleType:"breast",nodule:"乳腺结节",risk:"mid",stage:"review",owner:"医生",
+        report:"乳腺超声提示 BI-RADS 3 类，建议结合既往影像随访。",
+        ai:"AI已生成健康管理报告草稿：解释报告、复查周期、生活方式建议、随访问卷。",
+        next:"今天 16:00",events:["报告已解析","健康管理报告已生成","等待医生复核"]
+      },
+      {
+        id:"p3",name:"陈女士",age:51,phone:"139****1902",noduleType:"lung_breast",nodule:"肺部合并乳腺结节",risk:"high",stage:"push",owner:"健康管理师",
+        report:"肺部实性小结节伴乳腺结节，需医生确认复查建议后推送。",
+        ai:"医生已确认报告内容，系统等待通过小程序和企微推送患者。",
+        next:"今天 17:20",events:["AI解析完成","医生已复核","待推送患者"]
+      },
+      {
+        id:"p4",name:"赵先生",age:62,phone:"137****7719",noduleType:"lung",nodule:"肺部结节",risk:"high",stage:"alert",owner:"医生",
+        report:"患者随访反馈咳血症状，系统触发异常预警。",
+        ai:"AI仅做预警分级和材料整理，已建议立即转医生处理，不自动输出诊疗结论。",
+        next:"立即处理",events:["随访中","患者反馈异常症状","已触发转医生"]
+      },
+      {
+        id:"p5",name:"刘女士",age:39,phone:"135****6027",noduleType:"thyroid",nodule:"甲状腺结节",risk:"low",stage:"followup",owner:"随访护士",
+        report:"甲状腺超声低风险结节，已进入定期复查提醒。",
+        ai:"系统已生成90天复查提醒和企微随访问卷。",
+        next:"2026-07-21",events:["已推送患者","随访任务已生成","等待到期提醒"]
+      },
+      {
+        id:"p6",name:"周女士",age:55,phone:"132****2811",noduleType:"triple",nodule:"三合并结节",risk:"high",stage:"review",owner:"医生",
+        report:"胸部CT、甲状腺超声、乳腺超声均提示需纳入重点随访。",
+        ai:"AI已生成三合并结节管理报告草稿，包含多病种复查节奏、风险提示和患者触达话术。",
+        next:"今天 18:10",events:["三类报告已归档","AI生成报告草稿","等待医生复核"]
+      },
+      {
+        id:"p7",name:"孙女士",age:46,phone:"131****6820",noduleType:"thyroid_breast",nodule:"甲状腺合并乳腺结节",risk:"mid",stage:"parsed",owner:"健康管理师",
+        report:"甲状腺超声提示 TI-RADS 3 类；乳腺超声提示 BI-RADS 3 类，需结合既往检查随访。",
+        ai:"AI已完成甲状腺与乳腺报告结构化，建议生成合并结节健康管理报告并进入医生复核。",
+        next:"今天 16:40",events:["双部位报告已上传","AI结构化解析完成"]
+      },
+      {
+        id:"p8",name:"郑女士",age:49,phone:"130****3391",noduleType:"thyroid_breast_lung",nodule:"甲状腺、乳腺合并肺部结节",risk:"high",stage:"report",owner:"健康管理师",
+        report:"肺部CT、甲状腺超声、乳腺超声均有结节记录，待系统统一结构化。",
+        ai:"待AI提取三类检查字段，生成跨病种风险分层和随访节奏建议。",
+        next:"今天 19:00",events:["患者建档完成","三类检查资料待处理"]
+      }
+    ];
+
+    let currentModule = "workbench";
+    let currentPatientId = "p1";
+    let currentStatus = "all";
+    let currentNodule = "all";
+
+    const $ = (id) => document.getElementById(id);
+    const currentPatient = () => patients.find(p => p.id === currentPatientId) || patients[0];
+    const riskText = (risk) => risk === "high" ? "高风险" : risk === "mid" ? "中风险" : "低风险";
+
+    function toast(text){
+      $("toast").textContent = text;
+      $("toast").classList.add("show");
+      setTimeout(() => $("toast").classList.remove("show"), 1700);
+    }
+
+    function setStage(patient, nextStage, eventText){
+      patient.stage = nextStage;
+      patient.events.push(eventText);
+      renderAll();
+      toast(eventText);
+    }
+
+    function navIcon(name){
+      if(name === "运行看板") return "▦";
+      if(name === "患者队列") return "👥";
+      if(name === "患者建档") return "＋";
+      if(name === "报告处理") return "📝";
+      if(name === "医生复核") return "医";
+      if(name === "患者触达") return "✉";
+      if(name === "随访任务") return "☑";
+      return "📊";
+    }
+
+    function renderNav(){
+      $("nav").innerHTML = modules.map(([id,name,count]) => `
+        <button class="${id === currentModule ? "active" : ""}" data-module="${id}">
+          <span class="nav-ico">${navIcon(name)}</span>
+          <span>${name}</span>${count ? `<span class="num">${count}</span>` : ""}
+        </button>
+      `).join("");
+      $("nav").querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentModule = btn.dataset.module;
+          renderAll();
+          toast(`已切换：${btn.textContent.trim()}`);
+        });
+      });
+    }
+
+    function renderNoduleEntries(){
+      $("noduleEntries").innerHTML = noduleTypes.map(([id,name,count]) => `
+        <button class="entry-btn ${id === currentNodule ? "active" : ""}" data-nodule="${id}">
+          <span>${name}</span><span>${count}</span>
+        </button>
+      `).join("");
+      $("noduleEntries").querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentNodule = btn.dataset.nodule;
+          $("noduleFilter").value = currentNodule;
+          renderNoduleEntries();
+          renderEntrySummary();
+          renderPatientList();
+        });
+      });
+    }
+
+    function renderNoduleFilterOptions(){
+      $("noduleFilter").innerHTML = noduleTypes.map(([id,name]) => `
+        <option value="${id}">${name}</option>
+      `).join("");
+      $("noduleFilter").value = currentNodule;
+    }
+
+    function renderEntrySummary(){
+      const found = noduleTypes.find(([id]) => id === currentNodule) || noduleTypes[0];
+      const count = currentNodule === "all" ? patients.length : patients.filter(p => p.noduleType === currentNodule).length;
+      $("entrySummary").innerHTML = `
+        <span class="tag blue">${found[1]}</span>
+        <span class="muted">筛选出 ${count} 名患者，表格展示当前入口下的患者队列。</span>
+      `;
+    }
+
+    function renderContextbar(){
+      const found = noduleTypes.find(([id]) => id === currentNodule) || noduleTypes[0];
+      const p = currentPatient();
+      $("contextbar").innerHTML = `
+        <span>当前关系</span>
+        <span class="strong">${moduleLabels[currentModule] || "工作台"}</span>
+        <span class="arrow">/</span>
+        <span class="strong">${found[1]}</span>
+        <span class="arrow">/</span>
+        <span>患者队列表单</span>
+        <span class="arrow">/</span>
+        <span class="strong">${p.name}</span>
+        <span>${stageLabels[p.stage]}</span>
+      `;
+    }
+
+    function renderSummary(){
+      const base = [
+        ["患者总数","12,486","较昨日 +128","👥","blue"],
+        ["高风险患者","1,268","较昨日 +23","盾","orange"],
+        ["待处理报告","146","较昨日 -12","文","blue"],
+        ["待医生复核","82","较昨日 -5","医","green"],
+        ["待推送患者","95","较昨日 +7","发","purple"],
+        ["随访完成率","78.6%","较昨日 +1.8%","率","cyan"]
+      ];
+      const queueStats = [...base, ["异常待处理","102","较昨日 +18","!","orange"]];
+      const reportStats = [
+        ["待处理报告","146","较昨日 -12","文","blue"],
+        ["AI解析中","38","较昨日 +5","AI","purple"],
+        ["解析完成","284","较昨日 +18","✓","green"],
+        ["待生成报告","95","较昨日 +7","稿","orange"],
+        ["待医生复核","82","较昨日 -5","医","green"],
+        ["异常报告","17","较昨日 +3","⚠","orange"]
+      ];
+      const reviewStats = [
+        ["待复核报告","82","较昨日 +12","复","blue"],
+        ["今日已复核","46","较昨日 +8","✓","green"],
+        ["退回修改","11","较昨日 -3","退","orange"],
+        ["高风险确认","18","较昨日 +5","!","orange"],
+        ["待推送患者","57","较昨日 +9","发","purple"],
+        ["平均复核时长","12.6分钟","较昨日 -1.2","⏱","cyan"]
+      ];
+      const followStats = [
+        ["今日随访","128","较昨日 +18","访","blue"],
+        ["待随访","246","较昨日 +124","⏲","orange"],
+        ["已完成","89","较昨日 +15","✓","green"],
+        ["逾期随访","36","较昨日 +6","!","orange"],
+        ["异常反馈","18","较昨日 +4","铃","purple"],
+        ["自动提醒中","74","较昨日 +11","✈","cyan"]
+      ];
+      const mgmtStats = [
+        ["管理患者总数","12,486","较上月 +8.6%","👥","blue"],
+        ["新增患者数","326","较上月 +5.2%","＋","green"],
+        ["高风险患者数","1,268","较上月 +12.4%","盾","orange"],
+        ["报告生成率","92.4%","较上月 +2.1pp","文","blue"],
+        ["医生复核率","88.7%","较上月 +1.6pp","医","purple"],
+        ["患者触达率","93.6%","较上月 +0.8pp","✉","green"],
+        ["复查转化率","61.3%","较上月 +1.7pp","↻","blue"]
+      ];
+
+      const stats = currentModule === "queue"
+        ? queueStats
+        : (currentModule === "report"
+          ? reportStats
+          : (currentModule === "review"
+            ? reviewStats
+            : (currentModule === "followup"
+              ? followStats
+              : (currentModule === "stats" ? mgmtStats : base))));
+
+      $("summary").style.gridTemplateColumns = `repeat(${stats.length}, minmax(132px, 1fr))`;
+      $("summary").innerHTML = stats.map(([label,value,hint,icon,tone]) => `
+        <div class="kpi">
+          <div class="kpi-icon ${tone === "blue" ? "" : tone}">${icon}</div>
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="hint">${hint}</div>
+          <svg class="spark ${tone === "blue" ? "" : tone}" viewBox="0 0 70 26" aria-hidden="true">
+            <path d="M2 20 C10 18 12 16 18 17 C25 18 28 10 34 12 C40 14 42 6 48 7 C55 8 57 17 68 12"/>
+          </svg>
+        </div>
+      `).join("");
+    }
+
+    function renderStatusTabs(){
+      const tabs = [["all","全部"],["report","待处理报告"],["review","待复核"],["push","待推送"],["alert","异常"]];
+      $("statusTabs").innerHTML = tabs.map(([id,name]) => `
+        <button class="${id === currentStatus ? "active" : ""}" data-status="${id}">${name}</button>
+      `).join("");
+      $("statusTabs").querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentStatus = btn.dataset.status;
+          renderStatusTabs();
+          renderPatientList();
+        });
+      });
+    }
+
+    function renderPatientList(){
+      const keyword = $("search").value.trim();
+      const risk = $("riskFilter").value;
+      const nodule = $("noduleFilter").value;
+      const moduleStatusMap = {
+        report:"report",
+        review:"review",
+        push:"push",
+        followup:"followup"
+      };
+      const effectiveStatus = currentStatus !== "all" ? currentStatus : (moduleStatusMap[currentModule] || "all");
+      const list = patients.filter(p => {
+        const byStatus = effectiveStatus === "all" || p.stage === effectiveStatus;
+        const byRisk = risk === "all" || p.risk === risk;
+        const byNodule = nodule === "all" || p.noduleType === nodule;
+        const byKeyword = !keyword || [p.name,p.phone,p.nodule].some(x => x.includes(keyword));
+        return byStatus && byRisk && byNodule && byKeyword;
+      });
+      $("patientList").innerHTML = `
+        <table class="patient-table">
+          <thead>
+            <tr>
+              <th>患者</th>
+              <th>结节入口</th>
+              <th>风险</th>
+              <th>当前状态</th>
+              <th>负责人</th>
+              <th>下一处理</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(p => `
+              <tr class="${p.id === currentPatientId ? "active" : ""}" data-id="${p.id}">
+                <td>
+                  <div class="patient-cell-name">${p.name}</div>
+                  <div class="patient-cell-sub">${p.age}岁 · ${p.phone}</div>
+                </td>
+                <td>${p.nodule}</td>
+                <td><span class="tag ${p.risk}">${riskText(p.risk)}</span></td>
+                <td><span class="tag blue">${stageLabels[p.stage]}</span></td>
+                <td>${p.owner}</td>
+                <td>${p.next}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+      $("patientList").querySelectorAll("tbody tr").forEach(row => {
+        row.addEventListener("click", () => {
+          currentPatientId = row.dataset.id;
+          renderAll();
+        });
+      });
+    }
+
+    function renderPatientStrip(){
+      const p = currentPatient();
+      $("patientStrip").innerHTML = `
+        <div class="person">
+          <div class="name">${p.name}</div>
+          <div class="sub">${p.age}岁 · ${p.phone} · ${p.nodule}</div>
+        </div>
+        <div class="strip-grid">
+          <div class="mini"><div class="k">当前状态</div><div class="v">${stageLabels[p.stage]}</div></div>
+          <div class="mini"><div class="k">风险分层</div><div class="v"><span class="tag ${p.risk}">${riskText(p.risk)}</span></div></div>
+          <div class="mini"><div class="k">当前负责人</div><div class="v">${p.owner}</div></div>
+          <div class="mini"><div class="k">下一处理时间</div><div class="v">${p.next}</div></div>
+        </div>
+      `;
+    }
+
+    function renderFlow(){
+      const p = currentPatient();
+      const steps = [
+        ["report","处理报告","上传/查看报告，AI结构化"],
+        ["parsed","AI生成报告","生成健康管理报告草稿"],
+        ["review","医生复核","医生确认后才能推送"],
+        ["push","推送患者","小程序/企微/短信触达"],
+        ["followup","随访闭环","生成任务，异常转人工"]
+      ];
+      const order = ["report","parsed","review","push","followup"];
+      const currentIndex = order.indexOf(p.stage);
+      $("flow").innerHTML = steps.map(([id,title,sub], index) => {
+        const done = currentIndex > index || ["alert","done"].includes(p.stage);
+        const active = p.stage === id || (p.stage === "alert" && id === "followup");
+        return `<div class="step ${done ? "done" : ""} ${active ? "active" : ""}">
+          <div class="step-title">${index + 1}. ${title}</div>
+          <div class="step-sub">${sub}</div>
+        </div>`;
+      }).join("");
+    }
+
+    function renderWorkPanel(){
+      const p = currentPatient();
+      $("activeStageTag").textContent = stageLabels[p.stage];
+      if(currentModule === "stats"){
+        $("activeStageTag").textContent = "管理统计";
+        $("workPanel").innerHTML = `
+          <div class="report-grid">
+            <div class="k">患者总量</div><div class="v">68 人，覆盖乳腺、甲状腺、肺部及多部位合并结节。</div>
+            <div class="k">报告处理</div><div class="v">今日待处理 9 份，AI结构化完成后进入医生复核。</div>
+            <div class="k">复核推送</div><div class="v">待医生复核 7 份，待推送患者 12 人。</div>
+            <div class="k">随访闭环</div><div class="v">本月随访完成率 86%，异常待处理 1 条。</div>
+          </div>
+          <div class="action-bar"><button class="primary">导出统计</button><button class="btn">查看明细</button></div>
+        `;
+        return;
+      }
+      let actions = "";
+      if(p.stage === "report"){
+        actions = `<button class="primary" id="parseBtn">AI结构化解析</button><button class="btn">补充报告资料</button>`;
+      }else if(p.stage === "parsed"){
+        actions = `<button class="primary" id="genReportBtn">生成健康管理报告</button><button class="btn">查看结构化字段</button>`;
+      }else if(p.stage === "review"){
+        actions = `<button class="primary" id="reviewBtn">医生确认复核</button><button class="btn">退回修改</button>`;
+      }else if(p.stage === "push"){
+        actions = `<button class="primary" id="pushBtn">推送患者</button><button class="btn">预览小程序</button><button class="btn">企微话术</button>`;
+      }else if(p.stage === "followup"){
+        actions = `<button class="primary" id="followBtn">记录随访结果</button><button class="btn">发送复查提醒</button>`;
+      }else if(p.stage === "alert"){
+        actions = `<button class="primary" id="alertBtn">转医生处理</button><button class="btn">查看患者反馈</button>`;
+      }else{
+        actions = `<button class="btn">查看闭环记录</button>`;
+      }
+
+      $("workPanel").innerHTML = `
+        <div class="report-grid">
+          <div class="k">检查/报告摘要</div><div class="v">${p.report}</div>
+          <div class="k">AI处理结果</div><div class="v">${p.ai}</div>
+          <div class="k">患者触达说明</div><div class="v">患者不登录主系统。系统由工作人员操作，通过小程序、企业微信、短信或电话把报告解释、复查提醒和随访问卷触达患者。</div>
+          <div class="k">当前动作</div><div class="v">根据状态推进下一步，推进后患者队列、任务列表和统计数字同步变化。</div>
+        </div>
+        <div class="action-bar">${actions}</div>
+      `;
+
+      const bind = (id, handler) => { const el = $(id); if(el) el.addEventListener("click", handler); };
+      bind("parseBtn", () => setStage(p,"parsed","AI结构化解析完成"));
+      bind("genReportBtn", () => setStage(p,"review","健康管理报告已生成，进入医生复核"));
+      bind("reviewBtn", () => setStage(p,"push","医生已复核，允许推送患者"));
+      bind("pushBtn", () => setStage(p,"followup","已推送小程序与企微，随访任务已生成"));
+      bind("followBtn", () => setStage(p,"done","随访结果已记录，当前闭环完成"));
+      bind("alertBtn", () => setStage(p,"review","异常已转医生，等待医生复核处理意见"));
+    }
+
+    function renderBoundary(){
+      $("taskScope").textContent = "医院工作台";
+      $("aiBoundary").innerHTML = `
+        <strong>这不是患者自助系统。</strong><br>
+        登录主体是医院。AI负责结构化报告、生成草稿、整理话术、标记风险；医院工作人员负责确认、推送、随访和异常处理。涉及诊疗判断的内容必须经过医生复核。
+      `;
+      const p = currentPatient();
+      $("timeline").innerHTML = p.events.map((event,index) => `
+        <div class="event"><div class="time">${index === p.events.length - 1 ? "最新" : "记录"}</div><div class="text">${event}</div></div>
+      `).join("");
+    }
+
+    function renderTasks(){
+      const tasks = [
+        ["blue","9份报告待处理","上传/查看检查报告，发起AI结构化解析。"],
+        ["orange","7份报告待医生复核","确认AI健康管理报告是否可推送给患者。"],
+        ["orange","12名患者待推送","医生复核后推送小程序和企微消息。"],
+        ["high","1条异常预警","患者反馈异常症状，需医生处理。"],
+        ["blue","31条随访任务","按风险等级完成电话/企微随访记录。"]
+      ];
+      $("taskList").innerHTML = tasks.map(([level,title,text]) => `
+        <div class="task">
+          <div class="task-title"><span class="tag ${level}">${level === "high" ? "紧急" : "待办"}</span>${title}</div>
+          <div class="task-text">${text}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderDashboard(){
+      const rows = [
+        ["乳腺结节","3,256","+32","356","812","2,088","38","22","19","2,456","26","81.2%"],
+        ["甲状腺结节","3,128","+28","312","790","2,026","29","18","15","2,389","21","79.4%"],
+        ["肺部结节","4,012","+41","428","1,102","2,482","42","24","28","2,976","34","77.8%"],
+        ["肺部合并乳腺结节","812","+9","96","208","508","10","6","8","604","8","74.4%"],
+        ["肺部合并甲状腺结节","702","+7","84","176","442","8","4","6","518","6","76.1%"],
+        ["甲状腺合并乳腺结节","456","+5","52","120","284","6","3","4","332","5","77.2%"],
+        ["三合并结节","120","+2","20","36","64","3","2","2","86","2","72.0%"]
+      ];
+      $("content").className = "dashboard";
+      $("content").innerHTML = `
+        <section class="dash-card">
+          <div class="dash-head">
+            <div class="dash-title">七类结节运营总览</div>
+            <div class="muted">点击“进入队列”查看对应患者明细</div>
+          </div>
+          <div class="nodule-board">
+            <table class="dash-table">
+              <thead>
+                <tr>
+                  <th>结节类型</th><th>患者数</th><th>门诊</th><th>体检</th><th>今日新增</th><th>高风险</th><th>中风险</th><th>低风险</th>
+                  <th>待处理报告</th><th>待医生复核</th><th>待推送患者</th><th>随访中</th><th>异常处理</th><th>随访完成率</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((r,i) => `
+                  <tr>
+                    <td><div class="type-cell"><span class="type-icon">${i + 1}</span>${r[0]}</div></td>
+                    <td><b>${r[1]}</b></td><td>${Math.round(parseInt(r[1].replace(',','')) * .63).toLocaleString()}</td><td>${Math.round(parseInt(r[1].replace(',','')) * .37).toLocaleString()}</td><td>${r[2]}</td>
+                    <td class="metric-red">${r[3]}</td><td class="metric-orange">${r[4]}</td><td class="metric-green">${r[5]}</td>
+                    <td>${r[6]}</td><td>${r[7]}</td><td>${r[8]}</td><td>${r[9]}</td><td class="metric-red">${r[10]}</td>
+                    <td>${r[11]}<span class="progress"><span style="width:${parseFloat(r[11])}%"></span></span></td>
+                    <td><button class="link-btn" data-jump="queue">进入队列</button></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <div class="dash-grid">
+          <div>
+            <div class="chart-grid">
+              <section class="dash-card chart-card">
+                <div class="dash-title">结节类型占比</div>
+                <div class="donut"></div>
+              </section>
+              <section class="dash-card chart-card">
+                <div class="dash-title">风险分布 <span class="muted" style="float:right">单位：人</span></div>
+                <div class="bar-row"><span>高风险</span><div class="bar"><span style="width:28%;background:#ef4444"></span></div><b>1,348</b></div>
+                <div class="bar-row"><span>中风险</span><div class="bar"><span style="width:54%;background:#f97316"></span></div><b>3,244</b></div>
+                <div class="bar-row"><span>低风险</span><div class="bar"><span style="width:86%;background:#65a30d"></span></div><b>7,894</b></div>
+                <div class="tag high" style="margin-top:6px">高风险占比 10.8%</div>
+              </section>
+              <section class="dash-card chart-card">
+                <div class="dash-title">随访状态分布 <span class="muted" style="float:right">单位：人</span></div>
+                <div class="bar-row"><span>待处理报告</span><div class="bar"><span style="width:18%;background:#a855f7"></span></div><b>146</b></div>
+                <div class="bar-row"><span>待医生复核</span><div class="bar"><span style="width:12%;background:#38bdf8"></span></div><b>82</b></div>
+                <div class="bar-row"><span>待推送患者</span><div class="bar"><span style="width:15%;background:#84cc16"></span></div><b>95</b></div>
+                <div class="bar-row"><span>随访中</span><div class="bar"><span style="width:82%;background:#4f83f1"></span></div><b>7,361</b></div>
+              </section>
+            </div>
+            <div class="chart-grid">
+              <section class="dash-card chart-card"><div class="dash-title">报告生成率</div><div class="kpi"><div class="value">92.4%</div><div class="hint">待生成 146 份，较昨日 +2.1%</div></div></section>
+              <section class="dash-card chart-card"><div class="dash-title">医生复核率</div><div class="kpi"><div class="value">88.7%</div><div class="hint">待复核 82 份，较昨日 -1.3%</div></div></section>
+              <section class="dash-card chart-card"><div class="dash-title">患者触达率</div><div class="kpi"><div class="value">93.6%</div><div class="hint">待推送 95 人，较昨日 +1.7%</div></div></section>
+            </div>
+          </div>
+          <aside class="dash-card">
+            <div class="dash-head"><div class="dash-title">今日待办</div><button class="ghost">刷新</button></div>
+            <div class="todo-list">
+              <div class="todo-row"><b>待处理报告</b><span class="tag high">146</span><span class="muted">影像报告待处理</span></div>
+              <div class="todo-row"><b>待复核</b><span class="tag orange">82</span><span class="muted">医生确认待办</span></div>
+              <div class="todo-row"><b>待推送</b><span class="tag blue">95</span><span class="muted">报告待推送</span></div>
+              <div class="todo-row"><b>异常预警</b><span class="tag high">102</span><span class="muted">异常结果待处理</span></div>
+            </div>
+            <div class="dash-head"><div class="dash-title">重要提醒</div><button class="ghost">查看更多</button></div>
+            <div style="padding:0 14px 12px">
+              <div class="remind-row"><span>高风险患者张国斌已逾期 7 天，请尽快处理</span><span class="muted">08:45</span></div>
+              <div class="remind-row"><span>有 18 份报告超 24 小时未处理</span><span class="muted">08:30</span></div>
+            </div>
+          </aside>
+        </div>
+      `;
+      $("content").querySelectorAll("[data-jump='queue']").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentModule = "queue";
+          renderAll();
+        });
+      });
+    }
+
+    function ensureWorkflowLayout(){
+      if(currentModule === "queue"){
+        renderQueuePage();
+        return;
+      }
+      if($("patientList")) return;
+      $("content").className = "content";
+      $("content").innerHTML = `
+        <aside class="pane">
+          <div class="pane-head">
+            <div class="pane-title">患者队列</div>
+            <div class="head-actions"><button class="primary" id="newPatient">新建档案</button></div>
+          </div>
+          <div class="filters">
+            <input id="search" placeholder="姓名/手机号/结节类型">
+            <select id="noduleFilter"><option value="all">全部结节入口</option></select>
+            <select id="riskFilter">
+              <option value="all">全部风险</option>
+              <option value="high">高风险</option>
+              <option value="mid">中风险</option>
+              <option value="low">低风险</option>
+            </select>
+          </div>
+          <div class="entry-summary" id="entrySummary"></div>
+          <div class="status-tabs" id="statusTabs"></div>
+          <div class="patient-list" id="patientList"></div>
+        </aside>
+        <section class="main">
+          <div class="patient-strip" id="patientStrip"></div>
+          <div class="flow" id="flow"></div>
+          <div class="work-area">
+            <section class="section">
+              <div class="section-head">
+                <div class="section-title">当前处理区</div>
+                <span class="tag blue" id="activeStageTag">待处理报告</span>
+              </div>
+              <div class="section-body" id="workPanel"></div>
+            </section>
+            <section class="section">
+              <div class="section-head">
+                <div class="section-title">AI与人工边界</div>
+                <span class="muted">医生确认后才推送</span>
+              </div>
+              <div class="section-body">
+                <div class="ai-box" id="aiBoundary"></div>
+                <div class="timeline" id="timeline"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+        <aside class="pane">
+          <div class="pane-head">
+            <div class="pane-title">今日任务</div>
+            <span class="muted" id="taskScope">医院工作台</span>
+          </div>
+          <div class="right-body" id="taskList"></div>
+        </aside>
+      `;
+      bindWorkflowEvents();
+    }
+
+    function renderQueuePage(){
+      $("content").className = "queue-page";
+      $("content").innerHTML = `
+        <div class="queue-head">
+          <div class="queue-title">患者队列</div>
+          <div class="crumb">首页 / 患者队列</div>
+        </div>
+        <section class="dash-card queue-filters">
+          <div class="dash-title" style="margin-bottom:12px">筛选条件</div>
+          <div class="filter-grid">
+            <label class="filter-item">姓名/手机号<input placeholder="请输入姓名或手机号"></label>
+            <label class="filter-item">患者来源<select><option>全部</option><option>门诊</option><option>体检中心</option></select></label>
+            <label class="filter-item">结节类型<select><option>请选择结节类型</option><option>肺部结节</option><option>乳腺结节</option><option>甲状腺结节</option><option>三合并结节</option></select></label>
+            <label class="filter-item">风险等级<select><option>全部</option><option>高风险</option><option>中风险</option><option>低风险</option></select></label>
+            <label class="filter-item">当前状态<select><option>全部</option><option>待处理报告</option><option>待医生复核</option><option>待推送患者</option><option>随访中</option></select></label>
+            <label class="filter-item">建档时间<div class="date-pair"><input placeholder="开始日期"><span>-</span><input placeholder="结束日期"></div></label>
+            <label class="filter-item">随访时间<div class="date-pair"><input placeholder="开始日期"><span>-</span><input placeholder="结束日期"></div></label>
+            <div></div><button class="btn">重置</button><button class="primary">查询</button><button class="primary" id="newPatient">+ 新建档案</button>
+          </div>
+        </section>
+        <div class="queue-layout">
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">患者列表 <span class="muted">共 268 条</span></div>
+              <div class="head-actions"><button class="btn">导出</button><button class="btn">批量分派</button></div>
+            </div>
+            <div class="queue-table-wrap">
+              <table class="queue-table">
+                <thead><tr><th>患者姓名</th><th>性别/年龄/手机号</th><th>患者来源</th><th>结节类型</th><th>风险等级</th><th>当前状态</th><th>最近报告</th><th>下次随访时间</th><th>负责人</th><th>操作</th></tr></thead>
+                <tbody>
+                  ${[
+                    ["张*国","男 / 56岁 / 138****5678","门诊","肺部结节","高风险","待医生复核","CT报告","2026-06-15","李医生"],
+                    ["李*婷","女 / 48岁 / 139****2468","体检中心","甲状腺结节","中风险","待处理报告","超声报告","2026-05-20","王医生"],
+                    ["王*梅","女 / 62岁 / 137****1357","门诊","乳腺结节 / 甲状腺结节","中风险","随访中","AI解析完成","2026-07-01","赵医生"],
+                    ["赵*强","男 / 59岁 / 136****8899","体检中心","肺部结节","高风险","异常待处理","CT报告","2026-05-10","刘医生"],
+                    ["陈*霞","女 / 45岁 / 138****3344","门诊","肺部结节 / 乳腺结节","中风险","待推送患者","AI解析完成","2026-06-05","周医生"],
+                    ["刘*峰","男 / 71岁 / 139****7788","体检中心","肺部结节 / 甲状腺结节","低风险","随访中","医生复核中","2026-08-12","陈医生"]
+                  ].map((r,i)=>`
+                    <tr class="${i===0?'active':''}">
+                      <td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3].split(' / ').map(x=>`<span class="tag blue">${x}</span>`).join(' ')}</td>
+                      <td><span class="tag ${r[4]==='高风险'?'high':r[4]==='中风险'?'orange':'green'}">${r[4]}</span></td>
+                      <td><span class="tag ${r[5].includes('异常')?'high':r[5].includes('待')?'orange':'green'}">${r[5]}</span></td>
+                      <td>${r[6]}</td><td>${r[7]}</td><td>${r[8]}</td>
+                      <td><div class="queue-actions"><span>查看</span><span>报告</span><span>随访</span><span>触达</span></div></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination"><button class="page-btn">‹</button><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><span>...</span><button class="page-btn">27</button><button class="page-btn">›</button><span class="muted">10 条/页</span></div>
+          </section>
+          <section class="dash-card detail-card">
+            <div class="dash-head"><div class="dash-title">患者详情</div><button class="ghost">×</button></div>
+            <div class="detail-body">
+              <div class="detail-grid">
+                <div><div class="detail-k">患者姓名</div><div class="detail-v">张*国</div></div>
+                <div><div class="detail-k">性别</div><div class="detail-v">男</div></div>
+                <div><div class="detail-k">年龄</div><div class="detail-v">56岁</div></div>
+                <div><div class="detail-k">手机号</div><div class="detail-v">138****5678</div></div>
+                <div><div class="detail-k">来源</div><div class="detail-v">门诊</div></div>
+                <div><div class="detail-k">负责人</div><div class="detail-v">李医生</div></div>
+              </div>
+              <div class="detail-line">结节类型：<span class="tag blue">肺部结节</span> <span class="tag high">合并高风险</span></div>
+              <div class="detail-line">当前状态：<span class="tag orange">待医生复核</span> 风险等级：<span class="tag high">高风险</span></div>
+              <div class="detail-line">最近报告：2026-04-22 胸部CT提示右上肺磨玻璃结节，建议进一步随访复查，AI已完成结构化解析。</div>
+              <div class="detail-line">下一步：需医生确认结果并决定是否推送患者。</div>
+              <div class="flow-line">
+                ${[["建档","2026-04-10","done"],["报告上传","2026-04-20","done"],["AI解析","2026-04-21","done"],["医生复核","进行中","active"],["推送","待处理",""],["随访","待处理",""]].map(([a,b,c])=>`
+                  <div class="flow-node ${c}"><div class="flow-dot">✓</div><div>${a}</div><div>${b}</div></div>
+                `).join("")}
+              </div>
+              <div class="action-bar">
+                <button class="primary">处理报告</button><button class="btn">发起复核</button><button class="btn">推送患者</button><button class="btn">创建随访任务</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+      $("newPatient").addEventListener("click", () => toast("新建患者档案"));
+    }
+
+    function renderReportPage(){
+      $("content").className = "report-page";
+      $("content").innerHTML = `
+        <div class="queue-head">
+          <div class="queue-title">报告处理</div>
+          <div class="crumb">首页 / 报告处理</div>
+        </div>
+
+        <section class="dash-card report-filters">
+          <div class="dash-title" style="margin-bottom:12px">筛选条件 <span class="muted" style="margin-left:8px">可按姓名、手机号、结节类型、风险等级、当前状态筛选</span></div>
+          <div class="report-filter-grid">
+            <label class="filter-item">姓名/手机号<input placeholder="请输入姓名或手机号"></label>
+            <label class="filter-item">患者来源<select><option>门诊 / 体检中心</option><option>门诊</option><option>体检中心</option></select></label>
+            <label class="filter-item span2">结节类型<select><option>CT报告 / 超声报告 / 甲状腺 / 乳腺 / 肺部</option><option>肺部结节</option><option>乳腺结节</option><option>甲状腺结节</option><option>多部位合并</option></select></label>
+            <label class="filter-item">结节类型<select><option>乳腺结节 7 种</option><option>乳腺结节</option><option>甲状腺结节</option><option>肺部结节</option></select></label>
+            <label class="filter-item">风险等级<select><option>高风险 / 中风险 / 低风险</option><option>高风险</option><option>中风险</option><option>低风险</option></select></label>
+            <label class="filter-item">当前状态<select><option>待处理报告 6 种</option><option>待处理报告</option><option>AI解析中</option><option>解析完成</option><option>待生成报告</option><option>待医生复核</option><option>异常报告</option></select></label>
+            <label class="filter-item">上传时间<div class="date-pair"><input placeholder="开始日期"><span>-</span><input placeholder="结束日期"></div></label>
+            <div></div>
+            <button class="btn">重置</button>
+            <button class="primary">查询</button>
+            <button class="primary">上传报告</button>
+          </div>
+        </section>
+
+        <div class="report-layout">
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">报告列表 <span class="muted">共 268 条</span></div>
+              <div class="head-actions"><button class="btn">导出</button><button class="btn">批量分派</button></div>
+            </div>
+            <div class="report-table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>患者</th>
+                    <th>来源</th>
+                    <th>报告类型</th>
+                    <th>结节类型</th>
+                    <th>上传时间</th>
+                    <th>AI解析状态</th>
+                    <th>风险等级</th>
+                    <th>负责人</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[
+                    ["张*国","门诊","CT报告","肺部结节","2026-04-23 08:15","解析完成","高风险","李医生","查看 报告 随访"],
+                    ["李*婷","体检中心","超声报告","甲状腺结节","2026-04-23 08:05","AI解析中","中风险","王医生","查看 报告 随访"],
+                    ["王*梅","门诊","超声报告","乳腺结节","2026-04-23 07:55","待处理报告","中风险","赵医生","查看 报告 随访"],
+                    ["赵*强","体检中心","CT报告","肺部结节","2026-04-23 07:48","异常报告","高风险","刘医生","查看 报告 随访"]
+                  ].map((r,i)=>`
+                    <tr class="${i===0?'active':''}">
+                      <td><b>${r[0]}</b></td>
+                      <td>${r[1]}</td>
+                      <td>${r[2]}</td>
+                      <td><span class="tag blue">${r[3]}</span></td>
+                      <td>${r[4]}</td>
+                      <td><span class="tag ${r[5].includes('异常')?'high':r[5].includes('解析中')?'orange':r[5].includes('完成')?'green':'gray'}">${r[5]}</span></td>
+                      <td><span class="tag ${r[6]==='高风险'?'high':r[6]==='中风险'?'orange':'green'}">${r[6]}</span></td>
+                      <td>${r[7]}</td>
+                      <td><div class="queue-actions"><span>详情</span><span>处理</span><span>随访</span></div></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination"><button class="page-btn">‹</button><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><span>...</span><button class="page-btn">27</button><button class="page-btn">›</button><span class="muted">10 条/页</span></div>
+          </section>
+
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">报告详情</div>
+              <button class="ico-btn" type="button" title="关闭">×</button>
+            </div>
+            <div class="detail-body">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+                <div>
+                  <div style="font-size:16px;font-weight:950;color:#0f172a">张*国</div>
+                  <div class="muted" style="margin-top:4px">男 · 56岁 · 138****5678</div>
+                </div>
+                <div class="badge-row">
+                  <span class="tag high">高风险</span>
+                  <span class="tag orange">待医生复核</span>
+                </div>
+              </div>
+
+              <div class="kv-grid">
+                <div class="kv"><div class="k">结节类型</div><div class="v">肺部合并甲状腺结节</div></div>
+                <div class="kv"><div class="k">负责人</div><div class="v">健康管理师</div></div>
+                <div class="kv"><div class="k">上传时间</div><div class="v">2026-04-23 08:15</div></div>
+                <div class="kv"><div class="k">最近检查</div><div class="v">胸部CT</div></div>
+              </div>
+
+              <div class="hline"></div>
+              <div class="detail-line"><b>AI结构化字段</b></div>
+              <div class="kv-grid">
+                <div class="kv"><div class="k">结节数量</div><div class="v">2</div></div>
+                <div class="kv"><div class="k">最大直径</div><div class="v">8mm</div></div>
+                <div class="kv"><div class="k">密度</div><div class="v">磨玻璃</div></div>
+                <div class="kv"><div class="k">分级</div><div class="v">TI-RADS 4A</div></div>
+              </div>
+
+              <div class="hline"></div>
+              <div class="detail-line"><b>流程进度</b></div>
+              <div class="flow-line">
+                ${[["上传报告","04-23 08:15","done"],["AI解析","04-23 08:20","done"],["结构化结果","04-23 08:25","done"],["生成健康管理报告","进行中","active"],["医生复核","待处理",""],["返回队列","待处理",""]].map(([a,b,c])=>`
+                  <div class="flow-node ${c}"><div class="flow-dot">✓</div><div>${a}</div><div>${b}</div></div>
+                `).join("")}
+              </div>
+
+              <div class="report-actions" style="justify-content:space-between;margin-top:10px">
+                <button class="primary" type="button">处理报告</button>
+                <button class="btn" type="button">发起复核</button>
+                <button class="btn" type="button">推送患者</button>
+                <button class="btn" type="button">创建随访任务</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function renderReviewPage(){
+      $("content").className = "review-page";
+      $("content").innerHTML = `
+        <div class="queue-head">
+          <div class="queue-title">医生复核</div>
+          <div class="crumb">首页 / 医生复核</div>
+        </div>
+
+        <section class="dash-card review-filters">
+          <div class="dash-title" style="margin-bottom:12px">筛选条件</div>
+          <div class="review-filter-grid">
+            <label class="filter-item">姓名/手机号<input placeholder="请输入姓名或手机号"></label>
+            <label class="filter-item">患者来源<select><option>门诊 / 体检中心</option><option>门诊</option><option>体检中心</option></select></label>
+            <label class="filter-item span2">结节类型<select><option>乳腺结节 / 甲状腺结节 / 肺部结节 / 多部位合并</option><option>肺部结节</option><option>乳腺结节</option><option>甲状腺结节</option><option>多部位合并</option></select></label>
+            <label class="filter-item">风险等级<select><option>高风险 / 中风险 / 低风险</option><option>高风险</option><option>中风险</option><option>低风险</option></select></label>
+            <label class="filter-item">复核状态<select><option>待复核 / 已复核 / 已退回 5 种</option><option>待复核</option><option>已复核</option><option>已退回</option><option>高风险确认</option><option>需补充资料</option></select></label>
+            <label class="filter-item">更新时间<div class="date-pair"><input placeholder="开始日期"><span>-</span><input placeholder="结束日期"></div></label>
+            <div></div>
+            <button class="btn" type="button">重置</button>
+            <button class="primary" type="button">查询</button>
+          </div>
+        </section>
+
+        <div class="review-layout">
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">待复核列表 <span class="muted">共 126 条</span></div>
+              <div class="head-actions"><button class="btn" type="button">导出</button><button class="btn" type="button">批量分派</button></div>
+            </div>
+            <div class="review-table-wrap">
+              <table class="review-table">
+                <thead>
+                  <tr>
+                    <th>患者</th>
+                    <th>性别/年龄/手机号</th>
+                    <th>患者来源</th>
+                    <th>结节类型</th>
+                    <th>报告类型</th>
+                    <th>AI结构化</th>
+                    <th>AI建议状态</th>
+                    <th>复核状态</th>
+                    <th>更新时间</th>
+                    <th>负责人</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[
+                    ["张*国","男 / 56岁 / 138****5678","门诊","肺部合并甲状腺结节","CT报告","已完成","待复核","待复核","2026-04-23 08:15","李医生"],
+                    ["李*婷","女 / 48岁 / 139****2468","体检中心","甲状腺结节","超声报告","已完成","建议复核","待复核","2026-04-23 08:05","王医生"],
+                    ["王*梅","女 / 62岁 / 137****1357","门诊","乳腺结节","超声报告","已完成","建议复核","已复核","2026-04-23 07:55","赵医生"],
+                    ["赵*强","男 / 59岁 / 136****8899","体检中心","肺部结节","CT报告","异常","高风险提醒","高风险确认","2026-04-23 07:48","刘医生"]
+                  ].map((r,i)=>`
+                    <tr class="${i===0?'active':''}">
+                      <td><b>${r[0]}</b></td>
+                      <td>${r[1]}</td>
+                      <td>${r[2]}</td>
+                      <td><span class="tag blue">${r[3]}</span></td>
+                      <td>${r[4]}</td>
+                      <td><span class="tag ${r[5].includes('异常')?'high':'green'}">${r[5]}</span></td>
+                      <td><span class="tag ${r[6].includes('高风险')?'high':'orange'}">${r[6]}</span></td>
+                      <td><span class="tag ${r[7].includes('已复核')?'green':r[7].includes('高风险')?'high':'orange'}">${r[7]}</span></td>
+                      <td>${r[8]}</td>
+                      <td>${r[9]}</td>
+                      <td><div class="queue-actions"><span>详情</span><span>复核</span><span>退回</span></div></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination"><button class="page-btn">‹</button><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><span>...</span><button class="page-btn">13</button><button class="page-btn">›</button><span class="muted">10 条/页</span></div>
+          </section>
+
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">复核详情</div>
+              <div class="head-actions">
+                <span class="muted">医生复核确认，AI建议仅供参考</span>
+                <button class="ico-btn" type="button" title="关闭">×</button>
+              </div>
+            </div>
+            <div class="review-detail">
+              <div class="review-sections">
+                <div class="review-top2">
+                  <div class="review-section">
+                    <div class="t"><span class="idx">1</span>患者基础信息</div>
+                    <div class="review-mini-kv">
+                      <div><div class="k">患者姓名</div><div class="v">李*婷</div></div>
+                      <div><div class="k">性别</div><div class="v">女</div></div>
+                      <div><div class="k">年龄</div><div class="v">56岁</div></div>
+                      <div><div class="k">手机号</div><div class="v">138****5678</div></div>
+                      <div><div class="k">来源</div><div class="v">门诊</div></div>
+                      <div><div class="k">负责人</div><div class="v">李医生</div></div>
+                    </div>
+                  </div>
+                  <div class="review-section">
+                    <div class="file-card">
+                      <div>
+                        <div class="t"><span class="idx">2</span>结节检查摘要</div>
+                        <div class="txt">胸部CT提示右上肺磨玻璃结节 8mm；甲状腺超声提示 TI-RADS 4A。建议进一步随访复查。</div>
+                      </div>
+                      <div class="file-ico">📄</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="review-section">
+                  <div class="t"><span class="idx">3</span>AI结构化结果</div>
+                  <div class="kv-grid">
+                    <div class="kv"><div class="k">结节数量</div><div class="v">2</div></div>
+                    <div class="kv"><div class="k">最大直径</div><div class="v">8mm</div></div>
+                    <div class="kv"><div class="k">密度</div><div class="v">磨玻璃</div></div>
+                    <div class="kv"><div class="k">分级</div><div class="v">TI-RADS 4A</div></div>
+                  </div>
+                  <div class="badge-row">
+                    <span class="tag orange">待医生复核</span>
+                    <span class="tag high">高风险确认</span>
+                    <span class="tag gray">需补充随访材料</span>
+                  </div>
+                </div>
+
+                <div class="review-section">
+                  <div class="t"><span class="idx">4</span>AI建议管理报告草稿</div>
+                  <div class="txt">AI已生成健康管理报告草稿：解释报告要点、复查周期、风险提示与患者触达话术。涉及诊疗判断需医生复核后方可推送。</div>
+                </div>
+
+                <div class="review-section">
+                  <div class="t"><span class="idx">5</span>医生复核意见</div>
+                  <div class="txt muted">复核意见将影响风险分层与后续推送策略，请谨慎确认。</div>
+                  <div class="hline"></div>
+                  <div class="txt"><b>风险分层：</b><span class="tag orange">中高风险</span> <span class="muted">（建议复查周期 3 个月）</span></div>
+                </div>
+
+                <div class="review-section">
+                  <div class="t"><span class="idx">6</span>处理流程</div>
+                  <div class="flow-line">
+                    ${[["上传报告","04-23 08:15","done","✓"],["AI解析","04-23 08:20","done","✓"],["结构化结果","04-23 08:25","done","✓"],["医生复核","进行中","active","4"],["允许推送","待处理","","5"],["随访闭环","待处理","","6"]].map(([a,b,c,d])=>`
+                      <div class="flow-node ${c}"><div class="flow-dot">${d}</div><div>${a}</div><div>${b}</div></div>
+                    `).join("")}
+                  </div>
+                  <div class="switch-row">
+                    <div class="sw"><span>是否同意推送患者</span><span class="toggle on" aria-hidden="true"></span></div>
+                    <div class="sw"><span>是否开启随访任务</span><span class="toggle" aria-hidden="true"></span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-side-actions">
+                <button class="primary" type="button">同意复核</button>
+                <button class="btn" type="button">退回修改</button>
+                <button class="btn" type="button">标记高风险</button>
+                <button class="btn" type="button">保存医生意见</button>
+                <button class="btn" type="button">允许推送患者</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function renderFollowupPage(){
+      $("content").className = "follow-page";
+      $("content").innerHTML = `
+        <div class="queue-head">
+          <div class="queue-title">随访任务</div>
+          <div class="crumb">首页 / 随访任务</div>
+        </div>
+
+        <section class="dash-card follow-filters">
+          <div class="dash-title" style="margin-bottom:12px">筛选条件</div>
+          <div class="follow-filter-grid">
+            <label class="filter-item">姓名/手机号<input placeholder="请输入姓名或手机号"></label>
+            <label class="filter-item">患者来源<select><option>门诊 / 体检中心</option><option>门诊</option><option>体检中心</option></select></label>
+            <label class="filter-item span2">结节类型<select><option>乳腺结节、甲状腺结节、肺部结节等 7 种</option><option>肺部结节</option><option>乳腺结节</option><option>甲状腺结节</option><option>多部位合并</option></select></label>
+            <label class="filter-item">风险等级<select><option>高风险 / 中风险 / 低风险</option><option>高风险</option><option>中风险</option><option>低风险</option></select></label>
+            <label class="filter-item">随访状态<select><option>待随访、已随访、已完成等 7 种</option><option>待随访</option><option>已随访</option><option>已完成</option><option>需人工</option><option>异常反馈</option></select></label>
+            <label class="filter-item">计划随访时间<div class="date-pair"><input placeholder="开始日期"><span>-</span><input placeholder="结束日期"></div></label>
+            <label class="filter-item">负责人<input placeholder="请输入负责人"></label>
+            <div class="btns">
+              <button class="btn" type="button">重置</button>
+              <button class="primary" type="button">查询</button>
+              <button class="primary" type="button">新建随访任务</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="follow-layout">
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">随访任务列表 <span class="muted">共 186 条</span></div>
+              <div class="head-actions"><button class="btn" type="button">导出</button><button class="btn" type="button">批量分派</button></div>
+            </div>
+            <div class="follow-table-wrap">
+              <table class="follow-table">
+                <thead>
+                  <tr>
+                    <th>患者</th>
+                    <th>性别/年龄/手机号</th>
+                    <th>患者来源</th>
+                    <th>结节类型</th>
+                    <th>风险等级</th>
+                    <th>随访状态</th>
+                    <th>随访方式</th>
+                    <th>计划随访时间</th>
+                    <th>随访截止时间</th>
+                    <th>负责人</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[
+                    ["李*婷","女 / 56岁 / 138****5678","门诊","肺部结节","高风险","待随访","电话","2026-04-23 10:30","2026-04-23 18:20","杨护士"],
+                    ["王*伟","男 / 43岁 / 139****2356","体检中心","甲状腺结节","中风险","待随访","企微","2026-04-23 11:00","2026-04-23 17:50","韩护士"],
+                    ["周*虹","女 / 51岁 / 137****4488","门诊","乳腺结节","中风险","已随访","电话","2026-04-23 09:30","2026-04-23 17:10","刘护士"],
+                    ["赵*强","男 / 59岁 / 136****8899","体检中心","肺部结节","高风险","异常反馈","电话","2026-04-23 08:40","2026-04-23 18:00","陈护士"]
+                  ].map((r,i)=>`
+                    <tr class="${i===0?'active':''}">
+                      <td><b>${r[0]}</b></td>
+                      <td>${r[1]}</td>
+                      <td>${r[2]}</td>
+                      <td><span class="tag blue">${r[3]}</span></td>
+                      <td><span class="tag ${r[4]==='高风险'?'high':r[4]==='中风险'?'orange':'green'}">${r[4]}</span></td>
+                      <td><span class="tag ${r[5].includes('异常')?'high':r[5].includes('待')?'orange':r[5].includes('已')?'green':'gray'}">${r[5]}</span></td>
+                      <td>${r[6]}</td>
+                      <td>${r[7]}</td>
+                      <td>${r[8]}</td>
+                      <td>${r[9]}</td>
+                      <td><div class="queue-actions"><span>详情</span><span>随访</span><span>关闭</span></div></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination"><button class="page-btn">‹</button><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><span>...</span><button class="page-btn">13</button><button class="page-btn">›</button><span class="muted">10 条/页</span></div>
+          </section>
+
+          <section class="dash-card">
+            <div class="dash-head">
+              <div class="dash-title">随访详情</div>
+              <div class="head-actions"><span class="muted">随访记录 · 任务 · 复查 · 异常 · 随访</span></div>
+            </div>
+            <div class="follow-detail">
+              <div class="follow-tip">
+                <div>记录：随访过程仅记录，涉及诊疗判断需医生确认 <span class="muted">（示意）</span></div>
+                <button class="x" type="button">×</button>
+              </div>
+              <div class="seg">
+                <div class="t"><span class="idx">A</span>患者基础信息</div>
+                <div class="kvs">
+                  <div><div class="k">患者姓名</div><div class="v">李*婷</div></div>
+                  <div><div class="k">性别/年龄</div><div class="v">女 · 56岁</div></div>
+                  <div><div class="k">手机号</div><div class="v">138****5678</div></div>
+                  <div><div class="k">风险等级</div><div class="v"><span class="tag high">高风险</span></div></div>
+                  <div><div class="k">负责人</div><div class="v">杨护士</div></div>
+                  <div><div class="k">计划随访时间</div><div class="v">2026-04-23 10:30</div></div>
+                </div>
+              </div>
+
+              <div class="seg">
+                <div class="t"><span class="idx">B</span>随访内容</div>
+                <div class="txt">计划随访：肺部结节高风险重点随访。核对复查节奏、症状变化与复查资料是否齐全。</div>
+              </div>
+
+              <div class="seg">
+                <div class="t"><span class="idx">C</span>随访结论</div>
+                <div class="txt">
+                  <span class="tag orange">待随访</span>
+                  <span class="tag gray">需人工</span>
+                  <span class="tag high">异常反馈</span>
+                </div>
+              </div>
+
+              <div class="seg">
+                <div class="t"><span class="idx">D</span>AI随访建议</div>
+                <div class="txt">建议优先核对复查时间与症状变化。若出现咳血、胸痛、持续发热等异常，立即转医生处理。</div>
+              </div>
+
+              <div class="seg">
+                <div class="t"><span class="idx">E</span>患者反馈记录</div>
+                <div class="txt muted">最新记录</div>
+                <div class="txt">2026-04-23 09:00：患者反馈轻微咳嗽，暂无咳血。已提醒按时复查并关注异常症状。</div>
+              </div>
+
+              <div class="seg">
+                <div class="t"><span class="idx">F</span>随访时间轴</div>
+                <div class="task-steps">
+                  ${[["创建任务","04-21 10:00","done","✓"],["发送提醒","04-21 11:00","done","✓"],["首次随访","04-22 10:00","done","✓"],["二次随访","04-23 10:30","active","4"],["医生确认","待处理","","5"],["闭环完成","待处理","","6"]].map(([a,b,c,d])=>`
+                    <div class="flow-node ${c}"><div class="flow-dot">${d}</div><div>${a}</div><div>${b}</div></div>
+                  `).join("")}
+                </div>
+                <div class="task-actions">
+                  <button class="primary" type="button">进入随访</button>
+                  <button class="btn" type="button">转人工</button>
+                  <button class="btn" type="button">标记完成</button>
+                  <button class="btn" type="button">创建下次随访</button>
+                  <button class="btn" type="button">关闭任务</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function renderStatsPage(){
+      $("content").className = "stats-page";
+      $("content").innerHTML = `
+        <div class="queue-head">
+          <div class="queue-title">管理统计</div>
+          <div class="crumb">首页 / 管理统计</div>
+        </div>
+
+        <section class="dash-card stats-filters">
+          <div class="stats-filter-row">
+            <div class="stats-time-row">
+              <span class="muted" style="min-width:72px">时间范围</span>
+              <div class="stats-tabs" data-stats-chip-group="range">
+                <button type="button" class="chip">今日</button>
+                <button type="button" class="chip">本周</button>
+                <button type="button" class="chip active">本月</button>
+                <button type="button" class="chip">本季度</button>
+                <button type="button" class="chip">自定义</button>
+              </div>
+              <div class="date-pair" style="flex:1;min-width:220px;max-width:320px">
+                <input placeholder="开始日期">
+                <span>-</span>
+                <input placeholder="结束日期">
+              </div>
+            </div>
+            <div class="stats-time-row" style="margin-top:10px">
+              <span class="muted" style="min-width:72px">患者来源</span>
+              <div class="stats-tabs" data-stats-chip-group="src">
+                <button type="button" class="chip active">全部</button>
+                <button type="button" class="chip">门诊</button>
+                <button type="button" class="chip">体检中心</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-filter-row">
+            <div class="stats-chip-wrap">
+              <span class="muted">结节类型</span>
+              <div class="stats-tabs" data-stats-chip-group="nodule" style="flex:1">
+                <button type="button" class="chip active">全部</button>
+                <button type="button" class="chip">乳腺结节</button>
+                <button type="button" class="chip">甲状腺结节</button>
+                <button type="button" class="chip">肺部结节</button>
+                <button type="button" class="chip">肺+甲</button>
+                <button type="button" class="chip">肺+乳</button>
+                <button type="button" class="chip">甲+乳</button>
+                <button type="button" class="chip">三合并</button>
+              </div>
+            </div>
+            <div class="stats-chip-wrap" style="margin-top:10px">
+              <span class="muted">风险等级</span>
+              <div class="stats-tabs" data-stats-chip-group="risk" style="flex:1">
+                <button type="button" class="chip active">全部</button>
+                <button type="button" class="chip">高风险</button>
+                <button type="button" class="chip">中风险</button>
+                <button type="button" class="chip">低风险</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-filter-grid">
+            <label class="filter-item">科室<select><option>请选择科室</option><option>乳腺外科</option><option>甲状腺外科</option><option>呼吸内科</option></select></label>
+            <label class="filter-item">医生<select><option>请选择医生</option><option>李医生</option><option>王医生</option><option>赵医生</option></select></label>
+            <label class="filter-item">负责人<select><option>请选择负责人</option><option>健康管理师</option><option>随访护士</option></select></label>
+            <div></div>
+            <div class="btns">
+              <button class="btn" type="button">重置</button>
+              <button class="primary" type="button">查询</button>
+              <button class="btn" type="button" style="border-color:#cfe0ff;color:#155eef;font-weight:900">导出报表</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="stats-chart-row">
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">患者来源趋势</div><span class="muted">门诊 vs 体检</span></div>
+            <div class="mini-chart">
+              <svg viewBox="0 0 640 200" width="100%" height="200" aria-hidden="true">
+                <g stroke="#e5e7eb" stroke-width="1">
+                  <line x1="48" y1="170" x2="620" y2="170"/>
+                  <line x1="48" y1="170" x2="48" y2="28"/>
+                </g>
+                <g fill="#94a3b8" font-size="11">
+                  <text x="110" y="188">04-01</text><text x="220" y="188">04-08</text><text x="330" y="188">04-15</text><text x="440" y="188">04-22</text>
+                </g>
+                <path d="M70 120 C150 100 210 130 290 95 C360 65 430 110 520 88 C560 78 600 92 610 82" stroke="#155eef" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M70 150 C150 140 210 155 290 128 C360 105 430 138 520 118 C560 108 600 120 610 112" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <g font-size="11" font-weight="800">
+                  <text x="520" y="44" fill="#155eef">门诊</text>
+                  <text x="520" y="60" fill="#22c55e">体检</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">七类结节患者分布</div><span class="muted">占比</span></div>
+            <div class="mini-chart" style="display:grid;grid-template-columns:168px 1fr;gap:12px;align-items:center;padding:6px 0">
+              <div class="stat-ring" style="margin:0"></div>
+              <div style="font-size:12px;color:#64748b;line-height:1.85">
+                <div><span style="color:#5b8ff9">●</span> 乳腺结节 <b style="color:#0f172a">3,256</b> <span class="muted">26.1%</span></div>
+                <div><span style="color:#5ad8a6">●</span> 甲状腺结节 <b style="color:#0f172a">3,128</b> <span class="muted">25.1%</span></div>
+                <div><span style="color:#f6bd16">●</span> 肺部结节 <b style="color:#0f172a">4,012</b> <span class="muted">32.2%</span></div>
+                <div><span style="color:#6dc8ec">●</span> 合并类型 <b style="color:#0f172a">2,090</b> <span class="muted">16.6%</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">风险等级分布</div><span class="muted">单位：人</span></div>
+            <div class="mini-chart" style="padding-top:6px">
+              <div class="bar-row"><span>高风险</span><div class="bar"><span style="width:28%;background:#ef4444"></span></div><div style="text-align:right"><b>1,268</b> <span class="muted">10.2%</span> <span style="color:#16a34a;font-weight:900">↑</span></div></div>
+              <div class="bar-row"><span>中风险</span><div class="bar"><span style="width:54%;background:#f97316"></span></div><div style="text-align:right"><b>4,386</b> <span class="muted">35.1%</span> <span style="color:#16a34a;font-weight:900">↑</span></div></div>
+              <div class="bar-row"><span>低风险</span><div class="bar"><span style="width:86%;background:#65a30d"></span></div><div style="text-align:right"><b>6,832</b> <span class="muted">54.7%</span> <span style="color:#dc2626;font-weight:900">↓</span></div></div>
+            </div>
+          </section>
+
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">报告处理漏斗</div><span class="muted">转化率</span></div>
+            <div class="mini-chart">
+              <svg viewBox="0 0 320 200" width="100%" height="200" aria-hidden="true">
+                ${[[0,"上传报告","100%"],[1,"AI解析完成","96%"],[2,"生成健康管理报告","88%"],[3,"医生复核通过","81%"],[4,"推送患者","74%"],[5,"患者已查看","66%"]].map(([i,label,pct])=>{
+                  const y = 18 + i * 28;
+                  const w = 300 - i * 34;
+                  const x = 160 - w / 2;
+                  return `<g>
+                    <polygon points="${x},${y} ${x+w},${y} ${x+w-10},${y+20} ${x+10},${y+20}" fill="${i===0?"#e8f1ff":i===1?"#dbeafe":i===2?"#cfe0ff":i===3?"#bfdbfe":i===4?"#93c5fd":"#60a5fa"}" stroke="#bfdbfe" stroke-width="1"/>
+                    <text x="24" y="${y+14}" fill="#64748b" font-size="11" font-weight="800">${label}</text>
+                    <text x="${x+w-8}" y="${y+14}" fill="#0f172a" font-size="11" font-weight="950" text-anchor="end">${pct}</text>
+                  </g>`;
+                }).join("")}
+              </svg>
+            </div>
+          </section>
+        </div>
+
+        <div class="stats-chart-row">
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">随访闭环漏斗</div><span class="muted">任务转化</span></div>
+            <div class="mini-chart">
+              <svg viewBox="0 0 320 200" width="100%" height="200" aria-hidden="true">
+                ${[[0,"任务创建","100%"],[1,"提醒发送","92%"],[2,"随访执行","78%"],[3,"反馈回收","64%"],[4,"异常处理","12%"],[5,"闭环完成","58%"]].map(([i,label,pct])=>{
+                  const y = 18 + i * 28;
+                  const w = 300 - i * 32;
+                  const x = 160 - w / 2;
+                  return `<g>
+                    <polygon points="${x},${y} ${x+w},${y} ${x+w-10},${y+20} ${x+10},${y+20}" fill="${i===5?"#dcfce7":"#ecfdf5"}" stroke="#bbf7d0" stroke-width="1"/>
+                    <text x="24" y="${y+14}" fill="#64748b" font-size="11" font-weight="800">${label}</text>
+                    <text x="${x+w-8}" y="${y+14}" fill="#0f172a" font-size="11" font-weight="950" text-anchor="end">${pct}</text>
+                  </g>`;
+                }).join("")}
+              </svg>
+            </div>
+          </section>
+
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">患者触达渠道统计</div><span class="muted">近30天</span></div>
+            <div class="mini-chart" style="padding:4px 0">
+              <table class="stats-table" style="min-width:0">
+                <thead><tr><th>渠道</th><th>发送量</th><th>查看率</th><th>回复率</th><th>失败率</th></tr></thead>
+                <tbody>
+                  <tr><td>小程序</td><td>4,820</td><td>91.2%</td><td>38.6%</td><td class="metric-red">1.2%</td></tr>
+                  <tr><td>企微</td><td>3,260</td><td>88.4%</td><td>44.1%</td><td class="metric-orange">2.0%</td></tr>
+                  <tr><td>短信</td><td>2,910</td><td>72.5%</td><td>12.8%</td><td class="metric-orange">3.4%</td></tr>
+                  <tr><td>电话</td><td>1,496</td><td>—</td><td>56.3%</td><td class="metric-red">4.8%</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">医生/健康管理师工作量</div><span class="muted">本月</span></div>
+            <div class="mini-chart">
+              <svg viewBox="0 0 640 200" width="100%" height="200" aria-hidden="true">
+                ${["李医生","王医生","赵医生","刘医生","陈医生"].map((name,ix)=>{
+                  const x = 70 + ix * 110;
+                  const h1 = 40 + (ix % 4) * 8;
+                  const h2 = 28 + ((ix+2) % 3) * 10;
+                  const h3 = 22 + ((ix+1) % 4) * 6;
+                  return `<g>
+                    <rect x="${x}" y="${170-h1}" width="16" height="${h1}" rx="4" fill="#155eef"/>
+                    <rect x="${x+22}" y="${170-h2}" width="16" height="${h2}" rx="4" fill="#22c55e"/>
+                    <rect x="${x+44}" y="${170-h3}" width="16" height="${h3}" rx="4" fill="#f97316"/>
+                    <text x="${x+30}" y="188" text-anchor="middle" fill="#64748b" font-size="10" font-weight="800">${name}</text>
+                  </g>`;
+                }).join("")}
+                <g transform="translate(520,36)" font-size="11" font-weight="800">
+                  <rect x="0" y="0" width="10" height="10" rx="2" fill="#155eef"/><text x="16" y="10" fill="#64748b">复核</text>
+                  <rect x="0" y="18" width="10" height="10" rx="2" fill="#22c55e"/><text x="16" y="28" fill="#64748b">随访</text>
+                  <rect x="0" y="36" width="10" height="10" rx="2" fill="#f97316"/><text x="16" y="46" fill="#64748b">触达</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">复查转化统计</div><span class="muted">状态占比</span></div>
+            <div class="mini-chart" style="display:grid;grid-template-columns:168px 1fr;gap:12px;align-items:center;padding:6px 0">
+              <div class="stat-ring blank" style="margin:0;background:conic-gradient(#5b8ff9 0 42%,#5ad8a6 42% 68%,#f6bd16 68% 86%,#6dc8ec 86%)"></div>
+              <div style="font-size:12px;color:#64748b;line-height:1.85">
+                <div><span style="color:#5b8ff9">●</span> 已预约复查 <b style="color:#0f172a">38.2%</b></div>
+                <div><span style="color:#5ad8a6">●</span> 已到院复查 <b style="color:#0f172a">26.4%</b></div>
+                <div><span style="color:#f6bd16">●</span> 未复查 <b style="color:#0f172a">18.0%</b></div>
+                <div><span style="color:#6dc8ec">●</span> 其他 <b style="color:#0f172a">17.4%</b></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="stats-bottom">
+          <section class="dash-card" style="min-height:0">
+            <div class="dash-head"><div class="dash-title">统计明细表</div><span class="muted">按结节类型汇总</span></div>
+            <div style="overflow:auto;max-height:360px">
+              <table class="stats-table">
+                <thead>
+                  <tr>
+                    <th>结节类型</th>
+                    <th>患者数</th>
+                    <th>新增数</th>
+                    <th>高风险数</th>
+                    <th>报告生成率</th>
+                    <th>医生复核率</th>
+                    <th>触达率</th>
+                    <th>随访完成率</th>
+                    <th>异常处理率</th>
+                    <th>复查转化率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[
+                    ["乳腺结节","3,256","128","356","92.3%","89.2%","93.0%","81.2%","2.1%","61.2%"],
+                    ["甲状腺结节","3,128","96","312","91.8%","88.5%","92.4%","79.4%","1.8%","62.1%"],
+                    ["肺部结节","4,012","142","428","93.5%","87.6%","94.1%","77.8%","2.6%","63.9%"],
+                    ["肺+甲","702","22","84","90.1%","86.2%","91.0%","74.6%","3.4%","58.4%"],
+                    ["肺+乳","812","26","96","89.6%","85.9%","90.6%","73.2%","3.8%","57.1%"],
+                    ["甲+乳","456","18","52","88.4%","84.7%","89.9%","72.0%","4.1%","56.8%"],
+                    ["三合并","120","6","20","86.2%","82.5%","87.6%","68.4%","6.2%","52.0%"]
+                  ].map(r=>`
+                    <tr>
+                      <td><b>${r[0]}</b></td>
+                      <td>${r[1]}</td><td>${r[2]}</td><td class="metric-red">${r[3]}</td>
+                      <td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td><td>${r[7]}</td><td class="metric-orange">${r[8]}</td><td>${r[9]}</td>
+                    </tr>
+                  `).join("")}
+                  <tr style="background:#f8fafc;font-weight:950">
+                    <td>合计</td>
+                    <td>12,486</td><td>438</td><td class="metric-red">1,348</td>
+                    <td>92.4%</td><td>88.7%</td><td>93.6%</td><td>78.6%</td><td class="metric-orange">2.4%</td><td>61.3%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="dash-card chart-pad">
+            <div class="dash-head"><div class="dash-title">运营提醒</div><span class="muted">5 条</span></div>
+            <div style="padding:0 14px 12px">
+              <div class="warn-row" style="border-top:0;padding-top:0">
+                <div class="warn-ico red">!</div>
+                <div>
+                  <div class="warn-title">高风险患者增长提醒</div>
+                  <div class="warn-text">本月高风险患者较上月增长 <b class="metric-red">12.4%</b>，请关注复核与随访资源。</div>
+                  <button type="button" class="warn-link">查看详情</button>
+                </div>
+              </div>
+              <div class="warn-row">
+                <div class="warn-ico orange">!</div>
+                <div>
+                  <div class="warn-title">报告处理积压</div>
+                  <div class="warn-text">待处理报告已连续 <b class="metric-orange">3</b> 天高于阈值，建议加派处理人手。</div>
+                  <button type="button" class="warn-link">去处理</button>
+                </div>
+              </div>
+              <div class="warn-row">
+                <div class="warn-ico yellow">!</div>
+                <div>
+                  <div class="warn-title">触达失败率上升</div>
+                  <div class="warn-text">短信渠道失败率升至 <b class="metric-orange">3.4%</b>，建议检查模板与号码质量。</div>
+                  <button type="button" class="warn-link">查看详情</button>
+                </div>
+              </div>
+              <div class="warn-row">
+                <div class="warn-ico blue">i</div>
+                <div>
+                  <div class="warn-title">随访完成率波动</div>
+                  <div class="warn-text">随访完成率较上月下降 <b class="metric-red">0.6pp</b>，建议复盘任务分派策略。</div>
+                  <button type="button" class="warn-link">查看详情</button>
+                </div>
+              </div>
+              <div class="warn-row">
+                <div class="warn-ico purple">!</div>
+                <div>
+                  <div class="warn-title">复查转化率优化机会</div>
+                  <div class="warn-text">未复查占比仍偏高，可结合企微话术与电话随访提升转化。</div>
+                  <button type="button" class="warn-link">查看详情</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      `;
+
+      $("content").querySelectorAll("[data-stats-chip-group]").forEach(group => {
+        group.querySelectorAll(".chip").forEach(btn => {
+          btn.addEventListener("click", () => {
+            group.querySelectorAll(".chip").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+          });
+        });
+      });
+    }
+
+    /**
+     * @description 渲染「患者建档」独立页面（高保真原型布局）
+     */
+    function renderRecordPage(){
+      $("content").className = "record-page";
+      $("content").innerHTML = `
+        <div class="queue-head">
+          <div class="queue-title">患者建档</div>
+          <div class="crumb">首页 / 患者建档</div>
+        </div>
+
+        <div class="record-layout">
+          <div class="record-form">
+            <section class="form-sec">
+              <div class="sec-h"><span class="no">0</span>建档方式</div>
+              <div class="method-grid" id="recordMethods">
+                <button type="button" class="method-card active" data-method="manual">
+                  <span class="chk">✓</span>
+                  <div class="ico">＋</div>
+                  <div class="t">手动建档</div>
+                  <div class="s">由工作人员录入患者基础信息与结节资料。</div>
+                </button>
+                <button type="button" class="method-card" data-method="clinic">
+                  <span class="chk"></span>
+                  <div class="ico">门</div>
+                  <div class="t">门诊导入</div>
+                  <div class="s">从门诊系统同步患者与检查信息。</div>
+                </button>
+                <button type="button" class="method-card" data-method="checkup">
+                  <span class="chk"></span>
+                  <div class="ico">检</div>
+                  <div class="t">体检中心导入</div>
+                  <div class="s">从体检系统批量导入检查报告。</div>
+                </button>
+                <button type="button" class="method-card" data-method="batch">
+                  <span class="chk"></span>
+                  <div class="ico">批</div>
+                  <div class="t">批量导入</div>
+                  <div class="s">按模板导入多名患者档案。</div>
+                </button>
+              </div>
+            </section>
+
+            <section class="form-sec">
+              <div class="sec-h"><span class="no">一</span>患者基础信息</div>
+              <div class="form-grid">
+                <label class="filter-item"><span class="req">姓名</span><input placeholder="请输入患者姓名" value="张*国"></label>
+                <label class="filter-item"><span class="req">性别</span><select><option>男</option><option>女</option></select></label>
+                <label class="filter-item"><span class="req">年龄</span><div style="display:flex;gap:8px;align-items:center"><input value="56" style="flex:1"><span class="muted">岁</span></div></label>
+                <label class="filter-item"><span class="req">手机号</span><input placeholder="请输入手机号" value="138****5678"></label>
+                <label class="filter-item">身份证号<input placeholder="请输入身份证号"></label>
+                <label class="filter-item">联系地址<input placeholder="省 / 市 / 区 / 详细地址"></label>
+                <label class="filter-item">紧急联系人<select><option>配偶</option><option>子女</option><option>父母</option><option>其他</option></select></label>
+                <label class="filter-item full">备注<textarea rows="3" placeholder="可填写过敏史、既往史等" style="resize:vertical;border:1px solid #d9e2ef;border-radius:8px;padding:8px 10px;outline:none;width:100%">已电话确认可随访，注意保护隐私。</textarea><div class="muted" style="text-align:right;margin-top:4px;font-size:12px">22 / 100</div></label>
+              </div>
+            </section>
+
+            <section class="form-sec">
+              <div class="sec-h"><span class="no">二</span>患者来源</div>
+              <div class="form-grid cols3">
+                <label class="filter-item"><span class="req">来源类型</span><select><option>门诊</option><option>体检中心</option><option>其他</option></select></label>
+                <label class="filter-item"><span class="req">来源科室</span><select><option>呼吸内科</option><option>乳腺外科</option><option>甲状腺外科</option></select></label>
+                <label class="filter-item"><span class="req">就诊医生</span><select><option>李医生</option><option>王医生</option></select></label>
+                <label class="filter-item"><span class="req">检查日期</span><input type="date" value="2026-04-20"></label>
+                <label class="filter-item">导入批次号<input placeholder="系统自动生成或手填"></label>
+                <div></div>
+              </div>
+            </section>
+
+            <section class="form-sec">
+              <div class="sec-h"><span class="no">三</span>结节信息</div>
+              <div style="margin-bottom:12px">
+                <div class="muted" style="font-size:12px;font-weight:800;margin-bottom:8px"><span class="req">结节类型</span></div>
+                <div class="tag-row" id="recordNoduleTags">
+                  <button type="button" class="tag-btn">乳腺结节</button>
+                  <button type="button" class="tag-btn">甲状腺结节</button>
+                  <button type="button" class="tag-btn active">肺部结节</button>
+                  <button type="button" class="tag-btn">肺+甲</button>
+                  <button type="button" class="tag-btn">肺+乳</button>
+                  <button type="button" class="tag-btn">甲+乳</button>
+                  <button type="button" class="tag-btn">三合并</button>
+                </div>
+              </div>
+              <div class="form-grid cols3">
+                <label class="filter-item"><span class="req">初始风险等级</span><select><option class="metric-red">高风险</option><option>中风险</option><option>低风险</option></select></label>
+                <label class="filter-item"><span class="req">结节部位</span><select><option>右上肺</option><option>左上肺</option><option>右下肺</option></select></label>
+                <label class="filter-item"><span class="req">最大直径</span><div style="display:flex;gap:8px;align-items:center"><input value="8" style="flex:1"><span class="muted">mm</span></div></label>
+                <label class="filter-item"><span class="req">影像特征</span><select><option>磨玻璃</option><option>实性</option><option>混合</option></select></label>
+                <label class="filter-item"><span class="req">初步建议</span><select><option>建议随访复查</option><option>建议进一步检查</option></select></label>
+                <label class="filter-item"><span class="req">是否需要医生复核</span><div style="display:flex;align-items:center;gap:10px;height:34px"><span class="toggle on" id="recordNeedReview" aria-hidden="true"></span><span class="muted" style="font-weight:800">是</span></div></label>
+              </div>
+            </section>
+
+            <section class="form-sec">
+              <div class="sec-h"><span class="no">四</span>报告资料</div>
+              <div class="form-grid">
+                <label class="filter-item"><span class="req">报告类型</span><select><option>CT报告</option><option>超声报告</option><option>病理报告</option></select></label>
+                <label class="filter-item"><span class="req">上传检查报告</span><input type="file" disabled style="opacity:.75"></label>
+              </div>
+              <div style="display:grid;gap:10px;margin-top:10px">
+                <div class="file-card2">
+                  <div class="fi pdf">PDF</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:950;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">肺部CT_20260420.pdf</div>
+                    <div class="muted" style="font-size:12px;margin-top:2px">2.4 MB · 已校验</div>
+                  </div>
+                  <span class="tag green">✓</span>
+                </div>
+                <div class="file-card2">
+                  <div class="fi zip">ZIP</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:950;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">影像附件包.zip</div>
+                    <div class="muted" style="font-size:12px;margin-top:2px">18.6 MB · 已校验</div>
+                  </div>
+                  <span class="tag green">✓</span>
+                </div>
+                <div class="upload-zone">☁ 拖拽文件到此处，或 <b style="color:#155eef">稍后上传</b></div>
+              </div>
+            </section>
+
+            <section class="form-sec">
+              <div class="sec-h"><span class="no">五</span>负责人设置</div>
+              <div class="form-grid cols3">
+                <label class="filter-item"><span class="req">负责医生</span><select><option>李医生</option><option>王医生</option></select></label>
+                <label class="filter-item"><span class="req">健康管理师</span><select><option>杨健管</option><option>赵健管</option></select></label>
+                <label class="filter-item"><span class="req">随访护士</span><select><option>韩护士</option><option>刘护士</option></select></label>
+                <label class="filter-item full"><span class="req">所属科室</span><select><option>健康管理科</option><option>呼吸内科</option></select></label>
+              </div>
+            </section>
+          </div>
+
+          <aside class="record-side">
+            <div class="side-card">
+              <div class="dash-title" style="margin-bottom:10px">建档后流程</div>
+              <div class="wf-grid">
+                <div class="wf-node"><div class="ic">档</div><div style="font-weight:900;color:#0f172a">建档</div><div class="muted" style="font-size:11px;margin-top:4px">完成</div></div>
+                <div class="wf-node"><div class="ic">报</div><div style="font-weight:900;color:#0f172a">上传报告</div><div class="muted" style="font-size:11px;margin-top:4px">待处理</div></div>
+                <div class="wf-node"><div class="ic">AI</div><div style="font-weight:900;color:#0f172a">AI解析</div><div class="muted" style="font-size:11px;margin-top:4px">排队</div></div>
+                <div class="wf-node"><div class="ic">稿</div><div style="font-weight:900;color:#0f172a">生成健康报告</div><div class="muted" style="font-size:11px;margin-top:4px">草稿</div></div>
+              </div>
+              <div class="wf-arrow">↓</div>
+              <div class="wf-grid">
+                <div class="wf-node"><div class="ic">医</div><div style="font-weight:900;color:#0f172a">医生复核</div><div class="muted" style="font-size:11px;margin-top:4px">待办</div></div>
+                <div class="wf-node"><div class="ic">推</div><div style="font-weight:900;color:#0f172a">推送患者</div><div class="muted" style="font-size:11px;margin-top:4px">待办</div></div>
+                <div class="wf-node"><div class="ic">随</div><div style="font-weight:900;color:#0f172a">随访任务</div><div class="muted" style="font-size:11px;margin-top:4px">生成</div></div>
+                <div class="wf-node"><div class="ic">环</div><div style="font-weight:900;color:#0f172a">闭环</div><div class="muted" style="font-size:11px;margin-top:4px">目标</div></div>
+              </div>
+              <div class="muted" style="margin-top:10px;line-height:1.65">闭环管理，确保每位患者获得及时、规范的随访服务。</div>
+            </div>
+
+            <div class="side-card">
+              <div class="dash-title" style="margin-bottom:10px">档案预览</div>
+              <div class="kvs">
+                <div><div class="k">患者姓名</div><div class="v">张*国</div></div>
+                <div><div class="k">来源</div><div class="v">门诊 · 呼吸内科</div></div>
+                <div><div class="k">结节类型</div><div class="v"><span class="tag blue">肺部结节</span></div></div>
+                <div><div class="k">风险等级</div><div class="v"><span class="tag high">高风险</span></div></div>
+                <div><div class="k">负责人</div><div class="v">李医生 / 杨健管 / 韩护士</div></div>
+                <div><div class="k">下一步</div><div class="v">上传报告 → AI解析</div></div>
+              </div>
+            </div>
+
+            <div class="follow-tip" style="margin:0">
+              <div>患者信息由医院工作人员录入与管理，请确保信息真实准确。</div>
+              <button type="button" class="x" title="关闭">×</button>
+            </div>
+          </aside>
+        </div>
+
+        <div class="record-foot">
+          <button class="primary" type="button" id="recordSave">保存档案</button>
+          <button class="btn" type="button">保存并上传报告</button>
+          <button class="btn" type="button">保存并发送问卷</button>
+          <button class="btn" type="button">保存并进入报告处理</button>
+          <button class="btn" type="button" style="margin-right:auto">取消</button>
+        </div>
+      `;
+
+      const root = $("content");
+      root.querySelectorAll("#recordMethods .method-card").forEach(card => {
+        card.addEventListener("click", () => {
+          root.querySelectorAll("#recordMethods .method-card").forEach(c => c.classList.remove("active"));
+          card.classList.add("active");
+        });
+      });
+      root.querySelectorAll("#recordNoduleTags .tag-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          root.querySelectorAll("#recordNoduleTags .tag-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+      });
+      const rv = root.querySelector("#recordNeedReview");
+      if(rv){
+        rv.addEventListener("click", () => {
+          rv.classList.toggle("on");
+        });
+      }
+      const save = root.querySelector("#recordSave");
+      if(save) save.addEventListener("click", () => toast("已保存档案（示意）"));
+    }
+
+    function bindWorkflowEvents(){
+      $("search").addEventListener("input", renderPatientList);
+      $("riskFilter").addEventListener("change", renderPatientList);
+      $("noduleFilter").addEventListener("change", () => {
+        currentNodule = $("noduleFilter").value;
+        renderNoduleEntries();
+        renderEntrySummary();
+        renderPatientList();
+      });
+      $("newPatient").addEventListener("click", () => toast("新建患者档案：工作人员录入/导入患者，不是患者登录"));
+    }
+
+    function bindGlobal(){
+      $("loginSubmit").addEventListener("click", () => {
+        const org = $("loginOrg").value;
+        $("loginPage").classList.add("hide");
+        $("orgName").textContent = org;
+        toast(`已登录：${org}`);
+      });
+      $("loginReset").addEventListener("click", () => {
+        $("loginOrg").value = "平邑县中医院";
+        $("loginAccount").value = "admin";
+        $("loginPassword").value = "123456";
+      });
+    }
+
+    function renderAll(){
+      renderNav();
+      $("summary").style.display = "";
+      renderSummary();
+      if(currentModule === "workbench"){
+        $("contextbar").style.display = "none";
+        renderDashboard();
+        return;
+      }
+      if(currentModule === "queue"){
+        $("contextbar").style.display = "none";
+        renderQueuePage();
+        return;
+      }
+      if(currentModule === "record"){
+        $("contextbar").style.display = "none";
+        $("summary").style.display = "none";
+        renderRecordPage();
+        return;
+      }
+      if(currentModule === "report"){
+        $("contextbar").style.display = "none";
+        renderReportPage();
+        return;
+      }
+      if(currentModule === "review"){
+        $("contextbar").style.display = "none";
+        renderReviewPage();
+        return;
+      }
+      if(currentModule === "followup"){
+        $("contextbar").style.display = "none";
+        renderFollowupPage();
+        return;
+      }
+      if(currentModule === "stats"){
+        $("contextbar").style.display = "none";
+        renderStatsPage();
+        return;
+      }
+      $("contextbar").style.display = "flex";
+      ensureWorkflowLayout();
+      renderNoduleFilterOptions();
+      renderNoduleEntries();
+      renderContextbar();
+      renderEntrySummary();
+      renderStatusTabs();
+      renderPatientList();
+      renderPatientStrip();
+      renderFlow();
+      renderWorkPanel();
+      renderBoundary();
+      renderTasks();
+    }
+
+    renderAll();
+    bindGlobal();
+  </script>
+</body>
+</html>

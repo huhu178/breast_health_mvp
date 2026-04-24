@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% block title %}知识库管理 - 乳腺结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📚 知识库管理</h2>
+        <button class="btn btn-primary" onclick="showAddModal()">
+            <i class="bi bi-plus-circle"></i> 新增知识
+        </button>
+    </div>
+
+    <!-- 筛选区 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索标题或内容...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="sourceTypeFilter">
+                        <option value="">所有来源类型</option>
+                        <option value="年龄通用">年龄通用</option>
+                        <option value="症状">症状</option>
+                        <option value="影像">影像</option>
+                        <option value="周期性">周期性</option>
+                        <option value="检查史">检查史</option>
+                        <option value="睡眠">睡眠</option>
+                        <option value="乳腺">乳腺</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="riskLevelFilter">
+                        <option value="">所有风险等级</option>
+                        <option value="低风险">低风险</option>
+                        <option value="中风险">中风险</option>
+                        <option value="高风险">高风险</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control" id="ageFilter" placeholder="年龄筛选">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control" id="bira dsFilter" min="0" max="6" placeholder="BI-RADS (0-6)">
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-search"></i> 筛选
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总知识条目</h5>
+                    <h2 id="totalCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">来源类型</h5>
+                    <h2 id="sourceTypeCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">当前筛选</h5>
+                    <h2 id="filteredCount">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 知识列表 -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>标题</th>
+                            <th>优先级</th>
+                            <th>来源类型</th>
+                            <th>风险等级</th>
+                            <th>匹配维度</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="knowledgeTable">
+                        <tr>
+                            <td colspan="8" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <nav>
+                <ul class="pagination justify-content-center" id="pagination"></ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 新增/编辑模态框 -->
+<div class="modal fade" id="knowledgeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">新增知识条目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="knowledgeForm">
+                    <input type="hidden" id="itemId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">标题 *</label>
+                        <input type="text" class="form-control" id="title" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">内容 *</label>
+                        <textarea class="form-control" id="content" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">来源类型 *</label>
+                            <select class="form-select" id="sourceType" required>
+                                <option value="">请选择</option>
+                                <option value="年龄通用">年龄通用</option>
+                                <option value="症状">症状</option>
+                                <option value="影像">影像</option>
+                                <option value="周期性">周期性</option>
+                                <option value="检查史">检查史</option>
+                                <option value="睡眠">睡眠</option>
+                                <option value="乳腺">乳腺</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">优先级 (1-10)</label>
+                            <input type="number" class="form-control" id="priority" min="1" max="10" value="5">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">年龄范围（最小）</label>
+                            <input type="number" class="form-control" id="ageMin">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">年龄范围（最大）</label>
+                            <input type="number" class="form-control" id="ageMax">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">风险等级</label>
+                            <select class="form-select" id="riskLevel">
+                                <option value="">不限</option>
+                                <option value="低风险">低风险</option>
+                                <option value="中风险">中风险</option>
+                                <option value="高风险">高风险</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">BI-RADS最小值</label>
+                            <input type="number" class="form-control" id="biradsMin" min="0" max="6">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">BI-RADS最大值</label>
+                            <input type="number" class="form-control" id="biradsMax" min="0" max="6">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">症状匹配</label>
+                        <input type="text" class="form-control" id="symptoms" placeholder="如：乳房肿块、疼痛等">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">家族史匹配</label>
+                        <input type="text" class="form-control" id="familyHistory" placeholder="如：有家族史、无家族史">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveKnowledge()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let totalPages = 1;
+let knowledgeModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    knowledgeModal = new bootstrap.Modal(document.getElementById('knowledgeModal'));
+    loadKnowledgeList();
+    loadStats();
+    
+    // 搜索框实时搜索
+    document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 500));
+});
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+async function loadKnowledgeList(page = 1) {
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            per_page: 20
+        });
+        
+        // 添加筛选条件
+        const search = document.getElementById('searchInput').value;
+        if (search) params.append('search', search);
+        
+        const sourceType = document.getElementById('sourceTypeFilter').value;
+        if (sourceType) params.append('source_type', sourceType);
+        
+        const riskLevel = document.getElementById('riskLevelFilter').value;
+        if (riskLevel) params.append('risk_level', riskLevel);
+        
+        const age = document.getElementById('ageFilter').value;
+        if (age) params.append('age', age);
+        
+        const birads = document.getElementById('biradsFilter').value;
+        if (birads) params.append('birads', birads);
+        
+        const response = await fetch(`/api/knowledge?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        currentPage = data.page;
+        totalPages = data.pages;
+        
+        displayKnowledgeList(data.items);
+        updatePagination(data.page, data.pages);
+        document.getElementById('filteredCount').textContent = data.total;
+        
+    } catch (error) {
+        console.error('加载知识列表失败:', error);
+        alert('加载失败，请重试');
+    }
+}
+
+function displayKnowledgeList(items) {
+    const tbody = document.getElementById('knowledgeTable');
+    
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">暂无数据</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = items.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td>
+                <strong>${item.title}</strong>
+                <br>
+                <small class="text-muted">${item.content.substring(0, 50)}...</small>
+            </td>
+            <td>
+                <span class="badge bg-${item.priority >= 7 ? 'danger' : item.priority >= 4 ? 'warning' : 'secondary'}">
+                    ${item.priority}
+                </span>
+            </td>
+            <td>${item.source_type || '-'}</td>
+            <td>
+                ${item.risk_level ? `<span class="badge bg-${
+                    item.risk_level.includes('高') ? 'danger' : 
+                    item.risk_level.includes('中') ? 'warning' : 'success'
+                }">${item.risk_level}</span>` : '-'}
+            </td>
+            <td>
+                <small>
+                    ${item.age_range || ''}
+                    ${item.birads_min ? `BI-RADS:${item.birads_min}-${item.birads_max}` : ''}
+                    ${item.symptoms || ''}
+                </small>
+            </td>
+            <td>${item.created_at}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editKnowledge(${item.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteKnowledge(${item.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updatePagination(current, total) {
+    const pagination = document.getElementById('pagination');
+    let html = '';
+    
+    // 上一页
+    html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadKnowledgeList(${current - 1}); return false;">上一页</a>
+    </li>`;
+    
+    // 页码
+    for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+        html += `<li class="page-item ${i === current ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="loadKnowledgeList(${i}); return false;">${i}</a>
+        </li>`;
+    }
+    
+    // 下一页
+    html += `<li class="page-item ${current === total ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadKnowledgeList(${current + 1}); return false;">下一页</a>
+    </li>`;
+    
+    pagination.innerHTML = html;
+}
+
+async function loadStats() {
+    try {
+        const response = await fetch('/api/knowledge/stats', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        const data = await response.json();
+        
+        document.getElementById('totalCount').textContent = data.total;
+        document.getElementById('sourceTypeCount').textContent = data.by_source_type.length;
+        
+    } catch (error) {
+        console.error('加载统计失败:', error);
+    }
+}
+
+function applyFilters() {
+    loadKnowledgeList(1);
+}
+
+function showAddModal() {
+    document.getElementById('modalTitle').textContent = '新增知识条目';
+    document.getElementById('knowledgeForm').reset();
+    document.getElementById('itemId').value = '';
+    knowledgeModal.show();
+}
+
+async function editKnowledge(id) {
+    try {
+        const response = await fetch(`/api/knowledge/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        const item = await response.json();
+        
+        document.getElementById('modalTitle').textContent = '编辑知识条目';
+        document.getElementById('itemId').value = item.id;
+        document.getElementById('title').value = item.title;
+        document.getElementById('content').value = item.content;
+        document.getElementById('sourceType').value = item.source_type;
+        document.getElementById('priority').value = item.priority;
+        document.getElementById('ageMin').value = item.age_min || '';
+        document.getElementById('ageMax').value = item.age_max || '';
+        document.getElementById('riskLevel').value = item.risk_level || '';
+        document.getElementById('biradsMin').value = item.birads_min || '';
+        document.getElementById('biradsMax').value = item.birads_max || '';
+        document.getElementById('symptoms').value = item.symptoms || '';
+        document.getElementById('familyHistory').value = item.family_history || '';
+        
+        knowledgeModal.show();
+        
+    } catch (error) {
+        console.error('加载知识详情失败:', error);
+        alert('加载失败，请重试');
+    }
+}
+
+async function saveKnowledge() {
+    const form = document.getElementById('knowledgeForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const itemId = document.getElementById('itemId').value;
+    const data = {
+        title: document.getElementById('title').value,
+        content: document.getElementById('content').value,
+        source_type: document.getElementById('sourceType').value,
+        priority: parseInt(document.getElementById('priority').value),
+        age_min: document.getElementById('ageMin').value ? parseInt(document.getElementById('ageMin').value) : null,
+        age_max: document.getElementById('ageMax').value ? parseInt(document.getElementById('ageMax').value) : null,
+        risk_level: document.getElementById('riskLevel').value || null,
+        birads_min: document.getElementById('biradsMin').value ? parseInt(document.getElementById('biradsMin').value) : null,
+        birads_max: document.getElementById('biradsMax').value ? parseInt(document.getElementById('biradsMax').value) : null,
+        symptoms: document.getElementById('symptoms').value || null,
+        family_history: document.getElementById('familyHistory').value || null
+    };
+    
+    try {
+        const url = itemId ? `/api/knowledge/${itemId}` : '/api/knowledge';
+        const method = itemId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            alert(itemId ? '更新成功！' : '新增成功！');
+            knowledgeModal.hide();
+            loadKnowledgeList(currentPage);
+            loadStats();
+        } else {
+            throw new Error('保存失败');
+        }
+        
+    } catch (error) {
+        console.error('保存知识失败:', error);
+        alert('保存失败，请重试');
+    }
+}
+
+async function deleteKnowledge(id) {
+    if (!confirm('确定要删除这条知识吗？')) return;
+    
+    try {
+        const response = await fetch(`/api/knowledge/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (response.ok) {
+            alert('删除成功！');
+            loadKnowledgeList(currentPage);
+            loadStats();
+        } else {
+            throw new Error('删除失败');
+        }
+        
+    } catch (error) {
+        console.error('删除知识失败:', error);
+        alert('删除失败，请重试');
+    }
+}
+</script>
+
+<style>
+.table td {
+    vertical-align: middle;
+}
+.badge {
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}
+

@@ -1,0 +1,117 @@
+.container {
+  padding: 24rpx;
+  background: #f7f7f7;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111;
+}
+
+.status {
+  margin-top: 18rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.status.ok {
+  background: #ecfdf3;
+  color: #0b7a2a;
+}
+
+.status.warn {
+  background: #fff7e6;
+  color: #8a5a00;
+}
+
+.rows {
+  margin-top: 20rpx;
+  border-top: 2rpx dashed #eee;
+  padding-top: 16rpx;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 0;
+}
+
+.k {
+  color: #666;
+  font-size: 26rpx;
+}
+
+.v {
+  color: #111;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: 18rpx;
+  color: #9aa0a6;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.btn {
+  margin-top: 26rpx;
+  background: #07c160;
+}
+
+.btn.secondary {
+  margin-top: 18rpx;
+  background: #1677ff;
+}
+
+.manager-card {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx dashed #eee;
+}
+
+.manager-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 8rpx;
+}
+
+.manager-rows {
+  margin-top: 8rpx;
+}
+
+.manager-empty {
+  margin-top: 10rpx;
+  color: #8a5a00;
+  background: #fff7e6;
+  border-radius: 12rpx;
+  padding: 14rpx 16rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.manager-tip {
+  margin-top: 10rpx;
+  color: #9aa0a6;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.link {
+  color: #1677ff;
+}
+
+
