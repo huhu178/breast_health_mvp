@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>乳腺结节健康管理方案动态模板</title>
+  <style>
+    body { font-family: "微软雅黑", Arial, sans-serif; background: #fafafd; margin: 0; padding: 0; }
+    .report-container { max-width: 900px; margin: 40px auto 36px; background: #fff; box-shadow:0 1px 10px #e5e9ef; padding:40px 36px 36px 36px; border-radius: 10px; }
+    table { border-collapse: collapse; width: 100%; margin: 28px 0 36px 0; }
+    th, td { border: 1px solid #e4e7ed; padding: 8px 15px; text-align:left; }
+    caption { font-weight:bold; font-size:1.18em; margin: 0 0 11px 0; }
+    .section-title { font-size:1.15em;font-weight:700;margin:32px 0 15px 0;color:#1a3555; }
+    .fixed-section-title { margin-top:32px; font-size:1.08em;color:#4175b3;text-align:left;margin-bottom:8px;font-weight:600; }
+    ul { margin:13px 0 11px 24px; }
+    .disclaimer { background: #f7fcff; color:#1b444e; border-left: 4px solid #29bae3; padding:14px 18px; margin:25px 0; border-radius: 4px;line-height:1.85; }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <h2 class="section-title">一、基本信息</h2>
+    <table>
+      <tr><th>姓名</th><td>{{name}}</td><th>性别</th><td>{{gender}}</td></tr>
+      <tr><th>年龄</th><td>{{age}}</td><th>检查日期</th><td>{{check_date}}</td></tr>
+      <tr><th>联系电话</th><td colspan="3">{{phone}}</td></tr>
+    </table>
+
+    <h2 class="section-title">二、影像学特征</h2>
+    <table>
+      <tr><th>BI-RADS分级</th><td>{{bi_rads}}</td><th>结节部位</th><td>{{location}}</td></tr>
+      <tr><th>结节大小（cm）</th><td>{{size}}</td><th>边界</th><td>{{boundary}}</td></tr>
+      <tr><th>内部回声</th><td>{{echo}}</td><th>血流</th><td>{{vascularity}}</td></tr>
+    </table>
+
+    <h2 class="section-title">三、病史与风险评估</h2>
+    <table>
+      <tr><th>家族史</th><td>{{family_history}}</td><th>个人病史</th><td>{{medical_history}}</td></tr>
+      <tr><th>风险等级</th><td>{{risk_level}}</td><th>随访建议</th><td>{{follow_advice}}</td></tr>
+      <tr><th>综合结论</th><td colspan="3">{{main_conclusion}}</td></tr>
+    </table>
+
+    <div class="fixed-section-title">健康教育与生活方式建议</div>
+    <ul>
+      <li>保持良好的心态，避免情绪波动。</li>
+      <li>均衡饮食，少食高脂、高糖及腌制食品。</li>
+      <li>规律作息，适度运动，保证充足睡眠。</li>
+      <li>远离烟酒，避免接触高危因素。</li>
+      <li>定期体检，按建议随访。</li>
+    </ul>
+
+    <div class="fixed-section-title">重要声明</div>
+    <div class="disclaimer">
+      本报告仅供个人健康管理与自我参考，不能作为疾病诊断和处置唯一依据。如有身体不适或报告异常，请及时到正规医院就诊并由专科医师进一步评估。本服务不代替医生诊疗。
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,3066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>结节健康管理工作台</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',system-ui,sans-serif;background:#f1f5f9;color:#0f172a;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#topnav{height:56px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:10}
+#topnav .logo{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;background:var(--scene-color,#155eef);flex-shrink:0;transition:background .2s}
+#topnav .title{font-size:15px;font-weight:600;color:#0f172a}
+#topnav .spacer{flex:1}
+#topnav .meta{font-size:12px;color:#64748b;display:flex;align-items:center;gap:16px}
+#topnav .meta .date-str{color:#64748b}
+#topnav .meta .user-info{display:flex;align-items:center;gap:6px}
+#topnav .meta .avatar{width:28px;height:28px;border-radius:50%;background:var(--scene-color,#155eef);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600}
+#app{display:flex;flex:1;overflow:hidden}
+#sidebar{width:220px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#sidebar .sidebar-header{padding:16px 16px 8px;font-size:11px;color:#94a3b8;font-weight:500;letter-spacing:.5px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent;transition:all .15s;color:#64748b;font-size:13px;user-select:none}
+.nav-btn:hover{background:#f8fafc;color:#0f172a}
+.nav-btn.active{border-left-color:var(--scene-color,#155eef);background:#f0f7ff;color:var(--scene-color,#155eef);font-weight:500}
+.nav-btn .nav-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:#f1f5f9;color:#64748b;transition:all .15s}
+.nav-btn.active .nav-icon{background:var(--scene-color,#155eef);color:#fff}
+.nav-btn .nav-label{flex:1}
+.nav-btn .nav-count{font-size:11px;background:#f1f5f9;color:#64748b;border-radius:10px;padding:1px 7px}
+.nav-btn.active .nav-count{background:var(--scene-color,#155eef);color:#fff;opacity:.85}
+#sidebar .nav-group{margin:4px 0}
+#sidebar .nav-group .group-head{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent;transition:all .15s;color:#64748b;font-size:13px;user-select:none}
+#sidebar .nav-group .group-head:hover{background:#f8fafc;color:#0f172a}
+#sidebar .nav-group.open .group-head{background:#f8fafc}
+#sidebar .nav-group .caret{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;color:#64748b;font-size:12px}
+#sidebar .nav-group .sub{padding:2px 0 6px}
+#sidebar .nav-sub{display:flex;align-items:center;gap:10px;padding:9px 16px 9px 34px;cursor:pointer;border-left:3px solid transparent;transition:all .15s;color:#64748b;font-size:13px;user-select:none}
+#sidebar .nav-sub:hover{background:#f8fafc;color:#0f172a}
+#sidebar .nav-sub.active{border-left-color:var(--scene-color,#155eef);background:#f0f7ff;color:var(--scene-color,#155eef);font-weight:500}
+#sidebar .nav-sub .nav-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:#f1f5f9;color:#64748b;transition:all .15s}
+#sidebar .nav-sub.active .nav-icon{background:var(--scene-color,#155eef);color:#fff}
+#sidebar .sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;line-height:1.6}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#sceneView{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+#statusbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 20px;display:flex;gap:28px;flex-shrink:0;align-items:center}
+.stat-item{display:flex;align-items:center;gap:8px}
+.stat-item .s-label{font-size:12px;color:#64748b}
+.stat-item .s-num{font-size:22px;font-weight:700;color:var(--scene-color,#155eef);line-height:1}
+.stat-divider{width:1px;height:32px;background:#e2e8f0}
+#columns{display:flex;flex:1;overflow:hidden}
+.col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #e2e8f0}
+.col:last-child{border-right:none}
+#col-left{width:280px;flex-shrink:0}
+#col-mid{flex:1;min-width:0}
+#col-right{width:260px;flex-shrink:0}
+@media(max-width:1200px){#col-right{display:none}}
+.col-header{padding:10px 14px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#0f172a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff}
+.col-body{flex:1;overflow-y:auto;padding:10px}
+#bottom{height:232px;border-top:1px solid #e2e8f0;display:flex;flex-shrink:0;background:#fff}
+.bottom-col{min-height:0}
+.bottom-body{min-height:0}
+.bottom-collapsed #bottom{height:38px}
+.bottom-collapsed .bottom-body{display:none}
+.bottom-collapsed .bottom-header{border-bottom:none}
+.bottom-toggle{border:1px solid #e2e8f0;background:#fff;border-radius:6px;padding:3px 8px;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s}
+.bottom-toggle:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef)}
+.bottom-header .hdr-actions{display:flex;gap:8px;align-items:center}
+.bottom-col{flex:1;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden}
+.bottom-col:last-child{border-right:none}
+.bottom-header{padding:8px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#0f172a;flex-shrink:0}
+.bottom-body{flex:1;overflow-y:auto;padding:6px 12px}
+/* ── Cards & Tags ── */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.card:last-child{margin-bottom:0}
+.tag{display:inline-flex;align-items:center;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:500;line-height:1.6}
+.tag-high{background:#fef2f2;color:#dc2626}
+.tag-mid{background:#fffbeb;color:#d97706}
+.tag-low{background:#f0fdf4;color:#16a34a}
+.tag-blue{background:#eff6ff;color:#2563eb}
+.tag-orange{background:#fff7ed;color:#ea580c}
+.tag-green{background:#f0fdf4;color:#16a34a}
+.tag-gray{background:#f8fafc;color:#64748b}
+.tag-scene{background:var(--scene-bg,#eff6ff);color:var(--scene-color,#155eef)}
+/* ── Patient list ── */
+.patient-search{display:flex;gap:6px;margin-bottom:8px}
+.patient-search input{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 10px;font-size:12px;outline:none;color:#0f172a}
+.patient-search input:focus{border-color:var(--scene-color,#155eef)}
+.risk-filters{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.risk-btn{border:1px solid #e2e8f0;background:#fff;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;color:#64748b;transition:all .15s}
+.risk-btn.active,.risk-btn:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef);background:#f0f7ff}
+.patient-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;transition:all .15s;margin-bottom:4px}
+.patient-item:hover{background:#f8fafc;border-color:#e2e8f0}
+.patient-item.selected{background:#f0f7ff;border-color:var(--scene-color,#155eef)}
+.patient-avatar{width:30px;height:30px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#64748b;flex-shrink:0}
+.patient-info{flex:1;min-width:0}
+.patient-name{font-size:13px;font-weight:500;color:#0f172a}
+.patient-sub{font-size:11px;color:#64748b;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.patient-actions{display:flex;gap:4px;flex-shrink:0}
+.btn-xs{border:1px solid #e2e8f0;background:#fff;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;color:#64748b;transition:all .15s;white-space:nowrap}
+.btn-xs:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef)}
+.btn-primary{background:var(--scene-color,#155eef);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:.88}
+.btn-sm{border:1px solid #e2e8f0;background:#fff;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:#64748b;transition:all .15s}
+.btn-sm:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef)}
+/* ── Chat ── */
+.chat-patient-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.chat-patient-card .pc-name{font-size:14px;font-weight:600;color:#0f172a;margin-bottom:4px}
+.chat-patient-card .pc-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.chat-patient-card .pc-next{font-size:11px;color:#64748b}
+.quick-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chat-messages{flex:1;overflow-y:auto;padding:0 0 8px}
+.msg{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.msg .msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.msg.user .msg-avatar{background:var(--scene-color,#155eef);color:#fff}
+.msg.ai .msg-avatar{background:#e2e8f0;color:#64748b}
+.msg.system .msg-avatar{background:#fef3c7;color:#d97706}
+.msg-bubble{max-width:75%;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6}
+.msg.user .msg-bubble{background:var(--scene-color,#155eef);color:#fff;border-radius:8px 2px 8px 8px}
+.msg.ai .msg-bubble{background:#f1f5f9;color:#0f172a;border-radius:2px 8px 8px 8px}
+.msg.system .msg-bubble{background:#fffbeb;color:#92400e;border-radius:8px;font-size:11px;border:1px solid #fde68a}
+.chat-input-area{border-top:1px solid #e2e8f0;padding:10px;display:flex;gap:8px;flex-shrink:0;background:#fff}
+.chat-input-area textarea{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:12px;resize:none;outline:none;font-family:inherit;color:#0f172a;height:56px}
+.chat-input-area textarea:focus{border-color:var(--scene-color,#155eef)}
+.speaker-toggle{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.seg{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:4px 10px;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap}
+.seg.active,.seg:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef);background:#f0f7ff}
+/* ── AI staff ── */
+.ai-staff-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:3px;border:1px solid #f1f5f9}
+.ai-staff-item:hover{background:#f8fafc}
+.ai-staff-num{font-size:11px;color:#94a3b8;width:16px;flex-shrink:0}
+.ai-staff-name{font-size:12px;font-weight:500;color:#0f172a;flex:1;min-width:0}
+.ai-staff-desc{font-size:11px;color:#94a3b8;flex:2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-active{background:#22c55e}
+.dot-inactive{background:#cbd5e1}
+.dot-busy{background:var(--scene-color,#155eef)}
+/* ── Rules ── */
+.rule-item{display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px;color:#64748b}
+.rule-item:last-child{border-bottom:none}
+.rule-item::before{content:'→';color:var(--scene-color,#155eef);flex-shrink:0;margin-top:1px}
+/* ── Todo ── */
+.todo-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f8fafc;font-size:12px}
+.todo-item:last-child{border-bottom:none}
+.todo-pri{border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600;flex-shrink:0}
+.pri-high{background:#fef2f2;color:#dc2626}
+.pri-mid{background:#fffbeb;color:#d97706}
+.pri-low{background:#f0fdf4;color:#16a34a}
+.todo-text{flex:1;color:#0f172a}
+.todo-status{font-size:11px;color:#64748b;flex-shrink:0}
+/* ── Timeline ── */
+.tl-item{display:flex;gap:10px;padding:5px 0;font-size:12px}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:var(--scene-color,#155eef);flex-shrink:0;margin-top:4px}
+.tl-content{flex:1}
+.tl-type{font-weight:500;color:#0f172a}
+.tl-title{color:#64748b;margin-top:1px}
+.tl-desc{color:#94a3b8;font-size:11px;margin-top:1px}
+/* ── Metrics ── */
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0}
+.metric-card{background:#f8fafc;border-radius:6px;padding:8px 10px;text-align:center}
+.metric-val{font-size:18px;font-weight:700;color:var(--scene-color,#155eef)}
+.metric-label{font-size:11px;color:#64748b;margin-top:2px}
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── Login ── */
+#loginPage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f1f5f9 0%,#eef2ff 100%);z-index:10000}
+#loginCard{width:min(920px,92vw);display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
+@media(max-width:920px){#loginCard{grid-template-columns:1fr;max-width:520px}}
+.login-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+.login-left{padding:22px 22px 18px}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.login-brand .brand-logo{width:44px;height:44px;border-radius:12px;background:var(--scene-color,#155eef);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;flex-shrink:0}
+.login-brand .brand-text .h1{font-size:18px;font-weight:700;color:#0f172a}
+.login-brand .brand-text .h2{font-size:12px;color:#64748b;margin-top:3px}
+.login-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:920px){.login-grid{grid-template-columns:1fr}}
+.form-item{display:flex;flex-direction:column;gap:6px}
+.form-item label{font-size:12px;color:#475569}
+.form-item input,.form-item select{border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;font-size:13px;outline:none;color:#0f172a;background:#fff}
+.form-item input:focus,.form-item select:focus{border-color:var(--scene-color,#155eef);box-shadow:0 0 0 3px rgba(21,94,239,.08)}
+.form-item .hint{font-size:11px;color:#94a3b8;line-height:1.6;margin-top:2px}
+.login-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
+.checkbox{display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b;user-select:none}
+.checkbox input{accent-color:var(--scene-color,#155eef)}
+.login-right{padding:18px 18px 16px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)}
+.login-right .sec-title{font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px}
+.login-kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px}
+.kpi-val{font-size:18px;font-weight:800;color:var(--scene-color,#155eef);line-height:1}
+.kpi-lab{font-size:11px;color:#64748b;margin-top:5px}
+.login-tips{margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:12px;color:#64748b;line-height:1.75}
+.hide{display:none !important}
+/* ── Topnav auth area ── */
+#topnav .meta .role-org{display:flex;align-items:center;gap:8px}
+#topnav .meta .role-org .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:4px 10px;font-size:12px;color:#0f172a;white-space:nowrap}
+#topnav .meta .role-org .pill .dot2{width:7px;height:7px;border-radius:50%;background:var(--scene-color,#155eef)}
+#topnav .meta .logout-btn{border:1px solid #e2e8f0;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;color:#64748b;transition:all .15s;white-space:nowrap}
+#topnav .meta .logout-btn:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef)}
+/* ── Sidebar extras ── */
+#sidebar .nav-split{height:1px;background:#e2e8f0;margin:10px 14px}
+/* ── RWS (真实世界研究) ── */
+#rwsView{display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden}
+#rwsLayout{display:flex;flex:1;min-width:0;overflow:hidden}
+#rwsLeft{width:260px;flex-shrink:0;border-right:1px solid #e2e8f0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+#rwsMain{flex:1;min-width:0;background:#f1f5f9;display:flex;flex-direction:column;overflow:hidden}
+#rwsRight{width:280px;flex-shrink:0;border-left:1px solid #e2e8f0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:1200px){#rwsRight{display:none}}
+.rws-header{padding:10px 14px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff}
+.rws-body{flex:1;overflow-y:auto;padding:10px}
+.rws-project{padding:10px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;margin-bottom:6px;transition:all .15s}
+.rws-project:hover{background:#f8fafc;border-color:#e2e8f0}
+.rws-project.active{background:#f0f7ff;border-color:var(--scene-color,#155eef)}
+.rws-project .p-name{font-size:13px;font-weight:650;color:#0f172a}
+.rws-project .p-sub{font-size:11px;color:#64748b;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap}
+.desc-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:920px){.desc-list{grid-template-columns:1fr}}
+.desc-item{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.desc-item .k{font-size:11px;color:#64748b}
+.desc-item .v{font-size:12px;color:#0f172a;margin-top:4px;line-height:1.65}
+.rws-steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.step{display:inline-flex;align-items:center;gap:6px;border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;color:#0f172a}
+.step .s-dot{width:8px;height:8px;border-radius:50%;background:var(--scene-color,#155eef);opacity:.2}
+.step.done .s-dot{opacity:1}
+.support-item{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:8px}
+.support-item:hover{background:#f8fafc}
+.support-icon{width:28px;height:28px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#64748b;flex-shrink:0}
+.support-title{font-size:12px;font-weight:650;color:#0f172a}
+.support-desc{font-size:11px;color:#64748b;margin-top:2px;line-height:1.6}
+.rws-bottom{height:220px;border-top:1px solid #e2e8f0;display:flex;flex-direction:column;flex-shrink:0;background:#fff}
+.tabs{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid #e2e8f0;flex-shrink:0;overflow:auto}
+.tab{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab.active,.tab:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef);background:#f0f7ff}
+.table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden}
+.table th,.table td{font-size:12px;padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:top}
+.table th{position:sticky;top:0;background:#fff;z-index:1;color:#475569;font-weight:700}
+.table td .muted{color:#94a3b8;font-size:11px;margin-top:2px}
+.table-actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn-inline{border:1px solid #e2e8f0;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s}
+.btn-inline:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef)}
+/* ── Modal (页面跳转模拟) ── */
+#modal{position:fixed;inset:0;z-index:9998;display:none}
+#modal.show{display:block}
+#modal .mask{position:absolute;inset:0;background:rgba(15,23,42,.38)}
+#modal .panel{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:min(980px,92vw);max-height:calc(100vh - 120px);background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 55px rgba(2,6,23,.18)}
+#modal .panel .m-head{padding:10px 14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#modal .panel .m-title{font-size:13px;font-weight:750;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#modal .panel .m-close{border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;color:#64748b;cursor:pointer}
+#modal .panel .m-close:hover{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef)}
+#modal .panel .m-body{padding:12px 14px;overflow:auto;background:#f8fafc}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;font-size:12px}
+@media(max-width:720px){.kv{grid-template-columns:1fr}}
+.kv .k{color:#64748b}
+.kv .v{color:#0f172a}
+.ai-staff-item.selectable{cursor:pointer;border-color:#e2e8f0}
+.ai-staff-item.selected{background:#f0f7ff;border-color:var(--scene-color,#155eef)}
+.ai-chat{margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;height:280px}
+.ai-chat .ach-head{padding:8px 10px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ai-chat .ach-title{font-size:12px;font-weight:750;color:#0f172a}
+.ai-chat .ach-body{flex:1;overflow:auto;padding:10px;background:#f8fafc}
+.ai-chat .ach-input{border-top:1px solid #e2e8f0;padding:8px;display:flex;gap:8px;background:#fff}
+.ai-chat .ach-input input{flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:12px;outline:none}
+.ai-chat .ach-input input:focus{border-color:var(--scene-color,#155eef)}
+@media(max-height:760px){.ai-chat{height:240px}}
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:#cbd5e1}
+/* ── MVP Badge ── */
+.mvp-badge{display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.nav-btn .mvp-badge{margin-left:4px}
+/* ── Patient Status Tags ── */
+.tag-pending{background:#f8fafc;color:#64748b}
+.tag-surveyed{background:#eff6ff;color:#2563eb}
+.tag-uploaded{background:#faf5ff;color:#7c3aed}
+.tag-generated{background:#ecfdf5;color:#059669}
+.tag-following{background:#fff7ed;color:#c2410c}
+.tag-done{background:#f0fdf4;color:#16a34a}
+/* ── Report Flow Steps ── */
+.report-flow{display:flex;align-items:flex-start;gap:0;margin:10px 0;overflow-x:auto;padding-bottom:4px}
+.rf-step{display:flex;flex-direction:column;align-items:center;min-width:80px;position:relative}
+.rf-step:not(:last-child)::after{content:'';position:absolute;top:14px;left:calc(50% + 14px);width:calc(100% - 28px);height:2px;background:#e2e8f0;z-index:0}
+.rf-step.done::after{background:var(--scene-color,#155eef)}
+.rf-dot{width:28px;height:28px;border-radius:50%;border:2px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#94a3b8;z-index:1;position:relative}
+.rf-step.done .rf-dot{border-color:var(--scene-color,#155eef);background:var(--scene-color,#155eef);color:#fff}
+.rf-step.active .rf-dot{border-color:var(--scene-color,#155eef);color:var(--scene-color,#155eef);background:#fff;box-shadow:0 0 0 3px rgba(21,94,239,.12)}
+.rf-label{font-size:10px;color:#94a3b8;margin-top:5px;text-align:center;line-height:1.4}
+.rf-step.done .rf-label,.rf-step.active .rf-label{color:var(--scene-color,#155eef);font-weight:600}
+/* ── Stats Cards ── */
+.stats-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+@media(max-width:900px){.stats-cards{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s}
+.stat-card:hover{border-color:var(--scene-color,#155eef)}
+.stat-card .sc-val{font-size:22px;font-weight:800;color:var(--scene-color,#155eef);line-height:1}
+.stat-card .sc-label{font-size:11px;color:#64748b;margin-top:4px}
+.stat-card .sc-sub{font-size:10px;color:#94a3b8;margin-top:2px}
+/* ── Patient Detail Tabs ── */
+.detail-tabs{display:flex;gap:4px;border-bottom:1px solid #e2e8f0;margin-bottom:12px;flex-wrap:wrap}
+.detail-tab{padding:7px 14px;font-size:12px;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.detail-tab:hover{color:#0f172a}
+.detail-tab.active{color:var(--scene-color,#155eef);border-bottom-color:var(--scene-color,#155eef);font-weight:600}
+/* ── Nodule Type Chips ── */
+.nodule-chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.nodule-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;background:#fff}
+.nodule-chip.breast{border-color:#f9a8d4;color:#be185d;background:#fdf2f8}
+.nodule-chip.lung{border-color:#93c5fd;color:#1d4ed8;background:#eff6ff}
+.nodule-chip.thyroid{border-color:#6ee7b7;color:#065f46;background:#ecfdf5}
+/* ── Miniprogram Preview ── */
+.mp-phone{width:280px;margin:0 auto;background:#f1f5f9;border-radius:24px;padding:16px 12px;border:6px solid #0f172a;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.mp-statusbar{height:20px;background:#0f172a;border-radius:8px 8px 0 0;margin:-16px -12px 12px;display:flex;align-items:center;justify-content:flex-end;padding:0 12px;gap:6px}
+.mp-statusbar span{width:6px;height:6px;border-radius:50%;background:#fff;opacity:.6}
+.mp-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;font-weight:700;color:#0f172a}
+.mp-card{background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.mp-card .mc-title{font-size:12px;font-weight:700;color:#0f172a;margin-bottom:6px}
+.mp-card .mc-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:3px}
+.mp-btn{width:100%;background:var(--scene-color,#155eef);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px}
+/* ── Chart Bar (static) ── */
+.chart-bar-wrap{display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.chart-bar-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.chart-bar-label{width:80px;color:#64748b;text-align:right;flex-shrink:0}
+.chart-bar-track{flex:1;height:14px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.chart-bar-fill{height:100%;border-radius:4px;background:var(--scene-color,#155eef);opacity:.8;transition:width .3s}
+.chart-bar-val{width:36px;color:#0f172a;font-weight:600;flex-shrink:0}
+/* ── Wecom Session List ── */
+.wecom-list{display:flex;flex-direction:column;gap:0}
+.wecom-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .12s}
+.wecom-item:hover{background:#f8fafc}
+.wecom-item.active{background:#f0f7ff}
+.wecom-avatar{width:36px;height:36px;border-radius:50%;background:var(--scene-color,#155eef);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.wecom-info{flex:1;min-width:0}
+.wecom-name{font-size:13px;font-weight:600;color:#0f172a}
+.wecom-preview{font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.wecom-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.wecom-time{font-size:10px;color:#94a3b8}
+.wecom-unread{background:var(--scene-color,#155eef);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700}
+/* ── AI Suggest Card ── */
+.ai-suggest{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;margin:8px 0}
+.ai-suggest .as-label{font-size:10px;color:#2563eb;font-weight:700;margin-bottom:4px}
+.ai-suggest .as-text{font-size:12px;color:#1e3a5f;line-height:1.65}
+.ai-suggest .as-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.ai-suggest .as-actions button{border:1px solid #93c5fd;background:#fff;border-radius:6px;padding:4px 10px;font-size:11px;color:#1d4ed8;cursor:pointer}
+.ai-suggest .as-actions button:hover{background:#eff6ff}
+</style>
+</head>
+<body>
+<div id="loginPage" class="hide">
+  <div id="loginCard">
+    <div class="login-panel login-left">
+      <div class="login-brand">
+        <div class="brand-logo">结</div>
+        <div class="brand-text">
+          <div class="h1">结节健康管理工作台</div>
+          <div class="h2">AI 驱动的结节全流程健康管理平台</div>
+        </div>
+      </div>
+      <div class="login-grid">
+        <div class="form-item">
+          <label for="orgType">机构类型</label>
+          <select id="orgType" onchange="onOrgTypeChange()">
+            <option>健康管理中心</option>
+            <option>医院</option>
+            <option>社区</option>
+            <option>药店</option>
+            <option>研究机构</option>
+          </select>
+          <div class="hint">推荐：健康管理中心为当前 MVP 主线版本，功能最完整</div>
+        </div>
+        <div class="form-item" id="orgUnitWrap">
+          <label for="orgUnit">医院业务线</label>
+          <select id="orgUnit">
+            <option>门诊</option>
+            <option>体检中心</option>
+          </select>
+        </div>
+        <div class="form-item">
+          <label for="roleType">角色</label>
+          <select id="roleType">
+            <option>管理员</option>
+            <option>医生</option>
+            <option>健康管理师</option>
+            <option>药师</option>
+            <option>家庭医生</option>
+            <option>研究员</option>
+          </select>
+        </div>
+        <div class="form-item">
+          <label for="account">账号</label>
+          <input id="account" autocomplete="username" placeholder="请输入账号（演示无需校验）">
+        </div>
+        <div class="form-item">
+          <label for="password">密码</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="请输入密码（演示无需校验）">
+        </div>
+      </div>
+      <div class="login-actions">
+        <label class="checkbox"><input type="checkbox" id="rememberMe" checked> 记住登录状态</label>
+        <button class="btn-primary" style="min-width:140px" onclick="login()">登录</button>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#94a3b8;line-height:1.7">
+        提示：这是单文件原型演示，无需后端。你可以直接点击“登录”进入工作台。
+      </div>
+    </div>
+    <div class="login-panel login-right">
+      <div class="sec-title">平台能力概览</div>
+      <div class=”login-kpi”>
+        <div class=”kpi-card”>
+          <div class=”kpi-val” style=”color:#2e90fa”>MVP</div>
+          <div class=”kpi-lab”>健康管理中心版（当前主线）</div>
+        </div>
+        <div class=”kpi-card”>
+          <div class=”kpi-val”>5</div>
+          <div class=”kpi-lab”>业务场景覆盖</div>
+        </div>
+        <div class=”kpi-card”>
+          <div class=”kpi-val”>7×24</div>
+          <div class=”kpi-lab”>AI 辅助随访与质控</div>
+        </div>
+        <div class=”kpi-card”>
+          <div class=”kpi-val”>多结节</div>
+          <div class=”kpi-lab”>乳腺/肺/甲状腺组合管理</div>
+        </div>
+      </div>
+      <div class=”login-tips”>
+        <strong>MVP 主线：健康管理中心版</strong><br>
+        - 患者建档 → 问卷/档案 → 报告生成 → 企微随访<br>
+        - 支持乳腺/肺/甲状腺多结节组合管理<br>
+        - 企微 AI 助手模拟会话（可替换为真实接口）<br>
+        - 医院/社区/药店版为后续扩展版本
+      </div>
+    </div>
+  </div>
+</div>
+<div id="topnav">
+  <div class="logo" id="navLogo">结</div>
+  <div class="title">结节健康管理工作台</div>
+  <div class="spacer"></div>
+  <div class="meta">
+    <span class="date-str" id="dateStr"></span>
+    <div class="user-info">
+      <div class="avatar" id="navAvatar">管</div>
+      <span id="navUserName">管理员</span>
+    </div>
+    <div class="role-org">
+      <span class="pill"><span class="dot2"></span><span id="navRole">管理员</span></span>
+      <span class="pill"><span class="dot2" style="opacity:.3"></span><span id="navOrg">医院</span></span>
+      <button class="logout-btn" id="logoutBtn" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+</div>
+<div id="app">
+  <div id="sidebar">
+    <div class="sidebar-header">场景框架</div>
+    <div id="navList"></div>
+    <div class="sidebar-footer">结节健康管理平台 v2.0<br>© 2026 医疗健康科技</div>
+  </div>
+  <div id="main">
+    <div id="sceneView">
+      <div id="statusbar"></div>
+      <div id="subModuleBar" class="tabs" style="display:none;border-bottom:1px solid #e2e8f0;background:#fff"></div>
+      <div id="columns">
+        <div class="col" id="col-left">
+          <div class="col-header">
+            <span>患者队列</span>
+            <button class="btn-xs" onclick="handleQuickAction('新建患者档案')">+ 新建档案</button>
+          </div>
+          <div class="col-body" id="patientCol"></div>
+        </div>
+        <div class="col" id="col-mid">
+          <div class="col-header" id="chatHeader">
+            <span id="chatPatientName">企业微信会话</span>
+            <span id="chatPatientStatus"></span>
+          </div>
+          <div class="col-body" style="display:flex;flex-direction:column;padding:10px" id="chatCol"></div>
+        </div>
+        <div class="col" id="col-right">
+          <div class="col-header"><span>AI助手工作区</span></div>
+          <div class="col-body" id="aiCol"></div>
+        </div>
+      </div>
+      <div id="bottom">
+        <div class="bottom-col">
+          <div class="bottom-header">
+            <span>待办任务</span>
+            <span class="hdr-actions">
+              <button class="bottom-toggle" onclick="toggleBottom()">折叠</button>
+            </span>
+          </div>
+          <div class="bottom-body" id="todoCol"></div>
+        </div>
+        <div class="bottom-col">
+          <div class="bottom-header"><span>随访记录</span></div>
+          <div class="bottom-body" id="followupCol"></div>
+        </div>
+        <div class="bottom-col">
+          <div class="bottom-header"><span>运行指标</span></div>
+          <div class="bottom-body" id="metricsCol"></div>
+        </div>
+      </div>
+    </div>
+    <div id="rwsView" class="hide">
+      <div id="rwsStatusbar" style="background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 20px;display:flex;gap:28px;flex-shrink:0;align-items:center"></div>
+      <div id="rwsLayout">
+        <div id="rwsLeft">
+          <div class="rws-header">
+            <span>研究项目</span>
+            <button class="btn-xs" onclick="showToast('新建研究项目（演示）')">+ 新建</button>
+          </div>
+          <div class="rws-body" id="rwsProjectList"></div>
+        </div>
+        <div id="rwsMain">
+          <div class="rws-header">
+            <span id="rwsTitle">研究项目详情</span>
+            <div class="table-actions">
+              <button class="btn-inline" onclick="onRwsExport()">导出数据</button>
+              <button class="btn-inline" onclick="onRwsGenReport()">生成研究报告</button>
+            </div>
+          </div>
+          <div class="rws-body" id="rwsDetail"></div>
+          <div class="rws-bottom">
+            <div class="tabs" id="rwsTabs"></div>
+            <div class="bottom-body" style="padding:0" id="rwsBottomBody"></div>
+          </div>
+        </div>
+        <div id="rwsRight">
+          <div class="rws-header"><span>数据与 AI 支持</span></div>
+          <div class="rws-body" id="rwsSupport"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="modal">
+  <div class="mask" onclick="closeModal()"></div>
+  <div class="panel" role="dialog" aria-modal="true">
+    <div class="m-head">
+      <div class="m-title" id="modalTitle">详情</div>
+      <button class="m-close" onclick="closeModal()">关闭</button>
+    </div>
+    <div class="m-body" id="modalBody"></div>
+  </div>
+</div>
+<script>
+// ── Scene Data ──
+const SCENES = [
+{
+  id:0, name:'医院问诊', icon:'🏥', color:'#155eef', bg:'#eff6ff',
+  desc:'门诊结节人群分层管理：健康报告生成、随访编排、转诊提示与多角色协同',
+  stats:{todo:18,confirm:7,transfer:3,overdue:5,transferLabel:'转人工'},
+  patients:[
+    {id:'p0',name:'王先生',nodule:'肺+乳腺双合并',noduleCat:'乳腺合并肺部结节',risk:'high',status:'待手术确认',statusTag:'orange'},
+    {id:'p1',name:'李女士',nodule:'甲状腺结节',noduleCat:'甲状腺结节',risk:'mid',status:'重点随访中',statusTag:'blue'},
+    {id:'p2',name:'张先生',nodule:'肺部结节',noduleCat:'肺部结节',risk:'low',status:'定期复查',statusTag:'green'},
+    {id:'p3',name:'陈女士',nodule:'甲状腺合并肺部结节',noduleCat:'甲状腺合并肺部结节',risk:'mid',status:'术后随访',statusTag:'blue'},
+    {id:'p4',name:'刘先生',nodule:'乳腺结节',noduleCat:'乳腺结节',risk:'low',status:'复查提醒',statusTag:'gray'},
+    {id:'p5',name:'周女士',nodule:'甲状腺合并乳腺结节',noduleCat:'甲状腺合并乳腺结节',risk:'mid',status:'重点随访中',statusTag:'blue'},
+    {id:'p6',name:'郑先生',nodule:'三合并结节（肺+甲状腺+乳腺）',noduleCat:'三合并结节',risk:'high',status:'待确认',statusTag:'orange'},
+  ],
+  selectedPatient:0,
+  chat:{
+    name:'王先生', status:'待手术确认', statusTag:'orange',
+    card:{nodule:'肺+乳腺双合并',risk:'high',next:'2026-05-10'},
+    quickActions:['生成健康报告','查看报告','安排复查','发送科普','转医生','生成随访表'],
+    messages:[
+      {role:'user',text:'医生说我需要进一步确认手术指征，现在怎么办？'},
+      {role:'ai',text:'我已整理您的影像报告和既往记录，供医生复核。手术指征确认必须由主治医生决定，我会在医生确认后同步您下一步安排。'},
+      {role:'system',text:'AI 已完成报告结构化，等待医生复核手术指征。'},
+      {role:'ai',text:'如出现胸痛、咯血、气促等症状，请立即告知，我会转接医生处理。'},
+    ]
+  },
+  aiStaff:[
+    {num:1,name:'AI健康管理师',desc:'随访执行、方案解释、患者日常对话（演示）',status:'对话中',active:true},
+    {num:2,name:'AI药师',desc:'用药咨询、相互作用提醒，药师复核（演示）',status:'待命',active:false},
+    {num:3,name:'AI慢病管理师',desc:'高血压、糖尿病等共病长期管理（演示）',status:'待命',active:false},
+    {num:4,name:'AI心理咨询师',desc:'结节焦虑疏导、正念练习、行为支持（演示）',status:'待命',active:false},
+    {num:5,name:'AI运动康复师',desc:'术后运动康复、强度控制、进度追踪（演示）',status:'待命',active:false},
+    {num:6,name:'AI健康生活方式规划师',desc:'饮食、作息、控烟和生活方式计划（演示）',status:'规划中',active:true},
+    {num:7,name:'AI健康福利官',desc:'健康方案确认、复查提醒和权益说明（演示）',status:'处理中',active:true},
+  ],
+  rules:['胸痛/咯血 → 转医生','手术判断 → 转主治医生','患者情绪危机 → 转心理科'],
+  todos:[
+    {pri:'high',text:'王先生手术指征待医生复核',status:'待确认'},
+    {pri:'mid',text:'陈女士术后第14天随访',status:'待处理'},
+    {pri:'mid',text:'李女士重点随访问卷未回收',status:'待触达'},
+  ],
+  followups:[
+    {type:'报告',title:'多结节结构化报告',desc:'已提取肺+乳腺双合并信息'},
+    {type:'术后',title:'康复随访表',desc:'疼痛、咳嗽、运动耐量已记录'},
+    {type:'对话',title:'结节焦虑咨询',desc:'AI心理咨询师已介入'},
+  ],
+  metrics:[
+    {val:'91%',label:'院外随访率'},{val:'86%',label:'术后跟踪率'},
+    {val:'7',label:'医生复核命中'},{val:'12',label:'今日新建档案'},
+  ]
+},
+{
+  id:1, name:'医院体检中心', icon:'🔬', color:'#0891b2', bg:'#ecfeff',
+  desc:'承接院内体检阳性患者，完成检后解释、复查路径确认',
+  stats:{todo:24,confirm:12,transfer:8,overdue:3,transferLabel:'转门诊'},
+  patients:[
+    {id:'p0',name:'赵先生',nodule:'肺小结节',risk:'high',status:'待医生复核',statusTag:'orange'},
+    {id:'p1',name:'孙女士',nodule:'乳腺结节',risk:'mid',status:'检后解释中',statusTag:'blue'},
+    {id:'p2',name:'周先生',nodule:'甲状腺结节',risk:'low',status:'复查提醒',statusTag:'green'},
+    {id:'p3',name:'吴女士',nodule:'肺+甲状腺双合并',risk:'mid',status:'等待问卷回收',statusTag:'gray'},
+  ],
+  selectedPatient:0,
+  chat:{
+    name:'赵先生', status:'待医生复核', statusTag:'orange',
+    card:{nodule:'肺小结节',risk:'high',next:'2026-04-28'},
+    quickActions:['生成健康报告','查看报告','生成解释','复查建议','转诊提示','发送问卷'],
+    messages:[
+      {role:'ai',text:'您的体检报告提示肺小结节，我已为您生成报告解释和复查建议。'},
+      {role:'user',text:'这个严重吗？需要马上去看医生吗？'},
+      {role:'ai',text:'根据报告特征，建议您尽快到门诊进一步复核。我已为您生成转诊提示，可协助预约。'},
+      {role:'system',text:'检后解释已完成，复查路径已生成，等待医生工作台确认。'},
+    ]
+  },
+  aiStaff:[
+    {num:1,name:'AI中医药膳师',desc:'体质辨识与药膳建议（需医生/药师审核），结合随访节点给出饮食方案',status:'待命',active:false},
+    {num:2,name:'AI健康管理师',desc:'检后触达、服务分层、复查提醒',status:'对话中',active:true},
+    {num:3,name:'AI药师',desc:'药事问题记录和药师转接提醒',status:'待命',active:false},
+    {num:4,name:'AI慢病管理师',desc:'体检异常指标、慢病风险跟踪',status:'处理中',active:true},
+    {num:5,name:'AI心理咨询师',desc:'检后焦虑疏导',status:'待命',active:false},
+    {num:6,name:'AI运动康复师',desc:'运动计划、体重管理',status:'待命',active:false},
+    {num:7,name:'AI健康生活方式规划师',desc:'饮食、作息、控烟计划',status:'待命',active:false},
+    {num:8,name:'AI健康福利官',desc:'复查提醒、权益说明',status:'处理中',active:true},
+  ],
+  rules:['高风险报告 → 提示转门诊医生','患者拒绝复查 → 通知体检中心'],
+  todos:[
+    {pri:'high',text:'赵先生高风险报告待医生复核',status:'待确认'},
+    {pri:'mid',text:'286名阳性人群检后解释进行中',status:'运行中'},
+    {pri:'low',text:'74名问卷未回收，自动提醒中',status:'待触达'},
+  ],
+  followups:[
+    {type:'体检',title:'年度体检报告',desc:'结节阳性已自动识别并分层'},
+    {type:'问卷',title:'微信风险问卷',desc:'吸烟史、家族史、症状已采集'},
+    {type:'方案',title:'检后健康管理报告',desc:'复查、干预、转诊提示已生成'},
+  ],
+  metrics:[
+    {val:'89%',label:'阳性触达率'},{val:'96%',label:'高危跟进率'},
+    {val:'76%',label:'随访反馈率'},{val:'70%',label:'体检再检率'},
+  ]
+},
+{
+  id:2, name:'社区', icon:'🏘️', color:'#0e9384', bg:'#f0fdfa',
+  desc:'以 AI 名医分身和慢病大讲堂为入口，沉淀辖区居民健康档案，按病种完成分层随访、家庭医生干预和双向转诊。',
+  stats:{todo:31,confirm:4,transfer:4,overdue:19,transferLabel:'上转建议'},
+  patients:[
+    {id:'p0',name:'刘女士',nodule:'甲状腺结节',risk:'low',status:'复查逾期12天',statusTag:'orange'},
+    {id:'p1',name:'马先生',nodule:'肺结节',risk:'high',status:'上转建议待确认',statusTag:'orange'},
+    {id:'p2',name:'黄女士',nodule:'乳腺结节',risk:'mid',status:'术后下转随访',statusTag:'blue'},
+    {id:'p3',name:'林先生',nodule:'甲状腺结节',risk:'low',status:'定期随访',statusTag:'green'},
+  ],
+  selectedPatient:0,
+  chat:{
+    name:'刘女士', status:'复查逾期12天', statusTag:'orange',
+    card:{nodule:'甲状腺结节',risk:'low',next:'2026-04-09'},
+    quickActions:['生成健康报告','预约复查','发送提醒','同步家医','名医科普大讲堂','生成随访表'],
+    messages:[
+      {role:'ai',text:'您已到甲状腺超声复查时间，我可以帮您预约社区复查，并同步家庭医生。'},
+      {role:'user',text:'我最近比较忙，可以晚一点吗？'},
+      {role:'ai',text:'可以调整时间，但系统会保留逾期记录。若复查继续延期，家庭医生会主动联系您。'},
+      {role:'system',text:'随访任务已生成，逾期记录已标记，家庭医生端可查看。'},
+    ]
+  },
+  aiStaff:[
+    {num:2,name:'AI药师',desc:'慢病合并用药、相互作用提醒',status:'待命',active:false},
+    {num:3,name:'AI健康管理师',desc:'随访提醒、微信问卷、签约服务承接',status:'处理中',active:true},
+    {num:4,name:'AI运动康复师',desc:'术后下转康复运动指导',status:'待命',active:false},
+    {num:5,name:'AI心理咨询师',desc:'结节焦虑识别和心理支持',status:'待命',active:false},
+    {num:6,name:'AI慢病管理师',desc:'慢病共管、长期指标跟踪',status:'处理中',active:true},
+    {num:7,name:'AI健康生活方式规划师',desc:'饮食、作息、控烟计划',status:'待命',active:false},
+    {num:8,name:'AI健康福利官',desc:'签约权益、服务提醒',status:'待命',active:false},
+    {num:9,name:'AI中医药膳师',desc:'体质与药膳/食疗建议（需合规审核），辅助提升随访依从性',status:'待命',active:false},
+  ],
+  rules:['异常预警 → 转家庭医生','高风险 → 上转建议','术后下转 → 承接随访'],
+  todos:[
+    {pri:'high',text:'马先生高风险上转建议待家医确认',status:'待确认'},
+    {pri:'mid',text:'8名术后患者下转承接待跟进',status:'待跟进'},
+    {pri:'low',text:'19名逾期复查患者自动提醒中',status:'运行中'},
+  ],
+  followups:[
+    {type:'签约',title:'家庭医生服务包',desc:'已纳入结节随访、健康教育'},
+    {type:'随访',title:'复查逾期记录',desc:'AI已提醒两次，下一步转家庭医生'},
+    {type:'转诊',title:'双向转诊单',desc:'高危上转与术后下转资料已同步'},
+  ],
+  metrics:[
+    {val:'85%',label:'患者识别率'},{val:'88%',label:'自动随访率'},
+    {val:'95%',label:'异常处理率'},{val:'40%',label:'转诊成功率'},
+  ]
+},
+{
+  id:3, name:'健康管理中心', icon:'💊', color:'#2e90fa', bg:'#eff6ff',
+  desc:'体检阳性人群检后管理，报告解读、状态标记、转医院提示',
+  stats:{todo:28,confirm:32,transfer:8,overdue:6,transferLabel:'转医院提示'},
+  patients:[
+    {id:'p0',name:'陈先生',age:52,gender:'男',phone:'138****8801',nodule:'肺小结节',noduleTypes:['lung'],risk:'mid',patientStatus:'generated',status:'等待外呼确认',statusTag:'gray',
+      noduleDetail:{lung:{rads:'Lung-RADS 3',size:'6mm',location:'右肺上叶',found:'2026-01-15'}},
+      reportStatus:'reviewing',wechatStatus:'pending_add',wecom_user_id:''},
+    {id:'p1',name:'郑女士',age:44,gender:'女',phone:'139****2233',nodule:'乳腺结节',noduleTypes:['breast'],risk:'high',patientStatus:'following',status:'转医院提示已发送',statusTag:'orange',
+      noduleDetail:{breast:{rads:'BI-RADS 4A',size:'12mm',location:'左乳外上象限',found:'2026-02-08'}},
+      reportStatus:'pushed',wechatStatus:'in_service',wecom_user_id:'wc_zheng_001',conversation_id:'conv_001'},
+    {id:'p2',name:'何先生',age:38,gender:'男',phone:'137****5566',nodule:'甲状腺结节',noduleTypes:['thyroid'],risk:'low',patientStatus:'surveyed',status:'复查提醒中',statusTag:'green',
+      noduleDetail:{thyroid:{rads:'TI-RADS 2',size:'4mm',location:'甲状腺右叶',found:'2026-03-01'}},
+      reportStatus:'draft',wechatStatus:'none',wecom_user_id:''},
+    {id:'p3',name:'谢女士',age:49,gender:'女',phone:'136****7788',nodule:'肺+乳腺双合并',noduleTypes:['lung','breast'],risk:'mid',patientStatus:'generated',status:'健康干预中',statusTag:'blue',
+      noduleDetail:{lung:{rads:'Lung-RADS 2',size:'4mm',location:'左肺下叶',found:'2025-11-20'},breast:{rads:'BI-RADS 3',size:'8mm',location:'右乳内下象限',found:'2025-11-20'}},
+      reportStatus:'generated',wechatStatus:'added',wecom_user_id:'wc_xie_003',conversation_id:'conv_003'},
+    {id:'p4',name:'林女士',age:56,gender:'女',phone:'135****9900',nodule:'甲状腺+乳腺双合并',noduleTypes:['thyroid','breast'],risk:'mid',patientStatus:'uploaded',status:'报告生成中',statusTag:'blue',
+      noduleDetail:{thyroid:{rads:'TI-RADS 3',size:'9mm',location:'甲状腺左叶',found:'2026-01-30'},breast:{rads:'BI-RADS 3',size:'6mm',location:'左乳外上象限',found:'2026-01-30'}},
+      reportStatus:'parsing',wechatStatus:'none',wecom_user_id:''},
+    {id:'p5',name:'王先生',age:61,gender:'男',phone:'133****1122',nodule:'三合并结节',noduleTypes:['lung','thyroid','breast'],risk:'high',patientStatus:'following',status:'重点随访中',statusTag:'orange',
+      noduleDetail:{lung:{rads:'Lung-RADS 4A',size:'11mm',location:'右肺中叶',found:'2025-09-10'},thyroid:{rads:'TI-RADS 4',size:'13mm',location:'甲状腺右叶',found:'2025-09-10'},breast:{rads:'BI-RADS 3',size:'7mm',location:'右乳',found:'2025-09-10'}},
+      reportStatus:'pushed',wechatStatus:'in_service',wecom_user_id:'wc_wang_005',conversation_id:'conv_005'},
+    {id:'p6',name:'赵女士',age:33,gender:'女',phone:'131****3344',nodule:'乳腺结节',noduleTypes:['breast'],risk:'low',patientStatus:'new',status:'新建档',statusTag:'gray',
+      noduleDetail:{breast:{rads:'BI-RADS 2',size:'5mm',location:'右乳',found:'2026-04-10'}},
+      reportStatus:'draft',wechatStatus:'none',wecom_user_id:''},
+  ],
+  selectedPatient:0,
+  chat:{
+    name:'陈先生', status:'等待外呼确认', statusTag:'gray',
+    card:{nodule:'肺小结节',risk:'mid',next:'2026-06-15'},
+    quickActions:['生成健康报告','查看报告','生成解释','复查建议','转医院提示','发送问卷'],
+    messages:[
+      {role:'ai',text:'您的体检报告提示肺小结节，我已为您生成报告解释和复查建议。'},
+      {role:'user',text:'这个需要马上去大医院吗？'},
+      {role:'ai',text:'目前属于中风险，建议完善问卷并按期复查。若发现高风险因素，我会提示您转医院进一步处理。'},
+      {role:'system',text:'检后服务分层已完成：高风险32人转医院提示，中风险118人健康干预，低风险136人复查提醒。'},
+    ]
+  },
+  aiStaff:[
+    
+    {num:2,name:'AI药师',desc:'药事问题记录和药师转接提醒',status:'待命',active:false},
+    {num:1,name:'AI健康管理师',desc:'人群触达、服务分层、复查提醒',status:'对话中',active:true},
+    {num:4,name:'AI运动康复师',desc:'运动计划、体重管理',status:'待命',active:false},
+    {num:5,name:'AI心理咨询师',desc:'检后焦虑疏导',status:'待命',active:false},
+    {num:2,name:'AI慢病管理师',desc:'体检异常指标、慢病风险跟踪',status:'处理中',active:true},
+    {num:7,name:'AI健康生活方式规划师',desc:'饮食、作息、控烟计划',status:'待命',active:false},
+    {num:3,name:'AI健康福利官',desc:'健康方案确认、复查提醒',status:'处理中',active:true},
+    {num:4,name:'AI中医药膳师',desc:'体质辨识与药膳建议（需合规审核），结合随访节点给出饮食方案',status:'待命',active:false},
+  ],
+  rules:['高风险报告 → 提示转医院','中风险 → 健康干预','低风险 → 复查提醒'],
+  todos:[
+    {pri:'high',text:'32名高风险人群转医院提示待确认',status:'待确认'},
+    {pri:'mid',text:'118名中风险人群健康干预进行中',status:'运行中'},
+    {pri:'low',text:'74名问卷未回收，自动提醒中',status:'待触达'},
+  ],
+  followups:[
+    {type:'体检',title:'年度体检报告',desc:'结节阳性已自动识别并分层'},
+    {type:'问卷',title:'微信风险问卷',desc:'吸烟史、家族史、症状已采集'},
+    {type:'方案',title:'检后健康管理报告',desc:'复查、干预、转医院提示已生成'},
+  ],
+  metrics:[
+    {val:'89%',label:'阳性触达率'},{val:'96%',label:'高危跟进率'},
+    {val:'76%',label:'随访反馈率'},{val:'70%',label:'体检再检率'},
+  ]
+},
+{
+  id:4, name:'药店管理', icon:'🏪', color:'#c87912', bg:'#fffbeb',
+  desc:'以药店数字人为入口，围绕健康科普、药师审核和用药随访，完成会员健康管理与高危转医院闭环。',
+  stats:{todo:15,confirm:5,transfer:12,overdue:3,transferLabel:'药师审核'},
+  patients:[
+    {id:'p0',name:'赵女士',nodule:'乳腺结节',risk:'mid',status:'门店到访',statusTag:'blue'},
+    {id:'p1',name:'钱先生',nodule:'甲状腺结节',risk:'low',status:'药事咨询',statusTag:'gray'},
+    {id:'p2',name:'孙女士',nodule:'肺结节',risk:'high',status:'转医院提示已发',statusTag:'orange'},
+    {id:'p3',name:'李先生',nodule:'乳腺结节',risk:'low',status:'复查提醒中',statusTag:'green'},
+  ],
+  selectedPatient:0,
+  chat:{
+    name:'赵女士', status:'门店到访', statusTag:'blue',
+    card:{nodule:'乳腺结节',risk:'mid',next:'2026-07-20'},
+    quickActions:['生成健康报告','报告解释','饮食建议','复查提醒','药师审核','转医院提示'],
+    messages:[
+      {role:'user',text:'体检说我有乳腺结节，平时要怎么注意？'},
+      {role:'ai',text:'我先帮您解释报告，并生成饮食、睡眠、情绪和复查提醒。药店不做诊疗判断，高危信号会提示您到医院复核。'},
+      {role:'system',text:'AI药师已加入：正在检查当前用药和药食同源建议是否合规。'},
+      {role:'ai',text:'如果出现乳房皮肤改变、明显疼痛或报告提示高风险，我会建议您尽快转医院复核。'},
+    ]
+  },
+  aiStaff:[
+    {num:1,name:'AI药师',desc:'用药指导、相互作用、药师审核',status:'审核中',active:true},
+    {num:2,name:'AI健康管理师',desc:'微信建档、健康指导、复查提醒',status:'对话中',active:true},
+    {num:3,name:'AI运动康复师',desc:'轻运动建议和日常活动提醒',status:'待命',active:false},
+    {num:4,name:'AI心理咨询师',desc:'结节焦虑、睡眠和情绪舒缓',status:'待命',active:false},
+    {num:5,name:'AI慢病管理师',desc:'合并高血压、糖尿病等长期用药',status:'待命',active:false},
+    {num:6,name:'AI健康生活方式规划师',desc:'饮食、作息、控烟计划',status:'处理中',active:true},
+    {num:7,name:'AI健康福利官',desc:'门店服务权益、健康方案确认',status:'待命',active:false},
+    {num:8,name:'AI中医药膳师',desc:'体质辨识与药膳/食疗建议（需合规审核），门店可用的饮食与作息方案',status:'待命',active:false},
+  ],
+  rules:['高危信号 → 提示转医院','用药冲突 → 药师审核','体质异常 → 生活方式干预'],
+  todos:[
+    {pri:'high',text:'孙女士高风险报告转医院提示待确认',status:'待确认'},
+    {pri:'mid',text:'药师审核12条药事建议待处理',status:'待审核'},
+    {pri:'low',text:'舌象体质分析18份待生成方案',status:'处理中'},
+  ],
+  followups:[
+    {type:'报告',title:'乳腺彩超报告',desc:'已生成通俗解释和复查提醒'},
+    {type:'舌象',title:'体质分析',desc:'偏气郁，建议规律作息和情绪舒缓'},
+    {type:'药事',title:'用药与产品建议',desc:'药师确认后通过微信发送'},
+  ],
+  metrics:[
+    {val:'32',label:'今日建档'},{val:'18',label:'舌象采集'},
+    {val:'12',label:'药师审核'},{val:'5',label:'转诊线索'},
+  ]
+},
+];
+// ── RWS Data (真实世界研究) ──
+const RWS_PROJECTS = [
+  {
+    id:'r0',
+    name:'肺结节术后随访真实世界研究',
+    type:'前瞻性',
+    period:'2026-01 至 2028-12',
+    inclusion:['肺结节手术后 30 天内','18–80 岁','签署知情同意（演示）'],
+    exclusion:['合并恶性肿瘤其他系统治疗','无法完成随访（失访风险高）'],
+    endpointsPrimary:['12 个月影像复发/进展事件','住院再入院率'],
+    endpointsSecondary:['生活质量评分变化','焦虑/抑郁量表变化','随访依从性'],
+    progress:{enrolled:186,target:320,followupDone:142,followupTotal:186,qcIssues:12},
+    patients:[
+      {pid:'P-0012',name:'王**',sex:'男',age:56,stage:'基线',followup:'已完成',qc:'0',note:'术后 21 天，已回收问卷'},
+      {pid:'P-0047',name:'李**',sex:'女',age:44,stage:'3个月',followup:'缺失',qc:'2',note:'影像未上传，需提醒'},
+      {pid:'P-0091',name:'张**',sex:'男',age:62,stage:'6个月',followup:'已完成',qc:'1',note:'实验室指标缺项'},
+      {pid:'P-0134',name:'陈**',sex:'女',age:38,stage:'12个月',followup:'进行中',qc:'0',note:'等待影像报告结构化'},
+    ]
+  },
+  {
+    id:'r1',
+    name:'甲状腺结节长期管理研究',
+    type:'队列研究',
+    period:'2025-10 至 2028-10',
+    inclusion:['超声提示甲状腺结节','完成基线评估','可长期随访'],
+    exclusion:['既往甲状腺恶性肿瘤史','近期接受放射性治疗'],
+    endpointsPrimary:['24 个月结节体积变化','高危特征出现率'],
+    endpointsSecondary:['复查间隔达标率','转诊率','用药依从性'],
+    progress:{enrolled:412,target:800,followupDone:300,followupTotal:412,qcIssues:23},
+    patients:[
+      {pid:'T-0204',name:'周**',sex:'女',age:29,stage:'基线',followup:'已完成',qc:'0',note:'低风险，已给复查计划'},
+      {pid:'T-0318',name:'刘**',sex:'男',age:51,stage:'6个月',followup:'缺失',qc:'1',note:'随访逾期 9 天'},
+      {pid:'T-0440',name:'黄**',sex:'女',age:63,stage:'12个月',followup:'已完成',qc:'3',note:'检验单字段不一致'},
+    ]
+  },
+  {
+    id:'r2',
+    name:'乳腺结节风险分层研究',
+    type:'回顾性',
+    period:'2024-01 至 2025-12',
+    inclusion:['乳腺超声/钼靶检查记录完整','可追溯结局（演示）'],
+    exclusion:['关键影像缺失','病理无法核对'],
+    endpointsPrimary:['风险分层模型 AUC','高风险识别召回率'],
+    endpointsSecondary:['转诊时间','复查依从性','质控问题率'],
+    progress:{enrolled:1020,target:1020,followupDone:980,followupTotal:1020,qcIssues:41},
+    patients:[
+      {pid:'B-1102',name:'郑**',sex:'女',age:41,stage:'基线',followup:'已完成',qc:'0',note:'历史数据已对齐'},
+      {pid:'B-1209',name:'赵**',sex:'女',age:36,stage:'12个月',followup:'已完成',qc:'2',note:'随访时间戳缺失'},
+      {pid:'B-1288',name:'孙**',sex:'女',age:52,stage:'24个月',followup:'进行中',qc:'1',note:'结局事件待确认'},
+    ]
+  },
+  {
+    id:'r3',
+    name:'多结节合并人群管理研究',
+    type:'队列研究',
+    period:'2026-03 至 2029-03',
+    inclusion:['同时存在 ≥2 类结节（肺/甲状腺/乳腺）','至少一次随访记录'],
+    exclusion:['严重精神障碍影响随访','合并终末期疾病'],
+    endpointsPrimary:['随访完成率','转人工触发率'],
+    endpointsSecondary:['不良事件识别率','健康教育触达率','多学科会诊次数'],
+    progress:{enrolled:96,target:260,followupDone:40,followupTotal:96,qcIssues:9},
+    patients:[
+      {pid:'M-0007',name:'马**',sex:'男',age:60,stage:'基线',followup:'进行中',qc:'0',note:'高风险线索，建议 MDT'},
+      {pid:'M-0018',name:'林**',sex:'男',age:47,stage:'3个月',followup:'缺失',qc:'1',note:'问卷未回收'},
+      {pid:'M-0041',name:'陈**',sex:'女',age:55,stage:'6个月',followup:'已完成',qc:'0',note:'随访资料齐全'},
+    ]
+  },
+];
+// ── State ──
+let currentScene = 0;
+let selectedPatientId = null;
+let riskFilter = 'all';
+let currentView = 'scene'; // 'scene' | 'rws'
+let rwsSelected = 0;
+let rwsTab = 'enroll';
+let selectedAiStaffIdx = 0; // 当前选中的 AI（右侧工作区）
+/** @type {Record<string, Array<{role:'user'|'ai', text:string, ts:number}>>} */
+let aiChatsByKey = {};
+/** @type {Record<string, Record<string, any>>} */
+let patientCtxByScene = {}; // sceneIndex -> patientId -> {chat, todos, followups, metrics}
+let bottomCollapsed = false;
+let hospitalNavOpen = true;
+let speakMode = 'patient'; // 'patient' | 'ai'
+let communityModule = 'disease'; // 'hall' | 'chronic' | 'disease'
+let pharmacyModule = 'digital'; // 'digital' | 'edu' | 'med'
+let outpatientNoduleCat = 'all'; // 门诊结节分类
+// ── Helpers ──
+function riskTag(r){
+  const m={high:'<span class="tag tag-high">高风险</span>',mid:'<span class="tag tag-mid">中风险</span>',low:'<span class="tag tag-low">低风险</span>'};
+  return m[r]||'';
+}
+function statusTagHtml(t,text){
+  const m={blue:'tag-blue',orange:'tag-orange',green:'tag-green',gray:'tag-gray'};
+  return `<span class="tag ${m[t]||'tag-gray'}">${text}</span>`;
+}
+function setSceneColor(color,bg){
+  document.documentElement.style.setProperty('--scene-color',color);
+  document.documentElement.style.setProperty('--scene-bg',bg);
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+function openModal(title, html){
+  document.getElementById('modalTitle').textContent=title||'详情';
+  document.getElementById('modalBody').innerHTML=html||'';
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('modal').classList.remove('show');
+}
+function getCurrentPatient(){
+  const sc=SCENES[currentScene];
+  if(!sc||!sc.patients) return null;
+  if(!selectedPatientId) return sc.patients[0]||null;
+  return sc.patients.find(p=>p.id===selectedPatientId) || sc.patients[0] || null;
+}
+function openPatientDetail(pid){
+  const sc=SCENES[currentScene];
+  const p=sc.patients.find(x=>x.id===pid)||getCurrentPatient();
+  if(!p){handleQuickAction('查看档案');return;}
+  // 仅健康管理中心使用增强版详情
+  if(currentScene!==3){handleQuickAction('查看档案');return;}
+  const nd=p.noduleDetail||{};
+  const noduleChips=(p.noduleTypes||[]).map(t=>`<span class="nodule-chip ${t}">${t==='breast'?'乳腺 '+((nd.breast&&nd.breast.rads)||''):t==='lung'?'肺 '+((nd.lung&&nd.lung.rads)||''):t==='thyroid'?'甲状腺 '+((nd.thyroid&&nd.thyroid.rads)||''):t}</span>`).join('');
+  const psMap={new:'新建档',surveyed:'已问卷',uploaded:'已上传报告',generated:'已生成方案',following:'随访中',done:'已完成'};
+  const rsMap={draft:'草稿',parsing:'AI解析中',parsed:'解析完成',reviewing:'待确认',generated:'已生成',pushed:'已推送',archived:'已归档'};
+  const wechatMap={none:'未添加',wechat_id_collected:'已采集微信号',pending_add:'待添加',added:'已添加',in_service:'服务中'};
+  const rfSteps=['上传报告','AI解析','确认','生成方案','推送患者'];
+  const rfStatusOrder=['draft','parsing','parsed','reviewing','generated','pushed','archived'];
+  const rfActiveIdx={draft:0,parsing:1,parsed:2,reviewing:3,generated:4,pushed:5,archived:5}[p.reportStatus||'draft']||0;
+  const rfHtml=`<div class="report-flow">${rfSteps.map((s,i)=>{
+    const done=i<rfActiveIdx;const active=i===rfActiveIdx;
+    return `<div class="rf-step${done?' done':''}${active?' active':''}"><div class="rf-dot">${done?'✓':(i+1)}</div><div class="rf-label">${s}</div></div>`;
+  }).join('')}</div>`;
+  const ndRows=Object.entries(nd).map(([k,v])=>`
+    <tr><td style="color:#64748b;font-size:11px">${k==='breast'?'乳腺':k==='lung'?'肺':k==='thyroid'?'甲状腺':k}</td>
+    <td>${v.rads||''}</td><td>${v.size||''}</td><td>${v.location||''}</td><td>${v.found||''}</td></tr>`).join('');
+  openModal(`患者档案 · ${p.name}`,`
+    <div class="detail-tabs">
+      <div class="detail-tab active" onclick="switchDetailTab(this,'dt-basic')">基础信息</div>
+      <div class="detail-tab" onclick="switchDetailTab(this,'dt-survey')">问卷档案</div>
+      <div class="detail-tab" onclick="switchDetailTab(this,'dt-report')">影像报告</div>
+      <div class="detail-tab" onclick="switchDetailTab(this,'dt-plan')">AI健康管理方案</div>
+      <div class="detail-tab" onclick="switchDetailTab(this,'dt-followup')">随访记录</div>
+    </div>
+    <div id="dt-basic">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="font-weight:700;font-size:14px">${p.name}</div>
+          ${riskTag(p.risk)}
+          <span class="tag tag-${p.patientStatus||'new'}">${psMap[p.patientStatus||'new']}</span>
+        </div>
+        <div class="nodule-chips">${noduleChips}</div>
+        <div class="kv" style="margin-top:8px">
+          <div class="k">年龄/性别</div><div class="v">${p.age||'—'}岁 / ${p.gender||'—'}</div>
+          <div class="k">联系电话</div><div class="v">${p.phone||'—'}</div>
+          <div class="k">企微状态</div><div class="v">${wechatMap[p.wechatStatus||'none']} ${p.wecom_user_id?`<span class="tag tag-gray" style="font-size:10px">${p.wecom_user_id}</span>`:''}</div>
+          <div class="k">报告状态</div><div class="v"><span class="tag tag-blue">${rsMap[p.reportStatus||'draft']}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">多结节详情</div>
+        <table class="table"><thead><tr><th>类型</th><th>分级</th><th>大小</th><th>位置</th><th>发现日期</th></tr></thead>
+        <tbody>${ndRows||'<tr><td colspan="5" style="color:#94a3b8">暂无结节数据</td></tr>'}</tbody></table>
+      </div>
+    </div>
+    <div id="dt-survey" style="display:none">
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">风险问卷</div>
+        <div class="kv">
+          <div class="k">问卷状态</div><div class="v">${p.patientStatus==='new'?'<span class="tag tag-gray">未填写</span>':'<span class="tag tag-green">已完成</span>'}</div>
+          <div class="k">吸烟史</div><div class="v">${p.gender==='男'?'有（演示）':'无（演示）'}</div>
+          <div class="k">家族史</div><div class="v">${p.risk==='high'?'有（演示）':'无（演示）'}</div>
+          <div class="k">症状</div><div class="v">${p.risk==='high'?'偶有咳嗽（演示）':'无明显症状（演示）'}</div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已发送问卷链接（演示）')">发送问卷</button>
+          <button class="btn-inline" onclick="showToast('已查看问卷详情（演示）')">查看详情</button>
+        </div>
+      </div>
+    </div>
+    <div id="dt-report" style="display:none">
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">报告处理流程</div>
+        ${rfHtml}
+        <div class="kv" style="margin-top:10px">
+          <div class="k">当前状态</div><div class="v"><span class="tag tag-blue">${rsMap[p.reportStatus||'draft']}</span></div>
+          <div class="k">报告类型</div><div class="v">${(p.noduleTypes||[]).map(t=>t==='breast'?'乳腺超声':t==='lung'?'胸部CT':t==='thyroid'?'甲状腺超声':t).join(' / ')||'—'}</div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已上传报告（演示）')">上传报告</button>
+          <button class="btn-inline" onclick="showToast('AI解析已触发（演示）')">触发AI解析</button>
+          <button class="btn-inline" onclick="showToast('已确认报告（演示）')">确认</button>
+        </div>
+      </div>
+    </div>
+    <div id="dt-plan" style="display:none">
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">AI健康管理方案</div>
+        <div class="kv">
+          <div class="k">方案状态</div><div class="v">${['generated','pushed','archived'].includes(p.reportStatus)?'<span class="tag tag-green">已生成</span>':'<span class="tag tag-gray">待生成</span>'}</div>
+          <div class="k">风险分层</div><div class="v">${riskTag(p.risk)}</div>
+          <div class="k">复查建议</div><div class="v">${p.risk==='high'?'1个月内复查（演示）':p.risk==='mid'?'3个月复查（演示）':'6-12个月复查（演示）'}</div>
+          <div class="k">干预方向</div><div class="v">${p.risk==='high'?'转医院进一步检查（演示）':p.risk==='mid'?'健康干预 + 定期随访（演示）':'生活方式指导 + 复查提醒（演示）'}</div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="handleQuickAction('生成健康报告')">生成方案</button>
+          <button class="btn-inline" onclick="showToast('已推送患者（演示）')">推送患者</button>
+          <button class="btn-inline" onclick="showToast('已导出PDF（演示）')">导出PDF</button>
+        </div>
+      </div>
+    </div>
+    <div id="dt-followup" style="display:none">
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">随访记录</div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div><span class="tag tag-gray" style="margin-right:4px">建档</span><span class="tl-type">患者建档完成</span></div><div class="tl-desc">基础信息录入，结节类型标记（演示）</div></div></div>
+        ${p.patientStatus!=='new'?`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div><span class="tag tag-blue" style="margin-right:4px">问卷</span><span class="tl-type">风险问卷已完成</span></div><div class="tl-desc">吸烟史/家族史/症状已采集（演示）</div></div></div>`:''}
+        ${['uploaded','generated','following','done'].includes(p.patientStatus)?`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div><span class="tag tag-purple" style="margin-right:4px">报告</span><span class="tl-type">影像报告已上传</span></div><div class="tl-desc">AI结构化解析完成（演示）</div></div></div>`:''}
+        ${['generated','following','done'].includes(p.patientStatus)?`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div><span class="tag tag-green" style="margin-right:4px">方案</span><span class="tl-type">健康管理方案已生成</span></div><div class="tl-desc">已推送患者小程序（演示）</div></div></div>`:''}
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="handleQuickAction('发起随访')">发起随访</button>
+          <button class="btn-inline" onclick="showToast('已生成随访任务（演示）')">生成任务</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+function switchDetailTab(el,targetId){
+  const tabs=el.parentElement.querySelectorAll('.detail-tab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const body=document.getElementById('modalBody');
+  ['dt-basic','dt-survey','dt-report','dt-plan','dt-followup'].forEach(id=>{
+    const el2=body.querySelector('#'+id);
+    if(el2) el2.style.display=(id===targetId)?'':'none';
+  });
+}
+function handleQuickAction(action){
+  const sc=SCENES[currentScene];
+  const p=getCurrentPatient();
+  const name=(p&&p.name)||sc.chat.name||'患者';
+  if(action==='生成健康报告'){
+    const ctx=getActivePatientContext();
+    const ch=(ctx&&ctx.chat)?ctx.chat:sc.chat;
+    // 健康管理中心：显示报告生成流程
+    if(currentScene===3){
+      const rfSteps=[
+        {label:'上传报告',desc:'影像/检查报告上传'},
+        {label:'AI结构化解析',desc:'自动提取结节字段'},
+        {label:'确认',desc:'管理师复核确认'},
+        {label:'生成方案',desc:'AI生成健康管理方案'},
+        {label:'推送患者',desc:'推送至患者小程序'},
+      ];
+      const curP=getCurrentPatient();
+      const rsOrder=['draft','parsing','parsed','reviewing','generated','pushed','archived'];
+      const rsIdx=rsOrder.indexOf(curP&&curP.reportStatus||'draft');
+      const rfActiveIdx=Math.max(0,Math.min(rsIdx,4));
+      openModal(`生成健康报告 · ${name}`,`
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:8px">报告生成流程</div>
+          <div class="report-flow">
+            ${rfSteps.map((s,i)=>{
+              const done=i<rfActiveIdx;const active=i===rfActiveIdx;
+              return `<div class="rf-step${done?' done':''}${active?' active':''}">
+                <div class="rf-dot">${done?'✓':(i+1)}</div>
+                <div class="rf-label">${s.label}<br><span style="font-size:9px;color:#94a3b8">${s.desc}</span></div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:8px">${name} · 结节健康管理报告</div>
+          <div class="kv">
+            <div class="k">结节信息</div><div class="v">${ch.card.nodule} · ${ch.card.risk==='high'?'高风险':(ch.card.risk==='mid'?'中风险':'低风险')}</div>
+            <div class="k">当前状态</div><div class="v">${statusTagHtml(ch.statusTag,ch.status)}</div>
+            <div class="k">随访计划</div><div class="v">下次复查：<span class="tag tag-gray">${ch.card.next}</span></div>
+            <div class="k">健康教育</div><div class="v">按期复查、识别高危信号、规律作息（演示）</div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:8px">操作</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-inline" onclick="showToast('AI解析已触发（演示）')">触发AI解析</button>
+            <button class="btn-inline" onclick="showToast('已确认报告（演示）')">确认报告</button>
+            <button class="btn-inline" onclick="showToast('方案已生成（演示）')">生成方案</button>
+            <button class="btn-inline" onclick="showToast('已推送患者小程序（演示）')">推送患者</button>
+            <button class="btn-inline" onclick="showToast('已导出PDF（演示）')">导出PDF</button>
+          </div>
+        </div>
+      `);
+      return;
+    }
+    openModal('健康报告（演示）',`
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:900">${name} · 结节健康管理报告</div>
+          <span class="tag tag-scene">一键生成</span>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.85">
+          本报告用于健康管理与随访沟通（演示），不替代医生诊断与治疗建议。
+        </div>
+      </div>
+      <div class="desc-list">
+        <div class="desc-item">
+          <div class="k">结节信息</div>
+          <div class="v">${ch.card.nodule} · ${ch.card.risk==='high'?'高风险':(ch.card.risk==='mid'?'中风险':'低风险')}</div>
+        </div>
+        <div class="desc-item">
+          <div class="k">当前状态</div>
+          <div class="v">${statusTagHtml(ch.statusTag,ch.status)}</div>
+        </div>
+        <div class="desc-item">
+          <div class="k">随访计划</div>
+          <div class="v">下次复查：<span class="tag tag-gray">${ch.card.next}</span><br>建议：按风险分层进行 3/6/12 月节点复查（演示）。</div>
+        </div>
+        <div class="desc-item">
+          <div class="k">健康教育摘要</div>
+          <div class="v">重点关注：按期复查、识别高危信号、规律作息与适度运动（演示）。</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">一键操作</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已生成随访问卷（演示）')">生成问卷</button>
+          <button class="btn-inline" onclick="showToast('已生成复查提醒（演示）')">生成提醒</button>
+          <button class="btn-inline" onclick="showToast('已生成家医/医生任务（演示）')">生成任务</button>
+          <button class="btn-inline" onclick="showToast('已导出PDF（演示）')">导出</button>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='名医科普大讲堂'){
+    openModal('名医科普大讲堂（社区科普工作台）',`
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:800">今日推荐 · 名医科普大讲堂</div>
+          <span class="tag tag-scene">社区场景</span>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.85">
+          面向社区人群的结节科普与随访依从性提升工具。你可以选一个主题，一键生成可发到企业微信的图文/短文话术（演示）。
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">主题库</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已生成：结节是什么（演示）')">结节是什么</button>
+          <button class="btn-inline" onclick="showToast('已生成：复查为什么重要（演示）')">复查为什么重要</button>
+          <button class="btn-inline" onclick="showToast('已生成：高风险信号识别（演示）')">高风险信号识别</button>
+          <button class="btn-inline" onclick="showToast('已生成：术后康复与运动（演示）')">术后康复与运动</button>
+          <button class="btn-inline" onclick="showToast('已生成：用药与保健品避坑（演示）')">用药与保健品避坑</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">面向患者：${name}</div>
+        <div style="font-size:12px;color:#0f172a;line-height:1.85">
+          你好，关于“结节复查”，最重要的是按期对比影像变化。多数结节并不等于肿瘤，但需要规律随访来确认稳定性。<br>
+          如果出现持续胸痛、咯血、明显消瘦等情况，请及时就医。<span style="color:#94a3b8">（演示文案，可编辑）</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已发送到企业微信（演示）')">一键发送</button>
+          <button class="btn-inline" onclick="showToast('已加入随访话术库（演示）')">加入话术库</button>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='查看档案' || action==='新建患者档案'){
+    if(action==='新建患者档案'){
+      openNewPatientForm();
+      return;
+    }
+    if(currentScene===3){
+      openPatientDetail(selectedPatientId||(sc.patients[0]&&sc.patients[0].id));
+      return;
+    }
+    openModal(`患者档案（演示）`,`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">患者档案</div>
+        <div class="kv">
+          <div class="k">患者</div><div class="v">${name}</div>
+          <div class="k">档案字段</div><div class="v">基础信息、结节类型、风险分层、检查记录、随访计划、转人工记录</div>
+          <div class="k">当前状态</div><div class="v">${statusTagHtml(p.statusTag,p.status)} ${riskTag(p.risk)}</div>
+          <div class="k">操作</div><div class="v">
+            <button class="btn-inline" onclick="showToast('已打开档案编辑（演示）')">编辑</button>
+            <button class="btn-inline" onclick="showToast('已保存（演示）')">保存</button>
+            <button class="btn-inline" onclick="handleQuickAction('发起随访')">发起随访</button>
+          </div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='发起随访'){
+    openModal('发起随访（演示）',`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">患者：${name}</div>
+        <div class="kv">
+          <div class="k">随访方式</div><div class="v">企业微信 / 电话 / 线下（演示）</div>
+          <div class="k">随访内容</div><div class="v">症状、复查、用药、生活方式、心理</div>
+          <div class="k">操作</div><div class="v"><button class="btn-inline" onclick="showToast('随访任务已创建（演示）')">创建任务</button> <button class="btn-inline" onclick="showToast('已发送随访消息（演示）')">发送</button></div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='查看报告'){
+    openModal('检查/影像报告（演示）',`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">患者：${name}</div>
+        <div class="kv">
+          <div class="k">报告类型</div><div class="v">胸部 CT / 超声（演示）</div>
+          <div class="k">关键发现</div><div class="v">结节大小、密度、边界等特征已结构化；AI 提示风险分层与复查建议（需医生复核）</div>
+          <div class="k">AI 结构化</div><div class="v"><span class="tag tag-scene">已完成</span> 提取 18 个字段，发现 2 个待补充字段</div>
+          <div class="k">建议动作</div><div class="v"><button class="btn-inline" onclick="showToast('已生成复查建议（演示）')">生成复查建议</button> <button class="btn-inline" onclick="showToast('已转医生复核（演示）')">转医生复核</button></div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='安排复查'||action==='预约复查'||action==='复查建议'||action==='复查提醒'){
+    openModal('复查安排（演示）',`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">患者：${name}</div>
+        <div class="kv">
+          <div class="k">推荐节点</div><div class="v"><span class="tag tag-gray">${sc.chat.card.next}</span>（可调整）</div>
+          <div class="k">渠道</div><div class="v">企业微信通知 / 电话外呼 / 线下预约（演示）</div>
+          <div class="k">提醒话术</div><div class="v">“您好，已到复查时间，我可以帮您预约并同步医生/家医。”</div>
+          <div class="k">操作</div><div class="v"><button class="btn-inline" onclick="showToast('已生成复查任务（演示）')">生成任务</button> <button class="btn-inline" onclick="showToast('已发送提醒（演示）')">发送提醒</button></div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='发送科普'||action==='生成解释'||action==='报告解释'){
+    openModal('科普/解释内容（演示）',`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">给 ${name} 的内容草稿</div>
+        <div style="font-size:12px;color:#0f172a;line-height:1.85">
+          1）结节多数为良性，需要结合影像特征与随访观察。<br>
+          2）请按建议复查时间完成影像检查，便于对比变化。<br>
+          3）若出现咯血、持续胸痛、明显消瘦等，请及时就医。<br>
+          <span style="color:#94a3b8">（演示：发送前需机构规则与专业人员复核）</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已发送科普（演示）')">发送</button>
+          <button class="btn-inline" onclick="showToast('已复制文本（演示）')">复制</button>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='转医生'||action==='转诊提示'||action==='转门诊'||action==='转门诊医生'||action==='转医院提示'||action==='上转建议'){
+    openModal('转人工/转诊（演示）',`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">患者：${name}</div>
+        <div class="kv">
+          <div class="k">触发原因</div><div class="v">高风险特征/逾期/关键决策需真人医生确认（演示）</div>
+          <div class="k">材料</div><div class="v"><span class="tag tag-gray">影像</span> <span class="tag tag-gray">结构化报告</span> <span class="tag tag-gray">问卷</span></div>
+          <div class="k">操作</div><div class="v"><button class="btn-inline" onclick="showToast('已创建转人工工单（演示）')">创建工单</button> <button class="btn-inline" onclick="showToast('已推送医生工作台（演示）')">推送医生</button></div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(action==='生成随访表'||action==='发送问卷'||action==='逾期记录'){
+    openModal('随访任务/问卷（演示）',`
+      <div class="card">
+        <div style="font-weight:750;margin-bottom:8px">患者：${name}</div>
+        <div class="kv">
+          <div class="k">任务模板</div><div class="v">结节随访（症状/影像/用药/心理）</div>
+          <div class="k">当前状态</div><div class="v"><span class="tag tag-gray">待发送</span></div>
+          <div class="k">操作</div><div class="v"><button class="btn-inline" onclick="showToast('已生成随访表（演示）')">生成随访表</button> <button class="btn-inline" onclick="showToast('问卷已发送（演示）')">发送问卷</button></div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  // 默认：未知动作也给一个页面
+  openModal(`${action}（演示）`,`
+    <div class="card">
+      <div style="font-weight:750;margin-bottom:6px">${action}</div>
+      <div style="font-size:12px;color:#64748b;line-height:1.8">
+        这里是“${action}”的子页面/面板（演示）。你希望它更像哪一种：表单页、表格页、流程页还是抽屉详情？
+      </div>
+    </div>
+  `);
+}
+function openNewPatientForm(){
+  const sc=SCENES[currentScene];
+  openModal('新建患者档案',`
+    <div class="card">
+      <div style="font-weight:750;margin-bottom:10px">基础信息（演示）</div>
+      <div class="kv">
+        <div class="k">姓名</div><div class="v"><input id="np_name" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:12px" placeholder="例如：赵女士"></div>
+        <div class="k">结节类型</div><div class="v"><input id="np_nodule" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:12px" placeholder="例如：肺磨玻璃结节 / 甲状腺结节"></div>
+        <div class="k">风险等级</div><div class="v">
+          <select id="np_risk" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:12px">
+            <option value="high">高风险</option>
+            <option value="mid" selected>中风险</option>
+            <option value="low">低风险</option>
+          </select>
+        </div>
+        <div class="k">状态</div><div class="v">
+          <select id="np_status" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:12px">
+            <option>待确认</option>
+            <option selected>重点随访中</option>
+            <option>定期复查</option>
+            <option>术后随访</option>
+            <option>复查提醒</option>
+          </select>
+        </div>
+        <div class="k">来源场景</div><div class="v"><span class="tag tag-scene">${sc.name}</span></div>
+        <div class="k">操作</div><div class="v">
+          <button class="btn-inline" onclick="saveNewPatient()">保存并进入</button>
+          <button class="btn-inline" onclick="closeModal()">取消</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#94a3b8;line-height:1.7">
+        说明：这是原型演示，保存后会把患者加入左侧队列，并生成一份默认的随访对话与待办。
+      </div>
+    </div>
+  `);
+}
+function saveNewPatient(){
+  const name=(document.getElementById('np_name').value||'').trim();
+  const nodule=(document.getElementById('np_nodule').value||'').trim();
+  const risk=document.getElementById('np_risk').value;
+  const status=(document.getElementById('np_status').value||'重点随访中').trim();
+  if(!name || !nodule){
+    showToast('请填写姓名与结节类型');
+    return;
+  }
+  const sc=SCENES[currentScene];
+  const pid=`p${Date.now().toString(36).slice(-6)}`;
+  const statusTag=(status.includes('逾期')||status.includes('待')||status.includes('确认'))?'orange':(status.includes('重点')||status.includes('术后')?'blue':(status.includes('定期')?'green':'gray'));
+  sc.patients.unshift({id:pid,name,nodule,risk,status,statusTag});
+  ensurePatientContext(currentScene, pid);
+  selectedPatientId=pid;
+  closeModal();
+  renderPatients();renderChat();renderAI();renderBottom();
+  showToast('档案已创建');
+}
+function ensurePatientContext(sceneIdx, patientId){
+  const sc=SCENES[sceneIdx];
+  if(!patientCtxByScene[`${sceneIdx}`]) patientCtxByScene[`${sceneIdx}`]={};
+  const map=patientCtxByScene[`${sceneIdx}`];
+  if(map[patientId]) return map[patientId];
+  const p=sc.patients.find(x=>x.id===patientId) || sc.patients[0];
+  const nextDate = (()=>{ const d=new Date(); d.setDate(d.getDate()+ (p.risk==='high'?14:(p.risk==='mid'?30:90))); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+  const chat={
+    name:p.name,
+    status:p.status,
+    statusTag:p.statusTag,
+    card:{nodule:p.nodule,risk:p.risk,next:nextDate},
+    quickActions:['查看报告','安排复查','发送科普','转医生','生成随访表'],
+    messages:[
+      {role:'ai',text:`你好，我是当前场景的智能随访助理。我已为 ${p.name} 初始化随访任务（演示）。`},
+      {role:'system',text:`已生成：${p.risk==='high'?'高风险':'常规'}随访计划，下一节点 ${nextDate}。`},
+    ]
+  };
+  const todos=[
+    {pri:p.risk==='high'?'high':(p.risk==='mid'?'mid':'low'),text:`${p.name} 随访任务待处理`,status:'待处理'},
+    {pri:'mid',text:`${p.name} 问卷回收与提醒`,status:'待触达'},
+  ];
+  const followups=[
+    {type:'随访',title:'随访节点初始化',desc:`已生成下次复查提醒：${nextDate}`},
+    {type:'对话',title:'企业微信触达',desc:'等待患者回复（演示）'},
+  ];
+  const metrics=[
+    {val:p.risk==='high'?'高':(p.risk==='mid'?'中':'低'),label:'风险等级'},
+    {val:p.status.includes('逾期')?'否':'是',label:'是否按期'},
+    {val:p.risk==='high'?'≤14天':(p.risk==='mid'?'≤30天':'≤90天'),label:'建议随访间隔'},
+    {val:'—',label:'异常预警数'},
+  ];
+  map[patientId]={chat,todos,followups,metrics};
+  return map[patientId];
+}
+function getActivePatientContext(){
+  const sc=SCENES[currentScene];
+  const p=getCurrentPatient();
+  if(!p) return null;
+  return ensurePatientContext(currentScene, p.id);
+}
+function toggleBottom(force){
+  bottomCollapsed = (typeof force==='boolean') ? force : !bottomCollapsed;
+  document.body.classList.toggle('bottom-collapsed', bottomCollapsed);
+  const btn=document.querySelector('.bottom-toggle');
+  if(btn) btn.textContent = bottomCollapsed ? '展开' : '折叠';
+}
+function formatDate(){
+  const d=new Date();
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周${'日一二三四五六'[d.getDay()]}`;
+}
+/** @returns {{orgType:string, roleType:string, account:string}|null} */
+function getAuth(){
+  try{
+    const raw=localStorage.getItem('bhmvp_auth');
+    if(!raw) return null;
+    const v=JSON.parse(raw);
+    if(!v||!v.orgType||!v.roleType) return null;
+    return v;
+  }catch(e){ return null; }
+}
+/** @param {{orgType:string, roleType:string, account:string}} auth */
+function setAuth(auth){
+  localStorage.setItem('bhmvp_auth',JSON.stringify(auth));
+}
+function clearAuth(){ localStorage.removeItem('bhmvp_auth'); }
+function showLogin(){
+  document.getElementById('loginPage').classList.remove('hide');
+  document.getElementById('app').classList.add('hide');
+  document.getElementById('topnav').classList.add('hide');
+}
+function showWorkspace(){
+  document.getElementById('loginPage').classList.add('hide');
+  document.getElementById('app').classList.remove('hide');
+  document.getElementById('topnav').classList.remove('hide');
+}
+function applyUserUI(){
+  const auth=getAuth()||{orgType:'医院',orgUnit:'门诊',roleType:'管理员',account:''};
+  const role=auth.roleType||'管理员';
+  const org=auth.orgType||'医院';
+  const unit=auth.orgUnit||'门诊';
+  document.getElementById('navRole').textContent=role;
+  document.getElementById('navOrg').textContent=(org==='医院' ? `${org}·${unit}` : org);
+  document.getElementById('navUserName').textContent=role;
+  document.getElementById('navAvatar').textContent=(role.slice(0,1)||'管');
+}
+function login(){
+  const orgType=document.getElementById('orgType').value;
+  const orgUnitEl=document.getElementById('orgUnit');
+  const orgUnit=(orgType==='医院' && orgUnitEl) ? orgUnitEl.value : '';
+  const roleType=document.getElementById('roleType').value;
+  const account=(document.getElementById('account').value||'').trim();
+  const remember=document.getElementById('rememberMe').checked;
+  const auth={orgType,orgUnit,roleType,account};
+  if(remember) setAuth(auth);
+  else clearAuth();
+  applyUserUI();
+  showWorkspace();
+  // 医院：门诊/体检中心作为医院内部业务线，默认跳转到对应场景
+  if(orgType==='医院'){
+    switchScene(orgUnit==='体检中心'?1:0);
+  }else if(orgType==='健康管理中心'){
+    switchScene(3);
+  }else{
+    setView('scene');
+  }
+  showToast('登录成功');
+}
+function logout(){
+  clearAuth();
+  showLogin();
+  showToast('已退出登录');
+}
+function onOrgTypeChange(){
+  const orgType=document.getElementById('orgType').value;
+  const wrap=document.getElementById('orgUnitWrap');
+  if(!wrap) return;
+  wrap.style.display=(orgType==='医院')?'flex':'none';
+}
+// 默认：多 AI 联动关闭
+window.multiAiEnabled=false;
+// ── Render Nav ──
+function renderNav(){
+  const list=document.getElementById('navList');
+  // 场景口径：6 个（医院门诊/医院体检中心/社区/健康管理中心/药店/真实世界研究）
+  // 其中“医院”在导航中作为分组，包含门诊与体检中心两个子入口（对应 SCENES[0] 与 SCENES[1]）
+  const hospitalGroup=`
+    <div class="nav-group${hospitalNavOpen?' open':''}">
+      <div class="group-head" onclick="toggleHospitalNav()">
+        <div class="nav-icon">🏥</div>
+        <span class="nav-label">医院</span>
+        <span style="flex:1"></span>
+        <span class="caret">${hospitalNavOpen?'▾':'▸'}</span>
+      </div>
+      <div class="sub" style="${hospitalNavOpen?'':'display:none'}">
+        <div class="nav-sub${currentView==='scene'&&currentScene===0?' active':''}" onclick="switchScene(0)">
+          <div class="nav-icon">➕</div>
+          <span class="nav-label">门诊</span>
+        </div>
+        <div class="nav-sub${currentView==='scene'&&currentScene===1?' active':''}" onclick="switchScene(1)">
+          <div class="nav-icon">🔬</div>
+          <span class="nav-label">体检中心</span>
+        </div>
+      </div>
+    </div>
+  `;
+  const otherIdx=[2,3,4];
+  const otherBtns=otherIdx.map(i=>{
+    const s=SCENES[i];
+    const isMvp=(i===3);
+    return `
+      <div class="nav-btn${currentView==='scene'&&i===currentScene?' active':''}" onclick="switchScene(${i})">
+        <div class="nav-icon">${s.icon}</div>
+        <span class="nav-label">${s.name}</span>
+        ${isMvp?'<span class="mvp-badge">MVP</span>':''}
+      </div>
+    `;
+  }).join('');
+  // 健康管理中心专属功能入口（仅在该场景下显示）
+  const hmcExtras=(currentView==='scene'&&currentScene===3)?`
+    <div style="padding:6px 16px 2px;font-size:10px;color:#94a3b8;font-weight:500;letter-spacing:.4px">健康管理中心</div>
+    <div class="nav-btn${currentView==='wecom'?' active':''}" onclick="openWecomSession()">
+      <div class="nav-icon">💬</div>
+      <span class="nav-label">企微 AI 助手</span>
+    </div>
+    <div class="nav-btn${currentView==='miniprogram'?' active':''}" onclick="openMiniprogram()">
+      <div class="nav-icon">📱</div>
+      <span class="nav-label">患者小程序预览</span>
+    </div>
+    <div class="nav-btn${currentView==='stats'?' active':''}" onclick="openStats()">
+      <div class="nav-icon">📈</div>
+      <span class="nav-label">数据统计</span>
+    </div>
+  `:'';
+  const rwsBtn=`
+    <div class="nav-split"></div>
+    <div class="nav-btn${currentView==='rws'?' active':''}" onclick="openRws()">
+      <div class="nav-icon">📊</div>
+      <span class="nav-label">真实世界研究</span>
+      <span class="nav-count">${RWS_PROJECTS.length}</span>
+    </div>
+  `;
+  list.innerHTML=hospitalGroup + otherBtns + hmcExtras + rwsBtn;
+}
+function toggleHospitalNav(){
+  hospitalNavOpen=!hospitalNavOpen;
+  renderNav();
+}
+function selectAiStaff(idx){
+  selectedAiStaffIdx=idx;
+  renderAI();
+  renderChat();
+}
+function openAiPicker(){
+  const sc=SCENES[currentScene];
+  openModal('选择当前对话 AI（演示）',`
+    <div class="card">
+      <div style="font-size:12px;color:#64748b;line-height:1.7;margin-bottom:8px">
+        你可以把“多个 AI”当作不同的助理。选中后：中间会话发送消息将由该 AI 模拟回复。
+      </div>
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:750">多 AI 联动</div>
+          <label class="checkbox" style="margin:0"><input type="checkbox" id="multiAiToggle" ${window.multiAiEnabled?'checked':''} onchange="window.multiAiEnabled=this.checked"> 发送后让多个AI同时回复</label>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:#94a3b8;line-height:1.7">
+          开启后：会额外追加 1–2 位“相关AI”的回复（演示）。
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${sc.aiStaff.map((a,idx)=>`
+          <button class="btn-inline" style="text-align:left" onclick="selectAiStaff(${idx});closeModal();showToast('当前AI：${a.name}')">
+            ${idx===selectedAiStaffIdx?'✅ ':''}${a.name} <span style="color:#94a3b8">— ${a.desc}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `);
+}
+function sendAiChat(){
+  const sc=SCENES[currentScene];
+  const inp=document.getElementById('aiChatInput');
+  if(!inp) return;
+  const v=(inp.value||'').trim();
+  if(!v) return;
+  const arr=aiChatsByKey[`${currentScene}`][selectedAiStaffIdx];
+  const ai=sc.aiStaff[selectedAiStaffIdx]||{name:'AI助手'};
+  arr.push({role:'user',text:v,ts:Date.now()});
+  arr.push({role:'ai',text:genAiReply(ai.name,v,sc.chat.name),ts:Date.now()});
+  inp.value='';
+  renderAI();
+}
+function genAiReply(aiName, userText, patientName){
+  const name=patientName||'患者';
+  const t=(userText||'').trim();
+  const base={
+    'AI药师':`我可以先帮你做用药与相互作用排查。请补充：当前用药清单、剂量、是否妊娠/肝肾功能异常（演示）。必要时我会提示转药师复核。`,
+    'AI健康管理师':`我会把问题拆成“随访任务 + 话术 + 触达计划”。我建议今天先完成问卷回收，并安排下次复查提醒，同时同步医生/家医（演示）。`,
+    'AI运动康复师':`我建议按“低强度-逐步恢复”制定计划，先确认术后/症状限制，再给出可执行的运动频次与禁忌提醒（演示）。`,
+    'AI心理咨询师':`如果你感到焦虑是正常的。我可以带你做一个 2 分钟的呼吸放松，并把担忧点整理成可行动清单；若出现明显危机信号我会提示转人工（演示）。`,
+    'AI慢病管理师':`我会先看是否合并高血压/糖尿病等共病，补齐关键指标（血压/血糖/血脂），再把结节随访与慢病管理合并成一套长期计划（演示）。`,
+    'AI健康生活方式规划师':`我会根据你的作息、饮食、运动、控烟饮酒情况生成一份 7 天可执行计划，并配合复查节点做提醒（演示）。`,
+    'AI健康福利官':`我可以帮你确认服务权益与流程：需要什么材料、如何预约、如何转人工与跟进节点，并把任务拆给相关角色（演示）。`,
+    'AI中医药膳师':`我可以做体质辨识与饮食/药膳建议（演示）。请补充：舌象/睡眠/食欲/大便情况与慢病用药；我会给出可执行的一周饮食方案，并提示需要药师/医生审核的部分。`,
+    '药店数字人':`我可以在企业微信/社群里完成建档、问卷、报告通俗解释与提醒（演示）。如出现高危信号，我会提示转药师或转医院。`,
+  };
+  // 关键词增强
+  const hint = t.includes('咳')||t.includes('胸痛')||t.includes('咯血')
+    ? `另外你提到的症状属于需要重点关注的信号，我建议优先转医生复核，并补充症状持续时间/严重程度（演示）。`
+    : '';
+  return (base[aiName]||`我会基于你的输入，为 ${name} 生成下一步建议与待办（演示）。`) + (hint?` ${hint}`:'');
+}
+// ── Render Status Bar ──
+function renderStatusBar(){
+  const sc=SCENES[currentScene];
+  const st=getActiveModuleStats(sc);
+  // 健康管理中心：显示增强版统计卡片
+  if(currentScene===3){
+    const pts=sc.patients;
+    const pendingReport=pts.filter(p=>['draft','parsing','parsed','reviewing'].includes(p.reportStatus)).length;
+    const pendingFollowup=pts.filter(p=>p.patientStatus==='following').length;
+    const highAlert=pts.filter(p=>p.risk==='high').length;
+    document.getElementById('statusbar').innerHTML=`
+      <div class="stat-item"><span class="s-label">今日待办</span><span class="s-num">${st.todo}</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><span class="s-label">待处理报告</span><span class="s-num" style="color:#7c3aed">${pendingReport}</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><span class="s-label">随访中</span><span class="s-num" style="color:#c2410c">${pendingFollowup}</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><span class="s-label">高风险预警</span><span class="s-num" style="color:#dc2626">${highAlert}</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><span class="s-label">患者总数</span><span class="s-num">${pts.length}</span></div>
+      <div style="flex:1"></div>
+      <span class="mvp-badge">MVP 主线</span>
+      <span style="font-size:11px;color:#94a3b8;margin-left:8px">${sc.desc}</span>`;
+    renderSubModuleBar();
+    return;
+  }
+  document.getElementById('statusbar').innerHTML=`
+    <div class="stat-item"><span class="s-label">今日待办</span><span class="s-num">${st.todo}</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><span class="s-label">待确认</span><span class="s-num">${st.confirm}</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><span class="s-label">${st.transferLabel}</span><span class="s-num">${st.transfer}</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><span class="s-label">逾期随访</span><span class="s-num">${st.overdue}</span></div>
+    <div style="flex:1"></div>
+    <span style="font-size:11px;color:#94a3b8">${sc.desc}</span>`;
+  renderSubModuleBar();
+}
+
+function getActiveModuleStats(sc){
+  // 社区/药店：按子模块切换显示状态指标
+  if(sc.id===2){
+    const m=COMMUNITY_MODULES[communityModule]||COMMUNITY_MODULES.disease;
+    return m.stats;
+  }
+  if(sc.id===4){
+    const m=PHARMACY_MODULES[pharmacyModule]||PHARMACY_MODULES.digital;
+    return m.stats;
+  }
+  return sc.stats;
+}
+
+const COMMUNITY_MODULES={
+  hall:{
+    id:'hall',label:'社区大讲堂',
+    stats:{todo:6,confirm:12,transfer:3,overdue:1,transferLabel:'转家医'},
+  },
+  chronic:{
+    id:'chronic',label:'慢病大讲堂',
+    stats:{todo:9,confirm:18,transfer:5,overdue:2,transferLabel:'异常转家医'},
+  },
+  disease:{
+    id:'disease',label:'病种管理',
+    stats:{todo:31,confirm:4,transfer:4,overdue:19,transferLabel:'上转建议'},
+  }
+};
+const PHARMACY_MODULES={
+  digital:{
+    id:'digital',label:'药店数字人',
+    stats:{todo:12,confirm:5,transfer:7,overdue:2,transferLabel:'转医院提示'},
+  },
+  edu:{
+    id:'edu',label:'健康教育',
+    stats:{todo:8,confirm:3,transfer:4,overdue:1,transferLabel:'一键推送'},
+  },
+  med:{
+    id:'med',label:'用药随访',
+    stats:{todo:15,confirm:5,transfer:12,overdue:3,transferLabel:'药师审核'},
+  },
+};
+
+function renderSubModuleBar(){
+  const bar=document.getElementById('subModuleBar');
+  if(!bar) return;
+  const sc=SCENES[currentScene];
+  // 门诊：七类结节分类
+  if(sc.id===0){
+    bar.style.display='flex';
+    const cats=['全部','乳腺结节','肺部结节','甲状腺结节','甲状腺合并乳腺结节','甲状腺合并肺部结节','乳腺合并肺部结节','三合并结节'];
+    bar.innerHTML=cats.map(c=>{
+      const id=(c==='全部')?'all':c;
+      return `<button class="tab${outpatientNoduleCat===id?' active':''}" onclick="setOutpatientCat('${id}')">${c}</button>`;
+    }).join('');
+    return;
+  }
+  if(sc.id===2){
+    bar.style.display='flex';
+    const mods=[COMMUNITY_MODULES.hall,COMMUNITY_MODULES.chronic,COMMUNITY_MODULES.disease];
+    bar.innerHTML=mods.map(m=>`<button class="tab${communityModule===m.id?' active':''}" onclick="setCommunityModule('${m.id}')">${m.label}</button>`).join('');
+    return;
+  }
+  if(sc.id===4){
+    bar.style.display='flex';
+    const mods=[PHARMACY_MODULES.digital,PHARMACY_MODULES.edu,PHARMACY_MODULES.med];
+    bar.innerHTML=mods.map(m=>`<button class="tab${pharmacyModule===m.id?' active':''}" onclick="setPharmacyModule('${m.id}')">${m.label}</button>`).join('');
+    return;
+  }
+  bar.style.display='none';
+  bar.innerHTML='';
+}
+function setOutpatientCat(id){
+  outpatientNoduleCat=id;
+  selectedPatientId=null;
+  renderStatusBar();
+  renderPatients();
+  renderChat();
+  renderAI();
+  renderBottom();
+}
+function setCommunityModule(id){
+  communityModule=id;
+  renderStatusBar();
+  renderPatients();
+  renderChat();
+  renderAI();
+  renderBottom();
+}
+function setPharmacyModule(id){
+  pharmacyModule=id;
+  renderStatusBar();
+  renderPatients();
+  renderChat();
+  renderAI();
+  renderBottom();
+}
+// ── Render Patient Column ──
+function renderPatients(){
+  const sc=SCENES[currentScene];
+  // 社区/药店：非“病种管理/数字人/用药随访”等患者型模块时，左侧改为列表库
+  if(sc.id===2 && communityModule!=='disease'){
+    return renderCommunityLeftList();
+  }
+  if(sc.id===4 && pharmacyModule==='edu'){
+    return renderPharmacyEduLeftList();
+  }
+  let pts=sc.patients;
+  if(sc.id===0 && outpatientNoduleCat!=='all'){
+    pts=pts.filter(p=>(p.noduleCat||'')===outpatientNoduleCat);
+  }
+  if(riskFilter!=='all') pts=pts.filter(p=>p.risk===riskFilter);
+  const col=document.getElementById('patientCol');
+  col.innerHTML=`
+    <div class="patient-search">
+      <input type="text" placeholder="搜索患者姓名..." oninput="filterPatients(this.value)">
+    </div>
+    <div class="risk-filters">
+      <button class="risk-btn${riskFilter==='all'?' active':''}" onclick="setRisk('all')">全部</button>
+      <button class="risk-btn${riskFilter==='high'?' active':''}" onclick="setRisk('high')">高风险</button>
+      <button class="risk-btn${riskFilter==='mid'?' active':''}" onclick="setRisk('mid')">中风险</button>
+      <button class="risk-btn${riskFilter==='low'?' active':''}" onclick="setRisk('low')">低风险</button>
+    </div>
+    ${pts.map((p)=>{
+      const isHmc=(currentScene===3);
+      const noduleChips=isHmc&&p.noduleTypes?`<div class="nodule-chips">${p.noduleTypes.map(t=>`<span class="nodule-chip ${t}">${t==='breast'?'乳腺':t==='lung'?'肺':t==='thyroid'?'甲状腺':t}</span>`).join('')}</div>`:'';
+      const psTag=isHmc&&p.patientStatus?`<span class="tag tag-${p.patientStatus}">${{new:'新建档',surveyed:'已问卷',uploaded:'已上传',generated:'已生成方案',following:'随访中',done:'已完成'}[p.patientStatus]||p.patientStatus}</span> `:'';
+      return `
+    <div class="patient-item${p.id===selectedPatientId?' selected':''}" onclick="selectPatientById('${p.id}')">
+      <div class="patient-avatar">${p.name[0]}</div>
+      <div class="patient-info">
+        <div class="patient-name">${p.name}${p.age?` <span style="font-size:11px;color:#94a3b8">${p.age}岁</span>`:''}</div>
+        <div class="patient-sub">${p.nodule} &nbsp;${riskTag(p.risk)}</div>
+        ${noduleChips}
+        <div style="margin-top:2px">${psTag}${statusTagHtml(p.statusTag,p.status)}</div>
+      </div>
+      <div class="patient-actions">
+        <button class="btn-xs" onclick="event.stopPropagation();openPatientDetail('${p.id}')">查看</button>
+        <button class="btn-xs" onclick="event.stopPropagation();handleQuickAction('发起随访')">随访</button>
+      </div>
+    </div>`;}).join('')}
+    <div style="padding:10px 0;text-align:center">
+      <button class="btn-primary" onclick="handleQuickAction('新建患者档案')">+ 新建档案</button>
+    </div>`;
+}
+
+function renderCommunityLeftList(){
+  const col=document.getElementById('patientCol');
+  const isHall=communityModule==='hall';
+  const title=isHall?'讲堂主题':'慢病主题';
+  const items=isHall
+    ? [
+      {id:'t0',name:'肺结节不用慌：哪些情况需要复查？',tag:'今日推荐'},
+      {id:'t1',name:'体检发现结节后怎么做随访？',tag:'科普'},
+      {id:'t2',name:'高风险信号识别：哪些情况要转家医？',tag:'高危'},
+    ]
+    : [
+      {id:'c0',name:'高血压：家庭血压记录与随访',tag:'慢病'},
+      {id:'c1',name:'糖尿病：空腹血糖/糖化登记',tag:'慢病'},
+      {id:'c2',name:'血脂异常：用药依从性与复查',tag:'用药'},
+      {id:'c3',name:'戒烟：行为支持与复吸预警',tag:'生活方式'},
+      {id:'c4',name:'术后康复：运动与复查提醒',tag:'康复'},
+    ];
+  col.innerHTML=`
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:800">${title}</div>
+        <button class="btn-xs" onclick="showToast('新建主题（演示）')">+ 新建</button>
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:#64748b;line-height:1.7">
+        ${isHall?'讲堂结束后可一键生成：问卷、建档、复查提醒、家庭医生任务。':'支持课后测评、慢病指标登记、用药依从性提醒与异常转家医。'}
+      </div>
+    </div>
+    ${items.map(it=>`
+      <div class="card" style="cursor:pointer" onclick="openCommunityModuleDetail('${it.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.name}</div>
+          <span class="tag tag-gray">${it.tag}</span>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="event.stopPropagation();showToast('AI 课后问答已开启（演示）')">课后问答</button>
+          <button class="btn-inline" onclick="event.stopPropagation();showToast('已生成问卷（演示）')">生成问卷</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderPharmacyEduLeftList(){
+  const col=document.getElementById('patientCol');
+  const items=[
+    {id:'e0',name:'结节报告怎么看',tag:'图文'},
+    {id:'e1',name:'什么时候复查',tag:'话术'},
+    {id:'e2',name:'慢病用药：依从性提醒',tag:'社群推文'},
+    {id:'e3',name:'女性乳腺/甲状腺健康',tag:'短视频脚本'},
+    {id:'e4',name:'中老年体检异常解释',tag:'图文'},
+  ];
+  col.innerHTML=`
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:800">科普素材库</div>
+        <button class="btn-xs" onclick="showToast('上传素材（演示）')">+ 上传</button>
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:#64748b;line-height:1.7">
+        支持 AI 生成门店话术、社群推文、短视频脚本，一键推送会员，阅读后自动打标签（演示）。
+      </div>
+    </div>
+    ${items.map(it=>`
+      <div class="card" style="cursor:pointer" onclick="openPharmacyEduDetail('${it.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="font-weight:700">${it.name}</div>
+          <span class="tag tag-gray">${it.tag}</span>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="event.stopPropagation();showToast('已生成门店话术（演示）')">生成话术</button>
+          <button class="btn-inline" onclick="event.stopPropagation();showToast('已一键推送会员（演示）')">一键推送</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function openCommunityModuleDetail(id){
+  if(communityModule==='hall'){
+    openModal('社区大讲堂（演示）',`
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:850">今日讲堂主题：肺结节不用慌：哪些情况需要复查？</div>
+          <span class="tag tag-scene">讲堂进行中</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <span class="tag tag-gray">听课居民数 286</span>
+          <span class="tag tag-gray">课后提问数 42</span>
+          <span class="tag tag-orange">高危线索数 7</span>
+          <span class="tag tag-scene">转家庭医生数 3</span>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.8">
+          AI 名医分身课后问答：将居民提问归类（复查时间/高危信号/转诊路径），并生成家庭医生任务（演示）。
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-inline" onclick="showToast('已生成课后问卷（演示）')">生成问卷</button>
+          <button class="btn-inline" onclick="showToast('已生成居民建档（演示）')">批量建档</button>
+          <button class="btn-inline" onclick="showToast('已生成复查提醒（演示）')">复查提醒</button>
+          <button class="btn-inline" onclick="showToast('已下发家庭医生任务（演示）')">家医任务</button>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  openModal('慢病大讲堂（演示）',`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:850">慢病主题：高血压 · 家庭血压登记与依从性提醒</div>
+        <span class="tag tag-scene">课后阶段</span>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+        <span class="tag tag-gray">课后测评 312</span>
+        <span class="tag tag-gray">指标登记 198</span>
+        <span class="tag tag-orange">异常指标 11</span>
+        <span class="tag tag-scene">已转家医 5</span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.8">
+        支持：慢病指标登记、用药依从性提醒、异常指标转家庭医生（演示）。
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-inline" onclick="showToast('已生成测评问卷（演示）')">课后测评</button>
+        <button class="btn-inline" onclick="showToast('已发送依从性提醒（演示）')">依从性提醒</button>
+        <button class="btn-inline" onclick="showToast('异常指标已转家医（演示）')">异常转家医</button>
+      </div>
+    </div>
+  `);
+}
+
+function openPharmacyEduDetail(id){
+  openModal('门店科普（演示）',`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:850">素材：结节报告怎么看</div>
+        <span class="tag tag-gray">可一键推送</span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.85">
+        这里展示图文/推文/脚本的内容预览（演示）。阅读后会自动打标签：结节关注、复查提醒、慢病用药等。
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-inline" onclick="showToast('已生成门店话术（演示）')">AI 生成门店话术</button>
+        <button class="btn-inline" onclick="showToast('已生成社群推文（演示）')">生成社群推文</button>
+        <button class="btn-inline" onclick="showToast('已生成短视频脚本（演示）')">生成短视频脚本</button>
+        <button class="btn-inline" onclick="showToast('已推送会员（演示）')">一键推送会员</button>
+      </div>
+    </div>
+  `);
+}
+function setRisk(r){riskFilter=r;renderPatients();}
+function filterPatients(v){
+  const sc=SCENES[currentScene];
+  const col=document.getElementById('patientCol');
+  const items=col.querySelectorAll('.patient-item');
+  items.forEach(el=>{
+    const name=el.querySelector('.patient-name').textContent;
+    el.style.display=name.includes(v)?'':'none';
+  });
+}
+function selectPatientById(pid){
+  selectedPatientId=pid;
+  const p=getCurrentPatient();
+  if(p) ensurePatientContext(currentScene, p.id);
+  renderPatients();renderChat();renderAI();renderBottom();
+}
+// ── Render Chat Column ──
+function renderChat(){
+  const sc=SCENES[currentScene];
+  // 社区/药店：子模块为”讲堂/健康教育”等时，中间区域显示模块工作台而非患者会话
+  if(sc.id===2 && communityModule!=='disease'){
+    return renderCommunityModuleMain();
+  }
+  if(sc.id===4 && pharmacyModule==='edu'){
+    return renderPharmacyEduMain();
+  }
+  // 健康管理中心：中间区域显示企微会话工作台
+  if(currentScene===3){
+    return renderHmcChatMain();
+  }
+  const ctx=getActivePatientContext();
+  const ch=(ctx&&ctx.chat)?ctx.chat:sc.chat;
+  const riskMap={high:'高风险',mid:'中风险',low:'低风险'};
+  document.getElementById('chatPatientName').textContent=ch.name;
+  document.getElementById('chatPatientStatus').innerHTML=statusTagHtml(ch.statusTag,ch.status);
+  const aiName=(sc.aiStaff && sc.aiStaff[selectedAiStaffIdx]) ? sc.aiStaff[selectedAiStaffIdx].name : 'AI助手';
+  const col=document.getElementById('chatCol');
+  col.innerHTML=`
+    <div class="chat-patient-card">
+      <div class="pc-name">${ch.name}</div>
+      <div class="pc-row">
+        <span class="tag tag-gray">${ch.card.nodule}</span>
+        ${riskTag(ch.card.risk)}
+      </div>
+      <div class="pc-next">下次复查：${ch.card.next}</div>
+    </div>
+    <div class="quick-actions">
+      ${ch.quickActions.map(a=>`<button class="btn-sm" onclick="handleQuickAction('${a}')">${a}</button>`).join('')}
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      ${ch.messages.map(m=>{
+        const roleMap={user:{av:'患',cls:'user'},ai:{av:'AI',cls:'ai'},system:{av:'系',cls:'system'}};
+        const r=roleMap[m.role]||roleMap.ai;
+        return `<div class="msg ${r.cls}">
+          <div class="msg-avatar">${r.av}</div>
+          <div class="msg-bubble">${m.text}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="chat-input-area">
+      <textarea id="chatInput" placeholder="输入消息或指令..."></textarea>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:108px">
+        <div class="speaker-toggle">
+          <button class="seg active" id="speakPatient" onclick="setSpeakMode('patient')">患者</button>
+          <button class="seg" id="speakAi" onclick="setSpeakMode('ai')">AI助手</button>
+        </div>
+        <button class="btn-primary" onclick="sendMsg()">发送</button>
+        <button class="btn-sm" id="chatAiBtnInBox" onclick="openAiPicker()">${aiName}</button>
+      </div>
+    </div>`;
+}
+
+function renderCommunityModuleMain(){
+  const col=document.getElementById('chatCol');
+  const isHall=communityModule==='hall';
+  const title=isHall?'社区大讲堂':'慢病大讲堂';
+  const topic=isHall?'肺结节不用慌：哪些情况需要复查？':'高血压/糖尿病/血脂异常：如何做长期管理？';
+  const kpis=isHall
+    ? [{k:'听课居民数',v:'286'},{k:'课后提问数',v:'42'},{k:'高危线索数',v:'7'},{k:'转家庭医生数',v:'3'}]
+    : [{k:'课后测评',v:'312'},{k:'指标登记',v:'198'},{k:'用药提醒',v:'76'},{k:'异常转家医',v:'11'}];
+  col.innerHTML=`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:850">${title}</div>
+        <span class="tag tag-scene">工作台</span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#0f172a;line-height:1.8">
+        <span class="tag tag-gray" style="margin-right:6px">今日主题</span>${topic}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        ${kpis.map(x=>`<span class="tag tag-gray">${x.k} ${x.v}</span>`).join('')}
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.85">
+        ${isHall?'AI 名医分身课后问答：自动归类居民提问并生成家医任务（演示）。':'支持课后测评、慢病指标登记、用药依从性提醒，异常指标转家庭医生（演示）。'}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-inline" onclick="showToast('已生成问卷（演示）')">生成问卷</button>
+        <button class="btn-inline" onclick="showToast('已批量建档（演示）')">居民建档</button>
+        <button class="btn-inline" onclick="showToast('已生成复查提醒（演示）')">复查提醒</button>
+        <button class="btn-inline" onclick="showToast('已下发家庭医生任务（演示）')">家庭医生任务</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-weight:750;margin-bottom:8px">${isHall?'课后问答（演示）':'异常指标与提醒（演示）'}</div>
+      <div style="font-size:12px;color:#0f172a;line-height:1.85">
+        ${isHall
+          ? 'Q：我需要多久复查一次？<br>A：根据风险分层与影像特征，通常建议 3–12 个月复查，具体以医生意见为准（演示）。'
+          : '异常指标示例：收缩压 ≥ 160 / 空腹血糖 ≥ 11.1 / LDL-C 异常（演示）。系统会自动转家医并生成随访任务。'}
+      </div>
+    </div>
+  `;
+}
+
+function renderPharmacyEduMain(){
+  const col=document.getElementById('chatCol');
+  col.innerHTML=`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:850">健康教育（门店科普工作台）</div>
+        <span class="tag tag-scene">药店场景</span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.85">
+        以科普素材库为核心，AI 生成门店话术/社群推文/短视频脚本，一键推送会员，阅读后自动打标签（演示）。
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-inline" onclick="showToast('已生成门店话术（演示）')">AI 生成门店话术</button>
+        <button class="btn-inline" onclick="showToast('已生成社群推文（演示）')">生成社群推文</button>
+        <button class="btn-inline" onclick="showToast('已生成短视频脚本（演示）')">短视频脚本</button>
+        <button class="btn-inline" onclick="showToast('已推送会员（演示）')">一键推送会员</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-weight:750;margin-bottom:8px">自动打标签（演示）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-gray">结节关注</span>
+        <span class="tag tag-gray">复查提醒</span>
+        <span class="tag tag-gray">慢病用药</span>
+        <span class="tag tag-gray">女性健康</span>
+        <span class="tag tag-gray">体检异常解释</span>
+      </div>
+    </div>
+  `;
+}
+function renderHmcChatMain(){
+  const sc=SCENES[3];
+  const p=getCurrentPatient()||sc.patients[0];
+  const col=document.getElementById('chatCol');
+  document.getElementById('chatPatientName').textContent=p?p.name:'企微会话';
+  document.getElementById('chatPatientStatus').innerHTML=p?statusTagHtml(p.statusTag,p.status):'';
+  const wechatMap={none:'未添加',wechat_id_collected:'已采集微信号',pending_add:'待添加',added:'已添加',in_service:'服务中'};
+  const rsMap={draft:'草稿',parsing:'AI解析中',parsed:'解析完成',reviewing:'待确认',generated:'已生成',pushed:'已推送',archived:'已归档'};
+  col.innerHTML=`
+    <div class="chat-patient-card">
+      <div class="pc-name">${p?p.name:'—'}</div>
+      <div class="pc-row">
+        <span class="tag tag-gray">${p?p.nodule:'—'}</span>
+        ${p?riskTag(p.risk):''}
+        ${p&&p.noduleTypes?p.noduleTypes.map(t=>`<span class="nodule-chip ${t}" style="font-size:10px;padding:2px 7px">${t==='breast'?'乳腺':t==='lung'?'肺':t==='thyroid'?'甲状腺':t}</span>`).join(''):''}
+      </div>
+      <div class="pc-next">企微状态：${p?wechatMap[p.wechatStatus||'none']:'—'} &nbsp;|&nbsp; 报告：${p?rsMap[p.reportStatus||'draft']:'—'}</div>
+    </div>
+    <div class="quick-actions">
+      <button class="btn-sm" onclick="openPatientDetail('${p?p.id:''}')">查看档案</button>
+      <button class="btn-sm" onclick="handleQuickAction('生成健康报告')">生成报告</button>
+      <button class="btn-sm" onclick="openWecomSession()">企微会话</button>
+      <button class="btn-sm" onclick="openMiniprogram()">小程序预览</button>
+      <button class="btn-sm" onclick="handleQuickAction('发起随访')">发起随访</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      ${p&&p.wechatStatus==='in_service'?`
+        <div class="msg ai"><div class="msg-avatar">AI</div><div class="msg-bubble">您好 ${p.name}，我是您的健康管理助理。您的${p.nodule}报告已生成，请问您方便查看吗？（演示）</div></div>
+        <div class="msg user"><div class="msg-avatar">患</div><div class="msg-bubble">好的，我想了解一下复查时间。</div></div>
+        <div class="msg ai"><div class="msg-avatar">AI</div><div class="msg-bubble">根据您的风险分层，建议您${p.risk==='high'?'1个月内':p.risk==='mid'?'3个月内':'6-12个月内'}完成复查。我已为您生成复查提醒。（演示）</div></div>
+      `:`<div class="msg system"><div class="msg-avatar">系</div><div class="msg-bubble">该患者企微状态：${p?wechatMap[p.wechatStatus||'none']:'—'}。可通过企微 AI 助手发起会话。</div></div>`}
+    </div>
+    <div class="ai-suggest">
+      <div class="as-label">AI 建议回复（人工确认后发送）</div>
+      <div class="as-text">您好，根据您的检查结果，建议您在${p&&p.risk==='high'?'1个月':p&&p.risk==='mid'?'3个月':'6个月'}内完成复查。如有不适请及时联系我们。（演示）</div>
+      <div class="as-actions">
+        <button onclick="showToast('已确认发送（演示）')">确认发送</button>
+        <button onclick="showToast('已编辑（演示）')">编辑</button>
+        <button onclick="showToast('已忽略（演示）')">忽略</button>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <textarea id="chatInput" placeholder="输入消息或指令..."></textarea>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:108px">
+        <button class="btn-primary" onclick="showToast('消息已发送（演示）')">发送</button>
+        <button class="btn-sm" onclick="openWecomSession()">企微会话</button>
+      </div>
+    </div>`;
+}
+function sendMsg(){
+  const inp=document.getElementById('chatInput');
+  const v=inp.value.trim();
+  if(!v)return;
+  const sc=SCENES[currentScene];
+  const ctx=getActivePatientContext();
+  const chat=(ctx&&ctx.chat)?ctx.chat:sc.chat;
+  const ai=(sc.aiStaff && sc.aiStaff[selectedAiStaffIdx]) ? sc.aiStaff[selectedAiStaffIdx] : {name:'AI助手'};
+  if(speakMode==='patient'){
+    // 患者发言 -> AI 回复
+    chat.messages.push({role:'user',text:v});
+    const reply=genAiReply(ai.name, v, chat.name);
+    chat.messages.push({role:'ai',text:reply});
+  }else{
+    // AI 发言 -> 患者模拟回复
+    chat.messages.push({role:'ai',text:`【${ai.name}】${v}`});
+    chat.messages.push({role:'user',text:genPatientReply(v, chat.name)});
+  }
+  // 多 AI 联动：再追加 1–2 个相关 AI 回复（演示）
+  if(window.multiAiEnabled){
+    const extras=['AI健康管理师','AI药师','AI慢病管理师'].filter(n=>n!==ai.name);
+    const pick=extras.slice(0,2);
+    pick.forEach(n=>{
+      chat.messages.push({role:'ai',text:`【${n}】`+genAiReply(n, v, chat.name)});
+    });
+  }
+  renderChat();
+  // 滚动到底
+  setTimeout(()=>{
+    const box=document.getElementById('chatMessages');
+    if(box) box.scrollTop=box.scrollHeight;
+  },0);
+  inp.value='';
+}
+function setSpeakMode(mode){
+  speakMode=mode;
+  const p=document.getElementById('speakPatient');
+  const a=document.getElementById('speakAi');
+  if(p&&a){
+    p.classList.toggle('active',mode==='patient');
+    a.classList.toggle('active',mode==='ai');
+  }
+}
+function genPatientReply(aiText, patientName){
+  const name=patientName||'我';
+  const t=(aiText||'').trim();
+  if(t.includes('复查')||t.includes('预约')){
+    return `好的，我可以按你说的去做复查。需要我准备什么材料/注意事项吗？（演示）`;
+  }
+  if(t.includes('用药')||t.includes('药')){
+    return `我现在在吃的药有点多，我把清单发你可以吗？（演示）`;
+  }
+  if(t.includes('转')||t.includes('医生')){
+    return `好的，那我需要什么时候去医院？我有点担心…（演示）`;
+  }
+  return `收到，我大概明白了。我还有一个问题：接下来我最先应该做什么？（演示）`;
+}
+// ── Render AI Column ──
+function renderAI(){
+  const sc=SCENES[currentScene];
+  const col=document.getElementById('aiCol');
+  const statusDot=(a,s)=>{
+    if(a) return s==='待命'?'dot dot-busy':'dot dot-active';
+    return 'dot dot-inactive';
+  };
+  const statusTagAI=(a,s)=>{
+    if(!a) return `<span class="tag tag-gray">${s}</span>`;
+    return `<span class="tag tag-scene">${s}</span>`;
+  };
+  // 按模块选择 AI/规则（社区/药店在不同子模块下关注点不同）
+  const modAi = getActiveModuleAi(sc);
+  const aiList = modAi.aiStaff;
+  const rules = modAi.rules;
+  // 初始化：每个场景为每个 AI 准备一份对话
+  if(!aiChatsByKey[`${currentScene}`]){
+    aiChatsByKey[`${currentScene}`]=aiList.map(a=>[
+      {role:'ai',text:`你好，我是${a.name}。你可以点击我来进行专项支持（演示）。`,ts:Date.now()}
+    ]);
+  }
+  // 若 AI 列表长度变化，做一次对齐（演示）
+  if(aiChatsByKey[`${currentScene}`].length !== aiList.length){
+    aiChatsByKey[`${currentScene}`]=aiList.map(a=>[
+      {role:'ai',text:`你好，我是${a.name}。你可以点击我来进行专项支持（演示）。`,ts:Date.now()}
+    ]);
+    selectedAiStaffIdx=0;
+  }
+  const aiChatArr=(aiChatsByKey[`${currentScene}`][selectedAiStaffIdx]||[]);
+  const selectedAI=aiList[selectedAiStaffIdx]||aiList[0];
+  col.innerHTML=`
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:500">AI员工状态（点击切换为当前AI助理）</div>
+    ${aiList.map((a,idx)=>`
+    <div class="ai-staff-item selectable${idx===selectedAiStaffIdx?' selected':''}" onclick="selectAiStaff(${idx})">
+      <span class="ai-staff-num">${a.num}</span>
+      <span class="ai-staff-name">${a.name}</span>
+      <span class="ai-staff-desc" title="${a.desc}">${a.desc}</span>
+      <span class="${statusDot(a.active,a.status)}" title="${a.status}"></span>
+      ${statusTagAI(a.active,a.status)}
+    </div>`).join('')}
+    <div class="ai-chat">
+      <div class="ach-head">
+        <div class="ach-title">当前 AI：${selectedAI?selectedAI.name:'AI助手'}</div>
+        <button class="btn-inline" onclick="showToast('已生成建议（演示）')">生成建议</button>
+      </div>
+      <div class="ach-body">
+        ${aiChatArr.map(m=>{
+          const cls=m.role==='user'?'msg user':'msg ai';
+          const av=m.role==='user'?'我':'AI';
+          return `<div class="${cls}" style="margin-bottom:10px">
+            <div class="msg-avatar">${av}</div>
+            <div class="msg-bubble">${m.text}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="ach-input">
+        <input id="aiChatInput" placeholder="给当前AI助理一句话指令（回车发送）" onkeydown="if(event.key==='Enter'){sendAiChat()}">
+        <button class="btn-primary" style="padding:8px 12px" onclick="sendAiChat()">发送</button>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:#94a3b8;font-weight:500;margin-bottom:4px">转人工规则</div>
+    ${rules.map(r=>`<div class="rule-item">${r}</div>`).join('')}
+    <div style="margin-top:10px">
+      <button class="btn-sm" style="width:100%;font-size:11px" onclick="showToast('规则配置已打开')">配置规则</button>
+    </div>`;
+}
+
+function getActiveModuleAi(sc){
+  if(sc.id===2){
+    if(communityModule==='hall'){
+      return {
+        aiStaff: [
+          {num:1,name:'AI讲堂助理',desc:'讲堂内容讲解+课后问答，高危线索提取与转家医任务生成',status:'讲解中',active:true},
+          {num:2,name:'AI健康管理师',desc:'问卷生成、居民建档、复查提醒与任务编排',status:'处理中',active:true},
+          {num:3,name:'AI慢病管理师',desc:'共病筛查与异常指标提醒，转家医闭环',status:'待命',active:false},
+        ],
+        rules:['高危线索 → 转家庭医生','复查逾期 → 生成提醒 + 家医任务','症状危机 → 转人工']
+      };
+    }
+    if(communityModule==='chronic'){
+      return {
+        aiStaff: [
+          {num:1,name:'AI慢病管理师',desc:'指标登记、依从性提醒、异常转家医',status:'运行中',active:true},
+          {num:2,name:'AI中医药膳师',desc:'体质与药膳/食疗建议（需合规审核），提升依从性',status:'待命',active:false},
+          {num:3,name:'AI健康管理师',desc:'课后测评、随访任务分配、话术生成',status:'处理中',active:true},
+        ],
+        rules:['异常指标 → 转家庭医生','疑似不良反应 → 转医生/药师','依从性差 → 触达 + 跟进']
+      };
+    }
+  }
+  if(sc.id===4){
+    if(pharmacyModule==='digital'){
+      return {
+        aiStaff: [
+          {num:1,name:'药店数字人',desc:'企业微信/社群数字人，会员建档、扫码问卷、报告通俗解释',status:'对话中',active:true},
+          {num:2,name:'AI药师',desc:'药师转接、相互作用复核、审核建议',status:'审核中',active:true},
+          {num:3,name:'AI风险分层助理',desc:'高危信号识别与转医院提示（不做诊疗判断）',status:'辅助中',active:true},
+          {num:4,name:'AI中医药膳师',desc:'药膳/食疗建议（需合规审核），门店可用生活方式方案',status:'待命',active:false},
+        ],
+        rules:['药师审核 → 才能下发建议','高危信号 → 提示转医院','疑似不良反应 → 记录并转药师']
+      };
+    }
+    if(pharmacyModule==='med'){
+      return {
+        aiStaff: [
+          {num:1,name:'AI药师',desc:'用药随访、相互作用提醒、不良反应收集与审核',status:'运行中',active:true},
+          {num:2,name:'AI健康管理师',desc:'3/7/14 天回访任务编排、依从性提醒',status:'处理中',active:true},
+          {num:3,name:'AI风险分层助理',desc:'高危线索识别与转医院提示（不做诊疗判断）',status:'辅助中',active:true},
+        ],
+        rules:['疑似不良反应 → 优先药师审核','依从性差 → 回访 + 教育','建议转医院 → 一键生成提示']
+      };
+    }
+    if(pharmacyModule==='edu'){
+      return {
+        aiStaff: [
+          {num:1,name:'药店数字人',desc:'社群推文/话术推送，阅读后自动打标签',status:'推送中',active:true},
+          {num:2,name:'AI健康管理师',desc:'素材编排、会员分群、转化为随访任务',status:'处理中',active:true},
+        ],
+        rules:['阅读完成 → 打标签','高危提问 → 转药师/转医院提示','问卷高风险 → 建档 + 随访']
+      };
+    }
+  }
+  return {aiStaff: sc.aiStaff, rules: sc.rules};
+}
+// ── Render Bottom ──
+function renderBottom(){
+  const sc=SCENES[currentScene];
+  // 社区/药店：在讲堂/健康教育模块下，底部展示模块任务/记录/指标
+  if(sc.id===2 && communityModule!=='disease'){
+    return renderModuleBottom('community');
+  }
+  if(sc.id===4 && pharmacyModule==='edu'){
+    return renderModuleBottom('pharmacyEdu');
+  }
+  const ctx=getActivePatientContext();
+  const todos=(ctx&&ctx.todos)?ctx.todos:sc.todos;
+  const followups=(ctx&&ctx.followups)?ctx.followups:sc.followups;
+  const metrics=(ctx&&ctx.metrics)?ctx.metrics:sc.metrics;
+  // Todos
+  const priMap={high:'pri-high',mid:'pri-mid',low:'pri-low'};
+  const priLabel={high:'高',mid:'中',low:'低'};
+  document.getElementById('todoCol').innerHTML=todos.map(t=>`
+    <div class="todo-item">
+      <span class="todo-pri ${priMap[t.pri]}">${priLabel[t.pri]}</span>
+      <span class="todo-text">${t.text}</span>
+      <span class="todo-status">${t.status}</span>
+      <button class="btn-xs" onclick="showToast('处理：${t.text.substring(0,8)}...')">处理</button>
+    </div>`).join('');
+  // Followups
+  document.getElementById('followupCol').innerHTML=followups.map(f=>`
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div><span class="tag tag-gray" style="margin-right:4px">${f.type}</span><span class="tl-type">${f.title}</span></div>
+        <div class="tl-desc">${f.desc}</div>
+      </div>
+    </div>`).join('');
+  // Metrics
+  document.getElementById('metricsCol').innerHTML=`
+    <div class="metrics-grid">
+      ${metrics.map(m=>`
+      <div class="metric-card" style="cursor:pointer" onclick="openMetric('${m.label}','${String(m.val).replace(/'/g,'&#39;')}')">
+        <div class="metric-val">${m.val}</div>
+        <div class="metric-label">${m.label}</div>
+      </div>`).join('')}
+    </div>`;
+}
+
+function renderModuleBottom(kind){
+  const todoCol=document.getElementById('todoCol');
+  const followCol=document.getElementById('followupCol');
+  const metricCol=document.getElementById('metricsCol');
+  const priMap={high:'pri-high',mid:'pri-mid',low:'pri-low'};
+  const priLabel={high:'高',mid:'中',low:'低'};
+  let todos=[], followups=[], metrics=[];
+  if(kind==='community'){
+    const isHall=communityModule==='hall';
+    todos = isHall
+      ? [{pri:'mid',text:'讲堂结束后生成问卷与建档',status:'待处理'},{pri:'high',text:'高危线索 7 条待转家医',status:'待确认'},{pri:'mid',text:'复查提醒待发送',status:'待触达'}]
+      : [{pri:'mid',text:'课后测评结果汇总',status:'运行中'},{pri:'high',text:'异常指标 11 条待转家医',status:'待确认'},{pri:'mid',text:'用药依从性提醒 76 条',status:'待触达'}];
+    followups = isHall
+      ? [{type:'讲堂',title:'居民提问归类',desc:'复查/高危/转诊路径已整理（演示）'},{type:'任务',title:'家医任务单',desc:'已生成 3 条转家医任务（演示）'}]
+      : [{type:'慢病',title:'指标登记',desc:'血压/血糖/血脂登记中（演示）'},{type:'提醒',title:'依从性提醒',desc:'已生成提醒话术（演示）'}];
+    metrics = isHall
+      ? [{val:'286',label:'听课居民数'},{val:'42',label:'课后提问数'},{val:'7',label:'高危线索数'},{val:'3',label:'转家医数'}]
+      : [{val:'312',label:'课后测评'},{val:'198',label:'指标登记'},{val:'76',label:'用药提醒'},{val:'11',label:'异常转家医'}];
+  }else{
+    todos = [{pri:'mid',text:'素材库本周推送计划',status:'待处理'},{pri:'mid',text:'门店话术生成待审核',status:'待审核'},{pri:'low',text:'会员阅读标签归因',status:'运行中'}];
+    followups = [{type:'推送',title:'社群推文',desc:'已推送 3 篇（演示）'},{type:'标签',title:'自动打标签',desc:'结节关注/复查提醒/慢病用药（演示）'}];
+    metrics = [{val:'3',label:'今日推文'},{val:'18%',label:'阅读率'},{val:'126',label:'触达会员'},{val:'42',label:'新增标签'}];
+  }
+  todoCol.innerHTML=todos.map(t=>`
+    <div class="todo-item">
+      <span class="todo-pri ${priMap[t.pri]}">${priLabel[t.pri]}</span>
+      <span class="todo-text">${t.text}</span>
+      <span class="todo-status">${t.status}</span>
+      <button class="btn-xs" onclick="showToast('处理：${t.text.substring(0,8)}...')">处理</button>
+    </div>`).join('');
+  followCol.innerHTML=followups.map(f=>`
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div><span class="tag tag-gray" style="margin-right:4px">${f.type}</span><span class="tl-type">${f.title}</span></div>
+        <div class="tl-desc">${f.desc}</div>
+      </div>
+    </div>`).join('');
+  metricCol.innerHTML=`
+    <div class="metrics-grid">
+      ${metrics.map(m=>`
+      <div class="metric-card" style="cursor:pointer" onclick="openMetric('${m.label}','${m.val}')">
+        <div class="metric-val">${m.val}</div>
+        <div class="metric-label">${m.label}</div>
+      </div>`).join('')}
+    </div>`;
+}
+function openMetric(label,val){
+  const defs={
+    '院外随访率':'按计划节点完成的随访占比（演示口径）。',
+    '术后跟踪率':'术后患者在规定时间窗内完成随访的占比（演示口径）。',
+    '医生复核命中':'AI 触发“需要医生复核”的建议中，被医生采纳/确认的次数（演示）。',
+    '今日新建档案':'今日新增患者档案数量（演示）。',
+    '风险等级':'用于分层管理的风险等级（高/中/低），决定随访频率与转人工规则。',
+    '是否按期':'是否在建议时间窗内完成复查/随访（演示）。',
+    '建议随访间隔':'基于风险分层给出的建议随访周期（演示）。',
+    '异常预警数':'对症状/指标/依从性等异常信号的自动预警数量（演示）。'
+  };
+  openModal(`指标说明：${label}`,`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:800">${label}</div>
+        <span class="tag tag-scene">当前值：${val}</span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.85">
+        ${defs[label]||'该指标用于辅助运营与随访管理（演示口径，可按实际业务调整）。'}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-inline" onclick="showToast('已导出指标明细（演示）')">导出明细</button>
+        <button class="btn-inline" onclick="showToast('已生成改进建议（演示）')">生成建议</button>
+      </div>
+    </div>
+  `);
+}
+// ── 企微 AI 助手（模拟会话界面）──
+function openWecomSession(){
+  currentView='wecom';
+  renderNav();
+  const sc=SCENES[3];
+  const activePts=sc.patients.filter(p=>p.wechatStatus&&p.wechatStatus!=='none');
+  const sessions=activePts.length?activePts:sc.patients.slice(0,3);
+  const selP=sessions[0];
+  const wecomHtml=`
+    <div style="display:flex;height:100%;min-height:480px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff">
+      <div style="width:220px;border-right:1px solid #e2e8f0;flex-shrink:0;display:flex;flex-direction:column">
+        <div style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;justify-content:space-between">
+          企微会话列表
+          <span class="tag tag-blue">${sessions.length}</span>
+        </div>
+        <div class="wecom-list" style="flex:1;overflow-y:auto">
+          ${sessions.map((p,i)=>`
+          <div class="wecom-item${i===0?' active':''}" onclick="showToast('切换会话：${p.name}（演示）')">
+            <div class="wecom-avatar">${p.name[0]}</div>
+            <div class="wecom-info">
+              <div class="wecom-name">${p.name}</div>
+              <div class="wecom-preview">${p.nodule} · ${p.risk==='high'?'高风险':p.risk==='mid'?'中风险':'低风险'}</div>
+            </div>
+            <div class="wecom-meta">
+              <div class="wecom-time">今天</div>
+              ${p.wechatStatus==='in_service'?'<div class="wecom-unread">服务中</div>':''}
+            </div>
+          </div>`).join('')}
+        </div>
+        <div style="padding:8px 12px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8">
+          wecom_user_id / conversation_id 字段已预留<br>可替换为真实企微接口
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+        <div style="padding:10px 14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px">
+          <div style="font-weight:700">${selP.name}</div>
+          ${riskTag(selP.risk)}
+          <span class="tag tag-gray">${selP.nodule}</span>
+          <span style="flex:1"></span>
+          <span style="font-size:10px;color:#94a3b8">conversation_id: ${selP.conversation_id||'待分配'}</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:8px">
+          <div class="msg ai"><div class="msg-avatar">AI</div><div class="msg-bubble">您好 ${selP.name}，我是您的健康管理助理。您的${selP.nodule}报告已生成，请问您方便查看吗？（演示）</div></div>
+          <div class="msg user"><div class="msg-avatar">患</div><div class="msg-bubble">好的，我想了解一下复查时间。</div></div>
+          <div class="msg ai"><div class="msg-avatar">AI</div><div class="msg-bubble">根据您的风险分层（${selP.risk==='high'?'高风险，建议1个月内':selP.risk==='mid'?'中风险，建议3个月内':'低风险，建议6-12个月内'}复查），我已为您生成复查提醒。（演示）</div></div>
+        </div>
+        <div class="ai-suggest">
+          <div class="as-label">AI 建议回复（人工确认后发送）</div>
+          <div class="as-text">您好，根据您的检查结果，建议您在${selP.risk==='high'?'1个月':selP.risk==='mid'?'3个月':'6个月'}内完成复查。如有不适请及时联系我们。（演示）</div>
+          <div class="as-actions">
+            <button onclick="showToast('已确认发送（演示）')">确认发送</button>
+            <button onclick="showToast('已编辑（演示）')">编辑</button>
+            <button onclick="showToast('已忽略（演示）')">忽略</button>
+          </div>
+        </div>
+        <div style="padding:8px 12px;border-top:1px solid #e2e8f0;display:flex;gap:8px">
+          <input style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:12px;outline:none" placeholder="输入消息（演示）...">
+          <button class="btn-primary" onclick="showToast('消息已发送（演示）')">发送</button>
+        </div>
+      </div>
+    </div>
+  `;
+  openModal('企微 AI 助手（模拟会话）',wecomHtml);
+}
+// ── 患者小程序预览 ──
+function openMiniprogram(){
+  currentView='miniprogram';
+  renderNav();
+  const p=getCurrentPatient()||SCENES[3].patients[0];
+  const psMap={new:'新建档',surveyed:'已问卷',uploaded:'已上传报告',generated:'已生成方案',following:'随访中',done:'已完成'};
+  openModal('患者小程序预览（演示）',`
+    <div style="display:flex;justify-content:center;padding:10px 0">
+      <div class="mp-phone">
+        <div class="mp-statusbar"><span></span><span></span><span></span></div>
+        <div class="mp-nav">
+          <span>←</span>
+          <span>我的健康档案</span>
+          <span>⋯</span>
+        </div>
+        <div class="mp-card">
+          <div class="mc-title">${p.name} · 健康档案</div>
+          <div class="mc-row"><span>结节类型</span><span>${p.nodule}</span></div>
+          <div class="mc-row"><span>风险等级</span><span>${p.risk==='high'?'高风险':p.risk==='mid'?'中风险':'低风险'}</span></div>
+          <div class="mc-row"><span>档案状态</span><span>${psMap[p.patientStatus||'new']}</span></div>
+        </div>
+        <div class="mp-card">
+          <div class="mc-title">健康问卷</div>
+          <div class="mc-row"><span>完成状态</span><span>${p.patientStatus==='new'?'未填写':'已完成'}</span></div>
+          <button class="mp-btn" onclick="showToast('问卷已打开（演示）')">${p.patientStatus==='new'?'立即填写':'查看问卷'}</button>
+        </div>
+        <div class="mp-card">
+          <div class="mc-title">影像报告上传</div>
+          <div class="mc-row"><span>上传状态</span><span>${['uploaded','generated','following','done'].includes(p.patientStatus)?'已上传':'待上传'}</span></div>
+          <button class="mp-btn" onclick="showToast('上传页面已打开（演示）')">上传报告</button>
+        </div>
+        <div class="mp-card">
+          <div class="mc-title">我的健康方案</div>
+          <div class="mc-row"><span>方案状态</span><span>${['generated','following','done'].includes(p.patientStatus)?'已生成':'待生成'}</span></div>
+          <button class="mp-btn" onclick="showToast('健康方案已打开（演示）')" style="${['generated','following','done'].includes(p.patientStatus)?'':'opacity:.5'}">${['generated','following','done'].includes(p.patientStatus)?'查看方案':'等待生成'}</button>
+        </div>
+        <div class="mp-card">
+          <div class="mc-title">随访提醒</div>
+          <div class="mc-row"><span>下次复查</span><span>${p.risk==='high'?'1个月内':p.risk==='mid'?'3个月内':'6-12个月内'}</span></div>
+          <button class="mp-btn" onclick="showToast('提醒已设置（演示）')">设置提醒</button>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:8px">小程序演示 · 真实接入需对接微信开发者工具</div>
+  `);
+}
+// ── 数据统计 ──
+function openStats(){
+  currentView='stats';
+  renderNav();
+  const sc=SCENES[3];
+  const pts=sc.patients;
+  const total=pts.length;
+  const highRisk=pts.filter(p=>p.risk==='high').length;
+  const midRisk=pts.filter(p=>p.risk==='mid').length;
+  const lowRisk=pts.filter(p=>p.risk==='low').length;
+  const following=pts.filter(p=>p.patientStatus==='following'||p.patientStatus==='done').length;
+  const pushed=pts.filter(p=>p.reportStatus==='pushed'||p.reportStatus==='archived').length;
+  const noduleCount={breast:0,lung:0,thyroid:0};
+  pts.forEach(p=>(p.noduleTypes||[]).forEach(t=>{if(noduleCount[t]!==undefined)noduleCount[t]++;}));
+  const barChart=(items)=>`<div class="chart-bar-wrap">${items.map(it=>`
+    <div class="chart-bar-row">
+      <div class="chart-bar-label">${it.label}</div>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${it.pct}%"></div></div>
+      <div class="chart-bar-val">${it.val}</div>
+    </div>`).join('')}</div>`;
+  openModal('数据统计（演示）',`
+    <div class="stats-cards">
+      <div class="stat-card" onclick="showToast('患者总数明细（演示）')">
+        <div class="sc-val">${total}</div>
+        <div class="sc-label">患者总数</div>
+        <div class="sc-sub">健康管理中心</div>
+      </div>
+      <div class="stat-card" onclick="showToast('高风险患者明细（演示）')">
+        <div class="sc-val" style="color:#dc2626">${highRisk}</div>
+        <div class="sc-label">高风险患者</div>
+        <div class="sc-sub">需重点随访</div>
+      </div>
+      <div class="stat-card" onclick="showToast('报告推送明细（演示）')">
+        <div class="sc-val">${pushed}</div>
+        <div class="sc-label">已推送报告</div>
+        <div class="sc-sub">患者已收到</div>
+      </div>
+      <div class="stat-card" onclick="showToast('随访完成明细（演示）')">
+        <div class="sc-val">${Math.round(following/total*100)}%</div>
+        <div class="sc-label">随访完成率</div>
+        <div class="sc-sub">随访中+已完成</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">结节类型分布</div>
+        ${barChart([
+          {label:'乳腺结节',pct:Math.round(noduleCount.breast/total*100),val:noduleCount.breast},
+          {label:'肺结节',pct:Math.round(noduleCount.lung/total*100),val:noduleCount.lung},
+          {label:'甲状腺结节',pct:Math.round(noduleCount.thyroid/total*100),val:noduleCount.thyroid},
+        ])}
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">风险等级分布</div>
+        ${barChart([
+          {label:'高风险',pct:Math.round(highRisk/total*100),val:highRisk},
+          {label:'中风险',pct:Math.round(midRisk/total*100),val:midRisk},
+          {label:'低风险',pct:Math.round(lowRisk/total*100),val:lowRisk},
+        ])}
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">患者状态分布</div>
+        ${barChart([
+          {label:'新建档',pct:Math.round(pts.filter(p=>p.patientStatus==='new').length/total*100),val:pts.filter(p=>p.patientStatus==='new').length},
+          {label:'已问卷',pct:Math.round(pts.filter(p=>p.patientStatus==='surveyed').length/total*100),val:pts.filter(p=>p.patientStatus==='surveyed').length},
+          {label:'已上传',pct:Math.round(pts.filter(p=>p.patientStatus==='uploaded').length/total*100),val:pts.filter(p=>p.patientStatus==='uploaded').length},
+          {label:'已生成方案',pct:Math.round(pts.filter(p=>p.patientStatus==='generated').length/total*100),val:pts.filter(p=>p.patientStatus==='generated').length},
+          {label:'随访中',pct:Math.round(pts.filter(p=>p.patientStatus==='following').length/total*100),val:pts.filter(p=>p.patientStatus==='following').length},
+        ])}
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">报告状态分布</div>
+        ${barChart([
+          {label:'草稿',pct:Math.round(pts.filter(p=>p.reportStatus==='draft').length/total*100),val:pts.filter(p=>p.reportStatus==='draft').length},
+          {label:'解析中',pct:Math.round(pts.filter(p=>p.reportStatus==='parsing').length/total*100),val:pts.filter(p=>p.reportStatus==='parsing').length},
+          {label:'已生成',pct:Math.round(pts.filter(p=>p.reportStatus==='generated').length/total*100),val:pts.filter(p=>p.reportStatus==='generated').length},
+          {label:'已推送',pct:Math.round(pts.filter(p=>p.reportStatus==='pushed').length/total*100),val:pts.filter(p=>p.reportStatus==='pushed').length},
+        ])}
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:8px">以上数据为演示数据，真实数据需对接后端接口</div>
+  `);
+}
+// ── Switch Scene ──
+function switchScene(i){
+  currentView='scene';
+  document.getElementById('sceneView').classList.remove('hide');
+  document.getElementById('rwsView').classList.add('hide');
+  currentScene=i;
+  // 医院分组：切到门诊/体检中心时保持分组展开
+  if(i===0||i===1) hospitalNavOpen=true;
+  selectedPatientId=(SCENES[i] && SCENES[i].patients && SCENES[i].patients[0]) ? SCENES[i].patients[0].id : null;
+  riskFilter='all';
+  // 社区/药店：进入场景时默认子模块
+  if(i===2) communityModule='disease';
+  if(i===4) pharmacyModule='digital';
+  if(i===0) outpatientNoduleCat='all';
+  // 为当前场景的默认患者准备上下文
+  const p0=getCurrentPatient();
+  if(p0) ensurePatientContext(i, p0.id);
+  const sc=SCENES[i];
+  setSceneColor(sc.color,sc.bg);
+  document.getElementById('navLogo').style.background=sc.color;
+  document.getElementById('navAvatar').style.background=sc.color;
+  renderNav();
+  renderStatusBar();
+  renderPatients();
+  renderChat();
+  renderAI();
+  renderBottom();
+  showToast('已切换至：'+sc.name);
+}
+function setView(v){
+  if(v==='rws') openRws();
+  else switchScene(currentScene);
+}
+// ── RWS (真实世界研究) ──
+function openRws(){
+  currentView='rws';
+  document.getElementById('sceneView').classList.add('hide');
+  document.getElementById('rwsView').classList.remove('hide');
+  setSceneColor('#0891b2','#ecfeff');
+  document.getElementById('navLogo').style.background='var(--scene-color)';
+  document.getElementById('navAvatar').style.background='var(--scene-color)';
+  renderNav();
+  renderRwsAll();
+  showToast('已进入：真实世界研究');
+}
+function renderRwsAll(){
+  renderRwsStatusbar();
+  renderRwsProjects();
+  renderRwsDetail();
+  renderRwsSupport();
+  renderRwsTabs();
+  renderRwsBottom();
+}
+function renderRwsStatusbar(){
+  const total=RWS_PROJECTS.length;
+  const enrolled=RWS_PROJECTS.reduce((a,p)=>a+p.progress.enrolled,0);
+  const done=RWS_PROJECTS.reduce((a,p)=>a+p.progress.followupDone,0);
+  const tot=RWS_PROJECTS.reduce((a,p)=>a+p.progress.followupTotal,0);
+  const qc=RWS_PROJECTS.reduce((a,p)=>a+p.progress.qcIssues,0);
+  const rate=tot?Math.round(done/tot*100):0;
+  document.getElementById('rwsStatusbar').innerHTML=`
+    <div class="stat-item"><span class="s-label">研究项目数</span><span class="s-num">${total}</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><span class="s-label">已入组患者</span><span class="s-num">${enrolled}</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><span class="s-label">随访完成率</span><span class="s-num">${rate}%</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><span class="s-label">数据质控问题数</span><span class="s-num">${qc}</span></div>
+    <div style="flex:1"></div>
+    <span style="font-size:11px;color:#94a3b8">研究管理 · 入组 · 随访 · 质控 · AI 支持</span>
+  `;
+}
+function renderRwsProjects(){
+  const list=document.getElementById('rwsProjectList');
+  list.innerHTML=RWS_PROJECTS.map((p,idx)=>{
+    const pr=p.progress;
+    const pct=Math.round(pr.enrolled/pr.target*100);
+    return `
+      <div class="rws-project${idx===rwsSelected?' active':''}" onclick="selectRws(${idx})">
+        <div class="p-name">${p.name}</div>
+        <div class="p-sub">
+          <span class="tag tag-gray">${p.type}</span>
+          <span class="tag tag-scene">进度 ${pr.enrolled}/${pr.target}（${pct}%）</span>
+          <span class="tag tag-gray">质控 ${pr.qcIssues}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+function selectRws(i){
+  rwsSelected=i;
+  renderRwsProjects();
+  renderRwsDetail();
+  renderRwsBottom();
+  showToast('已切换研究项目');
+}
+function renderRwsDetail(){
+  const p=RWS_PROJECTS[rwsSelected];
+  if(!p) return;
+  document.getElementById('rwsTitle').textContent=p.name;
+  const pr=p.progress;
+  const enrolledPct=Math.round(pr.enrolled/pr.target*100);
+  const followPct=pr.followupTotal?Math.round(pr.followupDone/pr.followupTotal*100):0;
+  const steps=['基线','3个月','6个月','12个月','24个月'];
+  const doneCount=Math.max(1,Math.min(steps.length,Math.round(followPct/100*steps.length)));
+  const stepHtml=steps.map((s,idx)=>`<span class="step${idx<doneCount?' done':''}"><span class="s-dot"></span>${s}</span>`).join('');
+  document.getElementById('rwsDetail').innerHTML=`
+    <div class="desc-list">
+      <div class="desc-item">
+        <div class="k">研究名称</div>
+        <div class="v">${p.name}</div>
+      </div>
+      <div class="desc-item">
+        <div class="k">研究类型：前瞻性 / 回顾性 / 队列研究</div>
+        <div class="v">${p.type}</div>
+      </div>
+      <div class="desc-item">
+        <div class="k">研究周期</div>
+        <div class="v">${p.period}</div>
+      </div>
+      <div class="desc-item">
+        <div class="k">当前入组进度</div>
+        <div class="v">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <span class="tag tag-scene">入组 ${pr.enrolled}/${pr.target}（${enrolledPct}%）</span>
+            <span class="tag tag-gray">随访完成 ${pr.followupDone}/${pr.followupTotal}（${followPct}%）</span>
+            <span class="tag tag-orange">质控问题 ${pr.qcIssues}</span>
+          </div>
+        </div>
+      </div>
+      <div class="desc-item">
+        <div class="k">入组标准</div>
+        <div class="v">${p.inclusion.map(x=>`- ${x}`).join('<br>')}</div>
+      </div>
+      <div class="desc-item">
+        <div class="k">排除标准</div>
+        <div class="v">${p.exclusion.map(x=>`- ${x}`).join('<br>')}</div>
+      </div>
+      <div class="desc-item">
+        <div class="k">主要终点</div>
+        <div class="v">${p.endpointsPrimary.map(x=>`- ${x}`).join('<br>')}</div>
+      </div>
+      <div class="desc-item">
+        <div class="k">次要终点</div>
+        <div class="v">${p.endpointsSecondary.map(x=>`- ${x}`).join('<br>')}</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-size:12px;font-weight:700;color:#0f172a">随访节点</div>
+        <div class="table-actions">
+          <button class="btn-inline" onclick="onRwsAiScreen()">AI筛查入组</button>
+          <button class="btn-inline" onclick="showToast('随访缺失提醒已生成')">随访缺失提醒</button>
+        </div>
+      </div>
+      <div class="rws-steps">${stepHtml}</div>
+    </div>
+  `;
+}
+function renderRwsSupport(){
+  const col=document.getElementById('rwsSupport');
+  col.innerHTML=`
+    <div class="support-item">
+      <div class="support-icon">🧠</div>
+      <div style="flex:1;min-width:0">
+        <div class="support-title">AI 入组筛查</div>
+        <div class="support-desc">基于结构化报告与规则，快速筛选候选患者并输出理由</div>
+        <div style="margin-top:6px"><button class="btn-inline" onclick="onRwsAiScreen()">执行</button></div>
+      </div>
+    </div>
+    <div class="support-item">
+      <div class="support-icon">⏰</div>
+      <div style="flex:1;min-width:0">
+        <div class="support-title">随访缺失提醒</div>
+        <div class="support-desc">识别逾期与缺项，自动生成提醒话术与任务分配</div>
+        <div style="margin-top:6px"><button class="btn-inline" onclick="showToast('已生成随访缺失提醒')">执行</button></div>
+      </div>
+    </div>
+    <div class="support-item">
+      <div class="support-icon">✅</div>
+      <div style="flex:1;min-width:0">
+        <div class="support-title">数据质量检查</div>
+        <div class="support-desc">字段一致性、时间戳、缺失值与异常范围检查，输出问题清单</div>
+        <div style="margin-top:6px"><button class="btn-inline" onclick="showToast('数据质量检查已运行')">执行</button></div>
+      </div>
+    </div>
+    <div class="support-item">
+      <div class="support-icon">🔎</div>
+      <div style="flex:1;min-width:0">
+        <div class="support-title">结局事件识别</div>
+        <div class="support-desc">从门诊/住院记录中识别关键结局事件，支持人工复核闭环</div>
+        <div style="margin-top:6px"><button class="btn-inline" onclick="showToast('结局事件识别：已标记待复核')">执行</button></div>
+      </div>
+    </div>
+    <div class="support-item">
+      <div class="support-icon">🧾</div>
+      <div style="flex:1;min-width:0">
+        <div class="support-title">研究报告生成</div>
+        <div class="support-desc">自动生成研究月报/季报与初步统计摘要（演示为 toast）</div>
+        <div style="margin-top:6px"><button class="btn-inline" onclick="onRwsGenReport()">生成</button></div>
+      </div>
+    </div>
+  `;
+}
+function renderRwsTabs(){
+  const tabs=[
+    {id:'enroll',name:'入组患者表格'},
+    {id:'follow',name:'随访数据完成情况'},
+    {id:'qc',name:'数据质控问题'},
+    {id:'stats',name:'初步统计指标'},
+    {id:'pipeline',name:'研究全链路'},
+  ];
+  document.getElementById('rwsTabs').innerHTML=tabs.map(t=>`
+    <button class="tab${t.id===rwsTab?' active':''}" onclick="setRwsTab('${t.id}')">${t.name}</button>
+  `).join('');
+}
+function setRwsTab(id){
+  rwsTab=id;
+  renderRwsTabs();
+  renderRwsBottom();
+}
+function renderRwsBottom(){
+  const p=RWS_PROJECTS[rwsSelected];
+  const body=document.getElementById('rwsBottomBody');
+  if(!p){ body.innerHTML=''; return; }
+  if(rwsTab==='enroll'){
+    body.innerHTML=`
+      <div style="height:100%;overflow:auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width:120px">患者ID</th>
+              <th style="width:80px">姓名</th>
+              <th style="width:60px">性别</th>
+              <th style="width:70px">年龄</th>
+              <th style="width:90px">随访节点</th>
+              <th style="width:100px">随访状态</th>
+              <th style="width:110px">质控问题</th>
+              <th>备注</th>
+              <th style="width:130px">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${p.patients.map(pt=>`
+              <tr>
+                <td>${pt.pid}</td>
+                <td>${pt.name}</td>
+                <td>${pt.sex}</td>
+                <td>${pt.age}</td>
+                <td><span class="tag tag-gray">${pt.stage}</span></td>
+                <td>${pt.followup==='已完成'?'<span class="tag tag-green">已完成</span>':(pt.followup==='缺失'?'<span class="tag tag-orange">缺失</span>':'<span class="tag tag-blue">进行中</span>')}</td>
+                <td>${Number(pt.qc)>0?`<span class="tag tag-orange">${pt.qc} 项</span>`:'<span class="tag tag-gray">0</span>'}</td>
+                <td><div class="muted">${pt.note}</div></td>
+                <td><button class="btn-inline" onclick="onRwsViewPatient('${pt.pid}')">查看患者</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }else if(rwsTab==='follow'){
+    const pr=p.progress;
+    const pct=pr.followupTotal?Math.round(pr.followupDone/pr.followupTotal*100):0;
+    body.innerHTML=`
+      <div style="padding:10px 12px">
+        <div class="card" style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:700">随访完成情况</div>
+            <span class="tag tag-scene">${pr.followupDone}/${pr.followupTotal}（${pct}%）</span>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.7">
+            - 缺失随访将自动生成提醒任务与企业微信话术（演示）<br>
+            - 关键节点：基线/3/6/12/24 个月
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn-inline" onclick="showToast('已生成随访缺失提醒任务')">一键生成提醒</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px">节点分布（演示）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag tag-gray">基线：${Math.max(10,Math.round(pr.enrolled*0.35))}</span>
+            <span class="tag tag-gray">3个月：${Math.max(6,Math.round(pr.enrolled*0.22))}</span>
+            <span class="tag tag-gray">6个月：${Math.max(4,Math.round(pr.enrolled*0.18))}</span>
+            <span class="tag tag-gray">12个月：${Math.max(3,Math.round(pr.enrolled*0.15))}</span>
+            <span class="tag tag-gray">24个月：${Math.max(2,Math.round(pr.enrolled*0.10))}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }else if(rwsTab==='qc'){
+    const issues=[
+      {type:'缺失字段',count:Math.max(2,Math.round(p.progress.qcIssues*0.45)),hint:'影像或实验室关键字段缺失'},
+      {type:'时间戳异常',count:Math.max(1,Math.round(p.progress.qcIssues*0.25)),hint:'随访日期与节点不一致'},
+      {type:'编码不一致',count:Math.max(1,Math.round(p.progress.qcIssues*0.20)),hint:'诊断/检查编码格式差异'},
+      {type:'重复记录',count:Math.max(0,Math.round(p.progress.qcIssues*0.10)),hint:'同一患者多次入组或重复随访'},
+    ];
+    body.innerHTML=`
+      <div style="height:100%;overflow:auto;padding:10px 12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="font-weight:700">质控问题清单（演示）</div>
+          <button class="btn-inline" onclick="showToast('质控问题已导出')">导出问题</button>
+        </div>
+        ${issues.map(it=>`
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <div style="font-weight:650">${it.type}</div>
+              <span class="tag tag-orange">${it.count} 项</span>
+            </div>
+            <div style="margin-top:6px;font-size:12px;color:#64748b;line-height:1.7">${it.hint}</div>
+            <div style="margin-top:8px">
+              <button class="btn-inline" onclick="showToast('已生成整改任务：${it.type}')">生成整改任务</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }else if(rwsTab==='stats'){
+    const pr=p.progress;
+    const followPct=pr.followupTotal?Math.round(pr.followupDone/pr.followupTotal*100):0;
+    body.innerHTML=`
+      <div style="padding:10px 12px">
+        <div class="metrics-grid" style="grid-template-columns:1fr 1fr 1fr 1fr">
+          <div class="metric-card">
+            <div class="metric-val">${Math.round(pr.enrolled/pr.target*100)}%</div>
+            <div class="metric-label">入组完成率</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">${followPct}%</div>
+            <div class="metric-label">随访完成率</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">${Math.max(1,Math.round((pr.qcIssues/pr.enrolled)*100))}%</div>
+            <div class="metric-label">质控问题率</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">${Math.max(2,Math.round(pr.enrolled*0.08))}</div>
+            <div class="metric-label">结局事件（演示）</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <div style="font-weight:700;margin-bottom:6px">初步统计摘要（演示）</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.8">
+            - 基线特征已完成结构化与去标识<br>
+            - AI 识别潜在结局事件，并生成待复核清单<br>
+            - 建议输出：入组月报、随访缺失清单、质控整改闭环报表
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-inline" onclick="onRwsGenReport()">生成研究报告</button>
+            <button class="btn-inline" onclick="onRwsExport()">导出数据</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }else if(rwsTab==='pipeline'){
+    body.innerHTML=`
+      <div style="height:100%;overflow:auto;padding:10px 12px">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:800">真实世界研究 · 全链路工作台（演示）</div>
+            <span class="tag tag-scene">从方向到论文</span>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.85">
+            参考你给的流程：研究方向推荐 → 研究方案生成 → 数据库构建/关联 → 数据治理 → 分析工作台 → 统计分析智能体（Jupyter） → 预测模型（COX） → 智能分析（ARIA） → 分析报告 → 论文工具 → 专家决策 → 数据质控。
+          </div>
+        </div>
+        <div class="desc-list">
+          <div class="desc-item">
+            <div class="k">00:00 研究方向推荐</div>
+            <div class="v">基于机构数据资产与人群特征，给出 3 个可落地研究方向与样本量预估（演示）。<br><button class="btn-inline" onclick="showToast('已生成研究方向推荐（演示）')">生成</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">01:01 研究方案生成</div>
+            <div class="v">自动生成：研究问题、设计类型、纳排标准、终点、随访计划与期刊路径（演示）。<br><button class="btn-inline" onclick="showToast('已生成研究方案（演示）')">生成</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">04:09 数据库构建方案</div>
+            <div class="v">字段字典、ETL 规则、去标识策略、版本管理（演示）。<br><button class="btn-inline" onclick="showToast('数据库构建方案已生成（演示）')">生成</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">05:03 关联数据平台</div>
+            <div class="v">对接 HIS/LIS/PACS/随访系统，建立统一主索引（演示）。<br><button class="btn-inline" onclick="showToast('已生成关联方案（演示）')">生成</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">05:11 数据治理</div>
+            <div class="v">一致性校验、缺失补齐、异常检测、可追溯问题单（演示）。<br><button class="btn-inline" onclick="showToast('数据治理任务已创建（演示）')">运行</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">06:16 分析工作台（小工具）</div>
+            <div class="v">筛选、分层、可视化摘要、导出 cohort（演示）。<br><button class="btn-inline" onclick="showToast('分析小工具已打开（演示）')">打开</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">06:38 统计分析智能体（Jupyter）</div>
+            <div class="v">带 AI 工具辅助的 Notebook：描述统计、组间比较、敏感性分析（演示）。<br><button class="btn-inline" onclick="showToast('统计分析智能体已启动（演示）')">启动</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">07:45 预测模型（COX）</div>
+            <div class="v">生存分析/风险预测：变量选择、校准、验证与解释（演示）。<br><button class="btn-inline" onclick="showToast('COX 建模流程已生成（演示）')">生成</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">11:07 分析报告</div>
+            <div class="v">一键生成：研究进度、随访完成、质控、初步结果摘要（演示）。<br><button class="btn-inline" onclick="onRwsGenReport()">生成报告</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">12:05 论文工具</div>
+            <div class="v">结构化写作：摘要/方法/结果/讨论模板与引用占位（演示）。<br><button class="btn-inline" onclick="showToast('论文工具已打开（演示）')">打开</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">15:05 专家决策</div>
+            <div class="v">多学科专家意见汇总、版本对比、签署流程（演示）。<br><button class="btn-inline" onclick="showToast('已生成专家决策会签单（演示）')">生成</button></div>
+          </div>
+          <div class="desc-item">
+            <div class="k">16:16 数据质控</div>
+            <div class="v">问题清单 → 责任人 → 修复 → 复核闭环（演示）。<br><button class="btn-inline" onclick="showToast('质控闭环已生成（演示）')">生成闭环</button></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+function onRwsGenReport(){ showToast('研究报告已生成（演示）'); }
+function onRwsExport(){ showToast('数据已导出（演示）'); }
+function onRwsAiScreen(){ showToast('AI筛查入组已完成（演示）'); }
+function onRwsViewPatient(pid){ showToast('查看患者：'+pid); }
+// ── Init ──
+document.getElementById('dateStr').textContent=formatDate();
+applyUserUI();
+const auth=getAuth();
+if(auth){
+  showWorkspace();
+  // 如果已保存的 auth 是健康管理中心，直接切到 SCENES[3]
+  if(auth.orgType==='健康管理中心'){
+    switchScene(3);
+  }else{
+    setView('scene');
+  }
+}else{
+  showLogin();
+  document.getElementById('orgType').value='健康管理中心';
+  onOrgTypeChange();
+  document.getElementById('roleType').value='管理员';
+}
+// 超小屏：默认折叠底部（阈值调低，避免正常窗口误折叠）
+if(window.innerHeight && window.innerHeight<680){
+  toggleBottom(true);
+}
+</script>
+</body>
+</html>

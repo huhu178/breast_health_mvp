@@ -1,0 +1,260 @@
+<!--index.wxml-->
+<wxs module="utils">
+  function isChecked(checkedValuesStr, option) {
+    if (!checkedValuesStr || checkedValuesStr === '') {
+      return false
+    }
+    var optionStr = String(option).trim()
+    var values = checkedValuesStr.split(',')
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i]).trim() === optionStr) {
+        return true
+      }
+    }
+    return false
+  }
+  module.exports.isChecked = isChecked
+</wxs>
+
+<navigation-bar title="Weixin" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="container">
+    <view class="card">
+      <!-- 欢迎语 -->
+      <view wx:if="{{!schemaReady}}" class="welcome-section">
+        <view class="welcome-title">欢迎使用健康问卷</view>
+        <view class="welcome-desc">请填写您的基本信息，我们将为您生成个性化的健康评估报告</view>
+      </view>
+
+      <!-- 基本信息填写区域（问卷开始前） -->
+      <view wx:if="{{!schemaReady}}" class="basic-info-form">
+        <view class="section-title">基本信息</view>
+
+        <view class="field">
+          <view class="label">姓名 <text class="required">*</text></view>
+          <input class="input" value="{{name}}" placeholder="请输入您的姓名" bindinput="onNameInput" />
+        </view>
+
+        <view class="field">
+          <view class="label">年龄 <text class="required">*</text></view>
+          <view class="input-with-unit">
+            <input class="input" type="digit" value="{{age}}" placeholder="请输入年龄" bindinput="onAgeInput" />
+            <text class="unit">岁</text>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="label">性别 <text class="required">*</text></view>
+          <view class="gender-options">
+            <view class="gender-item {{gender === '男' ? 'selected' : ''}}" bindtap="onGenderSelect" data-gender="男">
+              <text>男</text>
+            </view>
+            <view class="gender-item {{gender === '女' ? 'selected' : ''}}" bindtap="onGenderSelect" data-gender="女">
+              <text>女</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="label">身高</view>
+          <view class="input-with-unit">
+            <input class="input" type="digit" value="{{height}}" placeholder="例如：165" bindinput="onHeightInput" />
+            <text class="unit">cm</text>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="label">体重</view>
+          <view class="input-with-unit">
+            <input class="input" type="digit" value="{{weight}}" placeholder="例如：60" bindinput="onWeightInput" />
+            <text class="unit">kg</text>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="label">手机号 <text class="required">*</text></view>
+          <input class="input" value="{{phone}}" placeholder="请输入11位手机号" type="number" maxlength="11" bindinput="onPhoneInput" />
+        </view>
+
+        <view class="field">
+          <view class="label">有无糖尿病</view>
+          <view class="radio-options">
+            <view class="radio-option-item {{diabetesHistory === '无' ? 'selected' : ''}}" bindtap="onDiabetesSelect" data-value="无">
+              <text>无</text>
+            </view>
+            <view class="radio-option-item {{diabetesHistory === '有' ? 'selected' : ''}}" bindtap="onDiabetesSelect" data-value="有">
+              <text>有</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="label">收货地址</view>
+          <input class="input" value="{{gaofangAddress}}" placeholder="如：XX省XX市XX区XX路XX号" bindinput="onGaofangAddressInput" />
+        </view>
+
+        <view class="field">
+          <view class="label">结节类型 <text class="required">*</text></view>
+          <picker mode="selector" range="{{noduleTypeOptions}}" range-key="label" value="{{noduleTypeIndex}}" bindchange="onNoduleTypeChange">
+            <view class="picker">{{noduleTypeOptions[noduleTypeIndex].label}}</view>
+          </picker>
+        </view>
+
+        <!-- 底部按钮区域 -->
+        <view class="fixed-bottom">
+          <view wx:if="{{!canStart}}" class="button-hint">
+            <text class="hint-text">请填写必填项（姓名、年龄、性别、手机号）后继续</text>
+          </view>
+          <button class="btn btn-start" type="primary" loading="{{isLoadingSchema}}" disabled="{{isLoadingSchema || !canStart}}" bindtap="startQuestionnaire">
+            {{isLoadingSchema ? '加载中...' : '开始填写问卷'}}
+          </button>
+        </view>
+
+        <!-- 开发调试：后端地址（仅在开发环境显示） -->
+        <view wx:if="{{showDebugFields}}" class="field debug-field">
+          <view class="label">后端地址（调试）</view>
+          <input class="input" value="{{apiBaseUrl}}" placeholder="http://127.0.0.1:5000" bindinput="onApiBaseUrlInput" />
+        </view>
+      </view>
+
+      <view wx:if="{{schemaReady}}" class="wizard">
+        <view class="progress">
+          第 {{currentIndex + 1}} / {{totalQuestions}} 题
+          <text class="progress-sub">（{{currentGroupTitle}}）</text>
+        </view>
+
+        <view class="question">
+          <view class="q-label">{{currentQuestion.label}}</view>
+
+          <!-- 结节数量和大小组合显示（兼容多版本字段名） -->
+          <view wx:if="{{currentQuestion.name === 'nodule_quantity' || currentQuestion.name === 'nodule_quantity_breast' || currentQuestion.name === 'breast_nodule_quantity' || currentQuestion.name === 'lung_nodule_quantity' || currentQuestion.name === 'thyroid_nodule_quantity'}}" class="q-control">
+            <!-- 先显示数量选择 -->
+            <view class="options-list">
+              <view wx:for="{{currentQuestion.options}}" wx:key="index" class="option-item" bindtap="onRadioSelect" data-value="{{item.value !== undefined ? item.value : item}}">
+                <view class="radio-wrapper">
+                  <view class="radio-circle {{(currentValue === (item.value !== undefined ? item.value : item)) ? 'checked' : ''}}">
+                    <view wx:if="{{currentValue === (item.value !== undefined ? item.value : item)}}" class="radio-dot"></view>
+                  </view>
+                  <text class="option-label">{{item.label || item.value || item}}</text>
+                </view>
+              </view>
+            </view>
+            <!-- 显示结节大小（始终显示） -->
+            <view class="nodule-size-wrapper" style="margin-top: 20px;">
+              <view class="field">
+                <view class="label">结节大小 <text class="required">*</text></view>
+                <view class="input-with-unit">
+                  <input class="input" type="digit" value="{{noduleSizeValue || ''}}" placeholder="请输入结节大小，例如：12.5" bindinput="onNoduleSizeInput" />
+                  <text class="unit">mm</text>
+                </view>
+              </view>
+            </view>
+            <!-- 如果选择了多发，显示个数输入框 -->
+            <view wx:if="{{currentValue === '多发'}}" class="nodule-count-wrapper" style="margin-top: 20px;">
+              <view class="field">
+                <view class="label">多发结节个数 <text class="required">*</text></view>
+                <input class="input" type="digit" value="{{noduleCountValue || ''}}" placeholder="请输入多发结节个数，例如：3" bindinput="onNoduleCountInput" />
+              </view>
+            </view>
+          </view>
+
+          <!-- radio 单选 -->
+          <view wx:elif="{{currentQuestion.type === 'radio'}}" class="q-control">
+            <view class="options-list">
+              <view wx:for="{{currentQuestion.options}}" wx:key="index" class="option-item" bindtap="onRadioSelect" data-value="{{item.value !== undefined ? item.value : item}}">
+                <view class="radio-wrapper">
+                  <view class="radio-circle {{(currentValue === (item.value !== undefined ? item.value : item)) ? 'checked' : ''}}">
+                    <view wx:if="{{currentValue === (item.value !== undefined ? item.value : item)}}" class="radio-dot"></view>
+                  </view>
+                  <text class="option-label">{{item.label || item.value || item}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- checkbox-group 多选 -->
+          <view wx:elif="{{currentQuestion.type === 'checkbox-group'}}" class="q-control">
+            <view class="options-list">
+              <view wx:for="{{currentQuestion.options}}" wx:key="*this" wx:for-item="option" class="option-item" bindtap="onCheckboxToggle" data-value="{{option}}">
+                <view class="checkbox-wrapper">
+                  <view class="checkbox-square {{currentCheckedMap[option] ? 'checked' : ''}}">
+                    <text wx:if="{{currentCheckedMap[option]}}" class="checkbox-check">✓</text>
+                  </view>
+                  <text class="option-label">{{option}}</text>
+                </view>
+              </view>
+            </view>
+            <!-- 如果选择了"其他"，显示输入框 -->
+            <view wx:if="{{currentCheckedMap['其他'] && currentQuestion.otherField}}" class="other-input-wrapper">
+              <input class="input" value="{{currentOtherValue || ''}}" placeholder="{{currentQuestion.otherPlaceholder || '请输入其他'}}" bindinput="onOtherInput" />
+            </view>
+          </view>
+
+          <!-- boolean -->
+          <view wx:elif="{{currentQuestion.type === 'boolean'}}" class="q-control">
+            <switch checked="{{currentValue === true}}" bindchange="onSwitchChange" />
+          </view>
+
+          <!-- date -->
+          <view wx:elif="{{currentQuestion.type === 'date'}}" class="q-control">
+            <picker mode="date" value="{{currentValue || ''}}" bindchange="onDateChange">
+              <view class="picker">{{currentValue || '选择日期'}}</view>
+            </picker>
+          </view>
+
+          <!-- number/float/text/textarea -->
+          <view wx:else class="q-control">
+            <textarea wx:if="{{currentQuestion.type === 'textarea'}}" class="textarea" value="{{currentValue || ''}}" placeholder="{{currentQuestion.placeholder || '请输入'}}" auto-height bindinput="onValueInput" />
+            <view wx:elif="{{currentQuestion.type === 'number' || currentQuestion.type === 'float'}}" class="input-with-unit">
+              <input class="input" type="digit" value="{{currentValue || ''}}" placeholder="{{currentQuestion.placeholder || '请输入数字'}}" bindinput="onValueInput" />
+              <text wx:if="{{currentQuestion.unit}}" class="unit">{{currentQuestion.unit}}</text>
+            </view>
+            <input wx:else class="input" value="{{currentValue || ''}}" placeholder="{{currentQuestion.placeholder || '请输入'}}" bindinput="onValueInput" />
+          </view>
+        </view>
+
+        <view class="nav">
+          <button class="btn2" type="default" disabled="{{currentIndex === 0 || isSubmitting}}" bindtap="prevQuestion">上一题</button>
+          <button class="btn2" type="default" disabled="{{isSubmitting}}" bindtap="skipQuestion">跳过</button>
+          <button class="btn2" type="primary" disabled="{{isSubmitting}}" bindtap="nextQuestion">下一题</button>
+        </view>
+
+        <!-- 上传影像报告（可选）- 仅最后一屏展示 -->
+        <view wx:if="{{currentIndex === totalQuestions - 1}}" class="upload-card">
+          <view class="upload-title">上传影像报告（可选）</view>
+          <view class="upload-subtitle">支持图片/PDF，最多5个，单个≤20MB（删除仅影响本次提交引用）</view>
+
+          <view class="upload-actions">
+            <button class="btn2" type="default" size="mini" disabled="{{isSubmitting || isUploadingFiles}}" bindtap="chooseImages">上传图片</button>
+            <button class="btn2" type="default" size="mini" disabled="{{isSubmitting || isUploadingFiles}}" bindtap="choosePdfs">上传PDF</button>
+            <text class="upload-count">{{imagingUploads.length}}/5</text>
+          </view>
+
+          <view wx:if="{{imagingUploads.length > 0}}" class="upload-list">
+            <view wx:for="{{imagingUploads}}" wx:key="uploadId" class="upload-item">
+              <view class="upload-item-left">
+                <text class="upload-name">{{item.name}}</text>
+                <text class="upload-meta">{{item.type}} · {{item.sizeText}}</text>
+              </view>
+              <button class="btn2" type="default" size="mini" disabled="{{isSubmitting || isUploadingFiles}}" bindtap="removeUpload" data-index="{{index}}">删除</button>
+            </view>
+          </view>
+        </view>
+
+        <button wx:if="{{currentIndex === totalQuestions - 1}}" class="btn" type="primary" loading="{{isSubmitting}}" disabled="{{isSubmitting}}" bindtap="submitAll">
+          提交并生成报告
+        </button>
+      </view>
+
+      <view wx:if="{{errorMessage}}" class="error">{{errorMessage}}</view>
+
+      <view wx:if="{{result}}" class="result">
+        <view class="result-title">生成结果</view>
+        <view class="result-row">report_code：{{result.report_code}}</view>
+        <view class="result-row">report_id：{{result.report_id}}</view>
+        <view class="result-row">patient_code：{{result.patient_code}}</view>
+        <view wx:if="{{result.need_review_by_manager}}" class="result-row">状态：待健康管理师审核后发送</view>
+      </view>
+    </view>
+  </view>
+</scroll-view>

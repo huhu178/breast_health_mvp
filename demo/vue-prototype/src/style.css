@@ -1,0 +1,23 @@
+:root{
+  --bg:#f3f6fb;
+  --surface:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e6edf7;
+  --primary:#155eef;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  color:var(--text);
+  background:var(--bg);
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+*{box-sizing:border-box}
+html{height:100%;overflow:hidden}
+body{margin:0;background:var(--bg);height:100%;min-width:1280px;overflow:auto}
+#app{height:100%;min-width:1280px}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+

@@ -1,0 +1,535 @@
+/**index.wxss**/
+page {
+  height: 100%;
+  background-color: #f5f5f5;
+}
+
+.scrollarea {
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.container {
+  padding: 16px;
+  padding-bottom: 100px; /* 为底部按钮留出空间 */
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+}
+
+.subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.field {
+  margin-top: 14px;
+}
+
+.label {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.input, .picker {
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.btn {
+  margin-top: 16px;
+}
+
+.error {
+  margin-top: 12px;
+  color: #d93026;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.result {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #eee;
+}
+
+.result-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.result-row {
+  font-size: 12px;
+  color: #333;
+  margin: 4px 0;
+}
+
+.result-html-title {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.result-html {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #444;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 上传影像报告（可选） */
+.upload-card {
+  margin-top: 14px;
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 12px;
+}
+
+.upload-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555; /* 字体颜色调浅 */
+}
+
+.upload-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9aa0a6; /* 字体颜色调浅 */
+  line-height: 1.5;
+}
+
+.upload-actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-count {
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+.wizard {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.progress {
+  font-size: 12px;
+  color: #333;
+  font-weight: 600;
+}
+
+.progress-sub {
+  color: #666;
+  font-weight: normal;
+}
+
+.question {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 12px;
+}
+
+.q-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.q-control {
+  margin-top: 8px;
+}
+
+.q-control .input,
+.q-control .picker {
+  width: 100%;
+  box-sizing: border-box;
+  height: 42px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 88px;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.q-control .textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 选项列表样式 */
+.options-list {
+  margin-top: 8px;
+}
+
+.option-item {
+  margin-bottom: 12px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  transition: all 0.2s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.option-item:active {
+  background: #f5f5f5;
+  border-color: #07c160;
+}
+
+/* 单选样式 */
+.radio-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.radio-circle {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.radio-circle.checked {
+  border-color: #07c160;
+  background: #07c160;
+}
+
+.radio-dot {
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+/* 多选样式 */
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  flex: 1;
+}
+
+.checkbox-square {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #fff;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.checkbox-square.checked {
+  border-color: #07c160;
+  background: #07c160;
+}
+
+.checkbox-check {
+  color: #ffffff !important;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 22px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.option-label {
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+/* 结节数量和大小组合显示 */
+.nodule-count-wrapper,
+.nodule-size-wrapper {
+  margin-top: 16px;
+}
+
+.nodule-count-wrapper .field,
+.nodule-size-wrapper .field {
+  margin-top: 0;
+}
+
+/* "其他"输入框 */
+.other-input-wrapper {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e6e6e6;
+}
+
+.other-input-wrapper .input {
+  min-height: 48px;
+  padding: 14px 16px;
+  font-size: 16px;
+}
+
+/* 带单位的输入框 */
+.input-with-unit {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #fff;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.input-with-unit .input {
+  flex: 1;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  height: 100%;
+}
+
+.input-with-unit .unit {
+  color: #666;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.nav {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.btn2 {
+  flex: 1;
+  font-size: 14px;
+  padding: 10px;
+  margin: 0;
+}
+
+/* 欢迎语区域 */
+.welcome-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.welcome-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.welcome-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+/* 基本信息表单 */
+.basic-info-form {
+  margin-top: 16px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.required {
+  color: #d93026;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+/* 性别选择 */
+.gender-options {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.gender-item {
+  flex: 1;
+  padding: 10px 12px;
+  text-align: center;
+  border: 2px solid #e6e6e6;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.gender-item.selected {
+  border-color: #07c160;
+  background: #f0f9f4;
+  color: #07c160;
+  font-weight: 600;
+}
+
+.gender-item:active {
+  background: #f5f5f5;
+}
+
+/* 单选选项（如糖尿病史） */
+.radio-options {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.radio-option-item {
+  flex: 1;
+  padding: 10px 12px;
+  text-align: center;
+  border: 2px solid #e6e6e6;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.radio-option-item.selected {
+  border-color: #07c160;
+  background: #f0f9f4;
+  color: #07c160;
+  font-weight: 600;
+}
+
+.radio-option-item:active {
+  background: #f5f5f5;
+}
+
+/* 固定底部按钮区域 */
+.fixed-bottom {
+  position: relative;
+  background: #fff;
+  padding: 16px 0 20px 0;
+  margin-top: 20px;
+  border-top: 2px solid #f0f0f0;
+  z-index: 10;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* 按钮提示 */
+.button-hint {
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+}
+
+/* 开始按钮 */
+.btn-start {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  margin: 0;
+  box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3);
+}
+
+/* 按钮禁用状态 */
+.btn-start[disabled] {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* 调试字段样式 */
+.debug-field {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed #ddd;
+}
+
+.debug-field .label {
+  color: #999;
+  font-size: 11px;
+}

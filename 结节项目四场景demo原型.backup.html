@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>结节健康管理智能体原型</title>
+  <style>
+    :root {
+      --bg: #eef5ff;
+      --panel: #ffffff;
+      --soft: #f7fbff;
+      --ink: #142033;
+      --muted: #62718a;
+      --line: #d8e6f7;
+      --blue-1: #155eef;
+      --blue-2: #2e90fa;
+      --blue-3: #5ac8fa;
+      --green: #0e9384;
+      --amber: #c87912;
+      --rose: #c04363;
+      --danger: #b42318;
+      --scene: var(--blue-1);
+      --scene-soft: #edf5ff;
+      --scene-line: #bdd7ff;
+      --shadow: 0 20px 48px rgba(21, 94, 239, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 8%, rgba(46, 144, 250, 0.24), transparent 32%),
+        radial-gradient(circle at 82% 12%, rgba(90, 200, 250, 0.18), transparent 30%),
+        linear-gradient(180deg, #fafdff 0%, var(--bg) 100%);
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 16px 18px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(216, 230, 247, 0.9);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      display: grid;
+      place-items: center;
+      flex: 0 0 44px;
+      height: 44px;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--blue-1), var(--blue-3));
+      border-radius: 8px;
+      font-weight: 800;
+      box-shadow: 0 12px 24px rgba(21, 94, 239, 0.24);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 23px;
+      line-height: 1.25;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      color: var(--scene);
+      background: var(--scene-soft);
+      border: 1px solid var(--scene-line);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .primary-btn,
+    .ghost-btn,
+    .plain-btn,
+    .tiny-btn {
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .primary-btn {
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--blue-1), var(--blue-2));
+      box-shadow: 0 10px 22px rgba(21, 94, 239, 0.2);
+    }
+
+    .ghost-btn {
+      color: var(--blue-1);
+      background: #eef6ff;
+      border: 1px solid #bfd9ff;
+    }
+
+    .plain-btn {
+      color: #344054;
+      background: #ffffff;
+      border: 1px solid var(--line);
+    }
+
+    .tiny-btn {
+      min-height: 30px;
+      padding: 5px 9px;
+      color: var(--blue-1);
+      background: #ffffff;
+      border: 1px solid #bfd9ff;
+      font-size: 12px;
+    }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 14px;
+      max-width: 1760px;
+      margin: 0 auto;
+    }
+
+    .side-panel,
+    .panel,
+    .mobile-panel,
+    .ai-panel {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(21, 94, 239, 0.08);
+      backdrop-filter: blur(14px);
+    }
+
+    .side-panel {
+      align-self: start;
+      position: sticky;
+      top: 16px;
+      overflow: hidden;
+    }
+
+    .side-head {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .side-head strong {
+      display: block;
+      font-size: 16px;
+    }
+
+    .side-head span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .framework-list {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .framework-btn {
+      position: relative;
+      width: 100%;
+      min-height: 92px;
+      padding: 12px 12px 12px 15px;
+      text-align: left;
+      background: #ffffff;
+      border: 1px solid #e0ebf8;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .framework-btn::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--fw-color);
+    }
+
+    .framework-btn.active {
+      border-color: var(--fw-color);
+      background: var(--fw-soft);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+    }
+
+    .framework-btn strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .framework-btn span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .side-section {
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .side-section h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .mini-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: #344054;
+      font-size: 12px;
+    }
+
+    .dot {
+      flex: 0 0 8px;
+      height: 8px;
+      margin-top: 5px;
+      background: var(--blue-2);
+      border-radius: 999px;
+    }
+
+    .content {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 0.54fr);
+      gap: 14px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title h2,
+    .panel-title h3 {
+      margin: 0 0 3px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .panel-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .panel-body {
+      padding: 14px 16px;
+    }
+
+    .objective-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .objective-card {
+      min-height: 108px;
+      padding: 12px;
+      background: var(--scene-soft);
+      border: 1px solid var(--scene-line);
+      border-radius: 8px;
+    }
+
+    .objective-card span {
+      display: inline-flex;
+      margin-bottom: 8px;
+      color: var(--scene);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .objective-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+
+    .objective-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .health-plan {
+      display: grid;
+      gap: 10px;
+    }
+
+    .plan-step {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      min-height: 58px;
+      padding: 10px;
+      background: #f8fbff;
+      border: 1px solid #e1edf9;
+      border-radius: 8px;
+    }
+
+    .step-index {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      color: #ffffff;
+      background: var(--scene);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .plan-step strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 14px;
+    }
+
+    .plan-step span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.82fr) minmax(420px, 1.1fr) minmax(340px, 0.78fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .mobile-panel,
+    .ai-panel {
+      overflow: hidden;
+    }
+
+    .phone {
+      width: min(100%, 360px);
+      margin: 0 auto;
+      padding: 12px;
+      background: #121a2b;
+      border-radius: 28px;
+      box-shadow: 0 22px 54px rgba(20, 32, 51, 0.22);
+    }
+
+    .phone-screen {
+      min-height: 650px;
+      overflow: hidden;
+      background: #f9fcff;
+      border-radius: 20px;
+    }
+
+    .phone-top {
+      padding: 14px 15px;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--blue-1), var(--blue-2) 58%, var(--blue-3));
+    }
+
+    .phone-top strong {
+      display: block;
+      font-size: 17px;
+    }
+
+    .phone-top span {
+      display: block;
+      margin-top: 3px;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .patient-card {
+      margin: 12px;
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid #e1edf9;
+      border-radius: 8px;
+    }
+
+    .patient-card h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    .patient-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px;
+    }
+
+    .quick-action {
+      min-height: 54px;
+      padding: 8px;
+      color: var(--scene);
+      background: var(--scene-soft);
+      border: 1px solid var(--scene-line);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .chat {
+      display: grid;
+      gap: 9px;
+      padding: 12px;
+    }
+
+    .bubble {
+      max-width: 88%;
+      padding: 9px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .bubble.user {
+      justify-self: end;
+      color: #ffffff;
+      background: var(--scene);
+    }
+
+    .bubble.ai {
+      justify-self: start;
+      background: #ffffff;
+      border: 1px solid #dbe8f7;
+    }
+
+    .bubble.system {
+      justify-self: center;
+      max-width: 94%;
+      color: #36506e;
+      background: #eff7ff;
+      border: 1px solid #cfe3ff;
+      font-size: 12px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin: 0 12px 12px;
+    }
+
+    .input-row input {
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid #dbe8f7;
+      border-radius: 8px;
+      outline: 0;
+    }
+
+    .task-board {
+      display: grid;
+      gap: 12px;
+    }
+
+    .task-card,
+    .employee-card,
+    .record-card {
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid #e0ebf8;
+      border-radius: 8px;
+    }
+
+    .task-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .task-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .task-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .task-state {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 8px;
+      color: var(--scene);
+      background: var(--scene-soft);
+      border: 1px solid var(--scene-line);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .timeline li {
+      position: relative;
+      padding-left: 24px;
+      font-size: 13px;
+    }
+
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 5px;
+      width: 9px;
+      height: 9px;
+      background: var(--scene);
+      border-radius: 999px;
+    }
+
+    .timeline strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .timeline span {
+      color: var(--muted);
+    }
+
+    .employee-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .employee-card {
+      min-height: 124px;
+    }
+
+    .employee-card b {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin-bottom: 8px;
+      padding: 3px 8px;
+      color: #ffffff;
+      background: var(--scene);
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .employee-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .employee-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .record-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .record-card {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .record-type {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--blue-1), var(--blue-3));
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .record-card strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 14px;
+    }
+
+    .record-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      min-height: 88px;
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid #e0ebf8;
+      border-radius: 8px;
+    }
+
+    .metric-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-card strong {
+      display: block;
+      margin: 6px 0 4px;
+      font-size: 25px;
+      line-height: 1.1;
+    }
+
+    .metric-card em {
+      color: var(--green);
+      font-size: 12px;
+      font-style: normal;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 50;
+      max-width: min(390px, calc(100vw - 36px));
+      padding: 12px 14px;
+      color: #ffffff;
+      background: #142033;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      font-size: 13px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1420px) {
+      .workbench,
+      .overview {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1080px) {
+      .topbar,
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side-panel {
+        position: static;
+      }
+
+      .framework-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .objective-grid,
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-shell {
+        padding: 10px;
+      }
+
+      .framework-list,
+      .objective-grid,
+      .employee-grid,
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-row">
+        <div class="logo">AI</div>
+        <div class="brand">
+          <h1>结节健康管理智能体</h1>
+          <p>患者与AI健康管理师对话，背后由多AI员工完成评估、方案、随访与风险协同。</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span class="pill">Gemini Blue · 原型 V2.3</span>
+        <button class="ghost-btn" type="button" data-action="run">运行AI员工</button>
+        <button class="primary-btn" type="button" data-action="plan">生成健康指导方案</button>
+      </div>
+    </header>
+
+    <main class="main-layout">
+      <aside class="side-panel">
+        <div class="side-head">
+          <strong>四个框架</strong>
+          <span>切换后，对话、健康指导、AI员工与指标同步变化。</span>
+        </div>
+        <div class="framework-list">
+          <button class="framework-btn active" type="button" data-index="0" style="--fw-color:#155eef;--fw-soft:#edf5ff;">
+            <strong>医院</strong>
+            <span>肺结节中心 · 院外管理</span>
+          </button>
+          <button class="framework-btn" type="button" data-index="1" style="--fw-color:#0e9384;--fw-soft:#eaf7f4;">
+            <strong>社区</strong>
+            <span>家庭医生 · 分层随访</span>
+          </button>
+          <button class="framework-btn" type="button" data-index="2" style="--fw-color:#2e90fa;--fw-soft:#eef8ff;">
+            <strong>体检</strong>
+            <span>中心 · 检后闭环</span>
+          </button>
+          <button class="framework-btn" type="button" data-index="3" style="--fw-color:#c87912;--fw-soft:#fff8ea;">
+            <strong>药店</strong>
+            <span>健康驿站 · 健康指导</span>
+          </button>
+        </div>
+        <div class="side-section">
+          <h3>统一服务链路</h3>
+          <ul class="mini-list">
+            <li><span class="dot"></span><span>患者上传报告、问卷、舌象或体检资料。</span></li>
+            <li><span class="dot"></span><span>AI健康管理师先对话，解释问题和收集信息。</span></li>
+            <li><span class="dot"></span><span>AI员工协同生成健康指导方案。</span></li>
+            <li><span class="dot"></span><span>高风险、低置信度、手术相关内容转人工。</span></li>
+          </ul>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="overview">
+          <section class="panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h2 id="frameworkTitle">医院 · 肺结节中心</h2>
+                <p id="frameworkDesc">解决院外管理：让门诊患者离院后仍能被持续随访、复查提醒、风险预警和术后追踪。</p>
+              </div>
+              <span class="pill" id="frameworkTag">全病程管理 · 手术衔接 · 科研数据</span>
+            </div>
+            <div class="panel-body">
+              <div class="objective-grid" id="objectiveGrid">
+                <div class="objective-card"><span>目标一</span><strong>全病程管理</strong><p>从报告解读到长期随访，持续追踪患者状态。</p></div>
+                <div class="objective-card"><span>目标二</span><strong>手术衔接</strong><p>涉及手术判断时自动转医生复核。</p></div>
+                <div class="objective-card"><span>目标三</span><strong>科研数据</strong><p>沉淀结构化随访和结节变化数据。</p></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>健康指导方案</h3>
+                <p>AI健康管理师给患者看的行动计划。</p>
+              </div>
+              <button class="tiny-btn" type="button" data-action="editPlan">编辑</button>
+            </div>
+            <div class="panel-body">
+              <div class="health-plan" id="healthPlan">
+                <div class="plan-step"><span class="step-index">01</span><div><strong>复查提醒</strong><span>3个月后复查胸部CT，复查前7天提醒。</span></div></div>
+                <div class="plan-step"><span class="step-index">02</span><div><strong>风险观察</strong><span>持续咳嗽、胸痛、咯血等情况转人工。</span></div></div>
+                <div class="plan-step"><span class="step-index">03</span><div><strong>生活方式</strong><span>戒烟、规律运动、抗炎饮食和焦虑舒缓。</span></div></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="workbench">
+          <section class="mobile-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>患者端对话</h3>
+                <p>四个框架的主体验都是患者与AI健康管理师交流。</p>
+              </div>
+              <span class="pill" id="patientStatus">院外随访中</span>
+            </div>
+            <div class="panel-body">
+              <div class="phone">
+                <div class="phone-screen">
+                  <div class="phone-top">
+                    <strong id="phoneTitle">AI健康管理师</strong>
+                    <span id="phoneSubTitle">肺结节中心 · 院外管理服务</span>
+                  </div>
+                  <div class="patient-card">
+                    <h3 id="patientName">王先生的结节档案</h3>
+                    <p id="patientMeta">肺磨玻璃结节 · 中高风险 · 下次复查 2026-07-17</p>
+                  </div>
+                  <div class="quick-actions" id="quickActions">
+                    <button class="quick-action" type="button">上传报告</button>
+                    <button class="quick-action" type="button">复查提醒</button>
+                    <button class="quick-action" type="button">问AI</button>
+                  </div>
+                  <div class="chat" id="chatBox">
+                    <div class="bubble user">我离院后还需要注意什么？</div>
+                    <div class="bubble ai">我会按您的随访计划提醒复查。若出现持续咳嗽、胸痛、咯血等情况，我会立即帮您转医生复核。</div>
+                    <div class="bubble system">AI影像顾问已读取报告，AI健康管理师正在生成院外管理计划。</div>
+                  </div>
+                  <div class="input-row">
+                    <input id="chatInput" value="帮我生成本周健康指导" />
+                    <button class="primary-btn" type="button" data-action="send">发送</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>AI健康管理师工作台</h3>
+                <p>对话背后的任务编排、转人工和随访记录。</p>
+              </div>
+              <span class="pill" id="handoffRule">手术相关自动转医生</span>
+            </div>
+            <div class="panel-body">
+              <div class="task-board" id="taskBoard">
+                <div class="task-card"><div><strong>报告解读已完成</strong><p>右上肺磨玻璃结节，建议纳入3个月复查。</p></div><span class="task-state">已完成</span></div>
+                <div class="task-card"><div><strong>健康指导方案待确认</strong><p>包含复查、症状观察、饮食运动和心理舒缓。</p></div><span class="task-state">待发送</span></div>
+                <div class="task-card"><div><strong>转人工规则</strong><p>涉及手术、恶性判断、药物冲突时转医生。</p></div><span class="task-state">已启用</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="ai-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>AI员工</h3>
+                <p>7个AI员工按需参与，统一由AI健康管理师对患者表达。</p>
+              </div>
+              <span class="pill">7人在线</span>
+            </div>
+            <div class="panel-body">
+              <div class="employee-grid" id="employeeGrid">
+                <div class="employee-card"><b>01</b><strong>AI影像顾问</strong><span>报告解读、结节对比、影像进展评估。</span></div>
+                <div class="employee-card"><b>02</b><strong>AI专科医生</strong><span>风险评估、复查建议、手术相关问题转人工。</span></div>
+                <div class="employee-card"><b>03</b><strong>AI健康管理师</strong><span>随访执行、方案解释、患者日常对话。</span></div>
+                <div class="employee-card"><b>04</b><strong>AI营养师</strong><span>饮食方案、餐食点评、抗炎饮食建议。</span></div>
+                <div class="employee-card"><b>05</b><strong>AI运动师</strong><span>运动处方、强度控制、进度追踪。</span></div>
+                <div class="employee-card"><b>06</b><strong>AI心理师</strong><span>焦虑疏导、正念练习、行为干预。</span></div>
+                <div class="employee-card"><b>07</b><strong>AI药师</strong><span>用药指导、相互作用、药事服务。</span></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h3>资料与随访记录</h3>
+              <p id="recordDesc">面向患者服务，记录来自报告、问卷、舌象、对话和复查。</p>
+            </div>
+            <button class="ghost-btn" type="button" data-action="sync">同步资料</button>
+          </div>
+          <div class="panel-body">
+            <div class="record-list" id="recordList">
+              <div class="record-card"><span class="record-type">报告</span><div><strong>胸部CT报告</strong><span>已结构化提取：位置、大小、密度、建议。</span></div></div>
+              <div class="record-card"><span class="record-type">随访</span><div><strong>复查计划</strong><span>下次复查前7天提醒，逾期自动跟进。</span></div></div>
+              <div class="record-card"><span class="record-type">对话</span><div><strong>结节焦虑咨询</strong><span>AI心理师已介入，生成舒缓建议。</span></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h3>运行指标</h3>
+              <p>每个框架关注的不是采购信息，而是患者服务质量与转化结果。</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="metrics" id="metrics">
+              <div class="metric-card"><span>院外随访率</span><strong>91%</strong><em>持续达标</em></div>
+              <div class="metric-card"><span>转人工命中</span><strong>7</strong><em>高风险优先</em></div>
+              <div class="metric-card"><span>方案完成</span><strong>42</strong><em>今日生成</em></div>
+              <div class="metric-card"><span>复查回收</span><strong>68%</strong><em>较上周 +9%</em></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const frameworks = [
+      {
+        color: '#155eef',
+        soft: '#edf5ff',
+        line: '#bdd7ff',
+        title: '医院 · 肺结节中心',
+        desc: '解决院外管理：让门诊患者离院后仍能被持续随访、复查提醒、风险预警和术后追踪。',
+        tag: '全病程管理 · 手术衔接 · 科研数据',
+        objectives: [
+          ['目标一', '全病程管理', '从报告解读到长期随访，持续追踪患者状态。'],
+          ['目标二', '手术衔接', '涉及手术判断时自动转医生复核。'],
+          ['目标三', '科研数据', '沉淀结构化随访和结节变化数据。']
+        ],
+        plan: [
+          ['复查提醒', '3个月后复查胸部CT，复查前7天提醒。'],
+          ['风险观察', '持续咳嗽、胸痛、咯血等情况转人工。'],
+          ['生活方式', '戒烟、规律运动、抗炎饮食和焦虑舒缓。']
+        ],
+        patientStatus: '院外随访中',
+        phoneSubTitle: '肺结节中心 · 院外管理服务',
+        patientName: '王先生的结节档案',
+        patientMeta: '肺磨玻璃结节 · 中高风险 · 下次复查 2026-07-17',
+        quickActions: ['上传报告', '复查提醒', '问AI'],
+        chat: [
+          ['user', '我离院后还需要注意什么？'],
+          ['ai', '我会按您的随访计划提醒复查。若出现持续咳嗽、胸痛、咯血等情况，我会立即帮您转医生复核。'],
+          ['system', 'AI影像顾问已读取报告，AI健康管理师正在生成院外管理计划。']
+        ],
+        handoffRule: '手术相关自动转医生',
+        tasks: [
+          ['报告解读已完成', '右上肺磨玻璃结节，建议纳入3个月复查。', '已完成'],
+          ['健康指导方案待确认', '包含复查、症状观察、饮食运动和心理舒缓。', '待发送'],
+          ['转人工规则', '涉及手术、恶性判断、药物冲突时转医生。', '已启用']
+        ],
+        records: [
+          ['报告', '胸部CT报告', '已结构化提取：位置、大小、密度、建议。'],
+          ['随访', '复查计划', '下次复查前7天提醒，逾期自动跟进。'],
+          ['对话', '结节焦虑咨询', 'AI心理师已介入，生成舒缓建议。']
+        ],
+        metrics: [
+          ['院外随访率', '91%', '持续达标'],
+          ['转人工命中', '7', '高风险优先'],
+          ['方案完成', '42', '今日生成'],
+          ['复查回收', '68%', '较上周 +9%']
+        ]
+      },
+      {
+        color: '#0e9384',
+        soft: '#eaf7f4',
+        line: '#bde5dd',
+        title: '社区 · 家庭医生',
+        desc: '解决分层随访：AI帮助家庭医生完成辖区患者纳入、分层管理、异常预警、双向转诊和签约服务。',
+        tag: '分层随访 · 双向转诊 · 签约服务',
+        objectives: [
+          ['目标一', '分层随访', '高危上转，中低危由家庭医生持续管理。'],
+          ['目标二', '双向转诊', '异常情况生成转诊建议，术后患者回到社区承接。'],
+          ['目标三', '签约服务', '把结节管理纳入家庭医生签约服务内容。']
+        ],
+        plan: [
+          ['分层管理', '按风险等级生成不同随访频率。'],
+          ['日常提醒', 'AI外呼和小程序完成大部分提醒。'],
+          ['家医复核', '复查逾期、症状异常、患者主动求助时转家庭医生。']
+        ],
+        patientStatus: '家医签约随访',
+        phoneSubTitle: '家庭医生 · 分层随访服务',
+        patientName: '刘女士的社区档案',
+        patientMeta: '甲状腺结节 · 中低风险 · 复查逾期12天',
+        quickActions: ['复查预约', '联系家医', '问AI'],
+        chat: [
+          ['ai', '您已到甲状腺超声复查时间，我可以帮您预约社区复查或联系家庭医生。'],
+          ['user', '我最近比较忙，可以晚一点吗？'],
+          ['ai', '可以适当安排，但不建议长期拖延。我会先为您记录原因，并同步给家庭医生。']
+        ],
+        handoffRule: '异常预警转家庭医生',
+        tasks: [
+          ['辖区患者已分层', '148名结节患者完成高/中/低风险分层。', '运行中'],
+          ['逾期复查提醒', '19名患者需要AI外呼或家医跟进。', '待处理'],
+          ['上转建议', '4名高危患者建议进入上级医院绿色通道。', '待复核']
+        ],
+        records: [
+          ['签约', '家庭医生服务包', '已纳入结节随访和健康教育。'],
+          ['随访', '复查逾期记录', '外呼未接通，待家医跟进。'],
+          ['转诊', '上转判断规则', '高危症状或报告变化触发转诊。']
+        ],
+        metrics: [
+          ['患者识别率', '85%', '应管尽管'],
+          ['自动随访率', '88%', '节省人力'],
+          ['异常处理率', '95%', '及时复核'],
+          ['转诊成功率', '40%', '绿色通道']
+        ]
+      },
+      {
+        color: '#2e90fa',
+        soft: '#eef8ff',
+        line: '#c8e7ff',
+        title: '体检 · 中心',
+        desc: '解决闭环管理：体检阳性客户不再只拿到一张报告，而是进入解读、触达、服务转化和长期随访。',
+        tag: '闭环管理 · 增值服务 · 品牌粘性',
+        objectives: [
+          ['目标一', '闭环管理', '体检报告阳性结果自动进入客户服务池。'],
+          ['目标二', '增值服务', '根据风险推荐基础、加强或VIP管理服务。'],
+          ['目标三', '品牌粘性', '把一次体检客户转成长期健康管理客户。']
+        ],
+        plan: [
+          ['报告解释', '48小时内完成阳性报告通俗解释。'],
+          ['随访日历', '自动生成年度或季度复查计划。'],
+          ['专家绿通', '高风险客户推荐专家复核和进一步检查。']
+        ],
+        patientStatus: '检后管理中',
+        phoneSubTitle: '体检中心 · 检后闭环服务',
+        patientName: '陈先生的检后档案',
+        patientMeta: '肺小结节 · 中风险 · 等待外呼确认',
+        quickActions: ['看报告', '预约复查', '专家咨询'],
+        chat: [
+          ['ai', '您的体检报告提示肺小结节，我已为您生成报告解释和年度复查计划。'],
+          ['user', '这个需要马上去大医院吗？'],
+          ['ai', '当前建议先完成风险评估和计划复查。若后续出现变化，我会为您安排专家绿通。']
+        ],
+        handoffRule: '高风险进入专家绿通',
+        tasks: [
+          ['阳性报告已识别', '286名体检阳性客户进入闭环管理池。', '已完成'],
+          ['外呼话术生成', '系统已生成报告解释和服务推荐话术。', '待外呼'],
+          ['年度计划生成', '加强随访包客户将进入季度提醒。', '待确认']
+        ],
+        records: [
+          ['体检', '年度体检报告', '结节阳性结果已自动识别。'],
+          ['触达', '48小时触达记录', '短信已发送，客服待外呼。'],
+          ['方案', '年度随访日历', '季度复查、报告解读、生活方式指导。']
+        ],
+        metrics: [
+          ['阳性触达率', '89%', '48小时内'],
+          ['服务转化率', '11.6%', '本月'],
+          ['客户留存率', '70%', '长期管理'],
+          ['续约客户', '24', '本周']
+        ]
+      },
+      {
+        color: '#c87912',
+        soft: '#fff8ea',
+        line: '#f2d49b',
+        title: '药店 · 健康驿站',
+        desc: '解决健康指导：药店提供报告解读、舌象体质分析、药事服务和线上随访，成为居民健康服务触点。',
+        tag: '服务转化 · 引流获客 · 药事服务',
+        objectives: [
+          ['目标一', '服务转化', '把到店咨询变成健康指导服务。'],
+          ['目标二', '引流获客', '免费初筛吸引客户建档和持续触达。'],
+          ['目标三', '药事服务', '药师结合AI提供用药、产品和转诊建议。']
+        ],
+        plan: [
+          ['健康指导', '报告解读、饮食建议、睡眠情绪和复查提醒。'],
+          ['舌象分析', '采集舌象和体质信息，生成调理建议。'],
+          ['药事提醒', '用药冲突、慢病合并用药和转诊指征提醒。']
+        ],
+        patientStatus: '门店健康指导',
+        phoneSubTitle: '健康驿站 · AI健康指导服务',
+        patientName: '赵女士的健康档案',
+        patientMeta: '乳腺结节 · 中风险 · 门店到访',
+        quickActions: ['拍报告', '拍舌象', '问药师'],
+        chat: [
+          ['user', '体检说我有乳腺结节，平时要怎么注意？'],
+          ['ai', '我会先帮您解释报告，并生成饮食、睡眠、情绪和复查提醒。涉及治疗判断时会建议您到医院复核。'],
+          ['system', 'AI药师已加入：将检查当前用药和药食同源建议。']
+        ],
+        handoffRule: '医疗判断转医院复核',
+        tasks: [
+          ['报告初筛', 'BI-RADS 3类，建议规律复查和健康管理。', '已完成'],
+          ['舌象体质分析', '气郁倾向，生成睡眠和情绪管理建议。', '已完成'],
+          ['药师审核', '避免将健康产品表达为治疗结节。', '待审核']
+        ],
+        records: [
+          ['报告', '乳腺彩超报告', '已生成通俗解释和复查提醒。'],
+          ['舌象', '体质分析', '偏气郁，建议规律作息和情绪舒缓。'],
+          ['药事', '用药与产品建议', '药师确认后发送给客户。']
+        ],
+        metrics: [
+          ['今日建档', '32', '门店新增'],
+          ['舌象采集', '18', '完成'],
+          ['服务意向', '9', '待转化'],
+          ['转诊线索', '5', '高风险']
+        ]
+      }
+    ];
+
+    const buttons = document.querySelectorAll('.framework-btn');
+    const root = document.documentElement;
+    const toast = document.getElementById('toast');
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function renderObjectives(items) {
+      document.getElementById('objectiveGrid').innerHTML = items.map(([label, title, desc]) => `
+        <div class="objective-card"><span>${label}</span><strong>${title}</strong><p>${desc}</p></div>
+      `).join('');
+    }
+
+    function renderPlan(items) {
+      document.getElementById('healthPlan').innerHTML = items.map(([title, desc], index) => `
+        <div class="plan-step"><span class="step-index">${String(index + 1).padStart(2, '0')}</span><div><strong>${title}</strong><span>${desc}</span></div></div>
+      `).join('');
+    }
+
+    function renderQuickActions(items) {
+      document.getElementById('quickActions').innerHTML = items.map((item) => `
+        <button class="quick-action" type="button">${item}</button>
+      `).join('');
+    }
+
+    function renderChat(items) {
+      document.getElementById('chatBox').innerHTML = items.map(([type, text]) => `
+        <div class="bubble ${type}">${text}</div>
+      `).join('');
+    }
+
+    function renderTasks(items) {
+      document.getElementById('taskBoard').innerHTML = items.map(([title, desc, state]) => `
+        <div class="task-card"><div><strong>${title}</strong><p>${desc}</p></div><span class="task-state">${state}</span></div>
+      `).join('');
+    }
+
+    function renderRecords(items) {
+      document.getElementById('recordList').innerHTML = items.map(([type, title, desc]) => `
+        <div class="record-card"><span class="record-type">${type}</span><div><strong>${title}</strong><span>${desc}</span></div></div>
+      `).join('');
+    }
+
+    function renderMetrics(items) {
+      document.getElementById('metrics').innerHTML = items.map(([label, value, note]) => `
+        <div class="metric-card"><span>${label}</span><strong>${value}</strong><em>${note}</em></div>
+      `).join('');
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function activate(index) {
+      const data = frameworks[index];
+      root.style.setProperty('--scene', data.color);
+      root.style.setProperty('--scene-soft', data.soft);
+      root.style.setProperty('--scene-line', data.line);
+
+      buttons.forEach((button, i) => button.classList.toggle('active', i === index));
+
+      setText('frameworkTitle', data.title);
+      setText('frameworkDesc', data.desc);
+      setText('frameworkTag', data.tag);
+      setText('patientStatus', data.patientStatus);
+      setText('phoneSubTitle', data.phoneSubTitle);
+      setText('patientName', data.patientName);
+      setText('patientMeta', data.patientMeta);
+      setText('handoffRule', data.handoffRule);
+
+      renderObjectives(data.objectives);
+      renderPlan(data.plan);
+      renderQuickActions(data.quickActions);
+      renderChat(data.chat);
+      renderTasks(data.tasks);
+      renderRecords(data.records);
+      renderMetrics(data.metrics);
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => activate(Number(button.dataset.index)));
+    });
+
+    document.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-action]')?.dataset.action;
+      if (!action) return;
+
+      const messages = {
+        run: 'AI员工已运行：影像顾问、健康管理师、营养师、心理师、药师已协同。',
+        plan: '已生成健康指导方案，并进入患者端待发送状态。',
+        editPlan: '已打开健康指导方案编辑面板。',
+        send: '已发送给患者，并写入随访记录。',
+        sync: '已同步报告、问卷、舌象和对话记录。'
+      };
+
+      showToast(messages[action] || '操作已完成。');
+    });
+
+    activate(0);
+  </script>
+</body>
+</html>

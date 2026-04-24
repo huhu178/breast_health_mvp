@@ -1,0 +1,691 @@
+{% extends "base.html" %}
+
+{% block title %}健康档案录入 - 乳腺结节健康管理系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 表单容器 */
+    .form-section {
+        background: #fff;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        border-left: 4px solid #409eff;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        font-size: 18px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f2f2f2;
+    }
+    
+    .section-header i {
+        margin-right: 10px;
+        font-size: 20px;
+    }
+    
+    /* 表单组 */
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .form-row.single {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #606266;
+        font-weight: 500;
+        font-size: 14px;
+    }
+    
+    .form-group label .required {
+        color: #f56c6c;
+        margin-left: 3px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dcdfe6;
+        border-radius: 4px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #409eff;
+        box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+    }
+    
+    /* 多选框组 */
+    .checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background: #f5f7fa;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .checkbox-item:hover {
+        background: #ecf5ff;
+    }
+    
+    .checkbox-item input {
+        width: auto;
+        margin-right: 8px;
+    }
+    
+    /* 范围滑块 */
+    .range-group {
+        margin-top: 10px;
+    }
+    
+    input[type="range"] {
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: #e4e7ed;
+        outline: none;
+    }
+    
+    .range-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #909399;
+    }
+    
+    .range-value {
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #409eff;
+    }
+    
+    /* 患者信息提示 */
+    .patient-info-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .patient-info-box h3 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .patient-info-box h3 i {
+        margin-right: 10px;
+    }
+    
+    .patient-info-content {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        font-size: 14px;
+    }
+    
+    .patient-info-item strong {
+        display: block;
+        margin-bottom: 4px;
+        opacity: 0.9;
+    }
+    
+    /* 底部按钮 */
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #f2f2f2;
+    }
+    
+    .btn-large {
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form id="healthRecordForm" onsubmit="saveHealthRecord(event)">
+    <input type="hidden" name="patient_id" value="{{ patient_id }}">
+    
+    <!-- 患者信息提示 -->
+    <div class="patient-info-box">
+        <h3><i class="fas fa-user-injured"></i>患者信息</h3>
+        <div class="patient-info-content" id="patientInfoDisplay">
+            <div class="patient-info-item">
+                <strong>姓名</strong>
+                <span id="patientName">加载中...</span>
+            </div>
+            <div class="patient-info-item">
+                <strong>性别/年龄</strong>
+                <span id="patientGenderAge">-</span>
+            </div>
+            <div class="patient-info-item">
+                <strong>联系电话</strong>
+                <span id="patientPhone">-</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 1. 基本信息 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-user-circle" style="color: #409eff;"></i>
+            基本信息
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>年龄<span class="required">*</span></label>
+                <input type="number" name="age" required min="18" max="100" placeholder="请输入年龄">
+            </div>
+            <div class="form-group">
+                <label>BI-RADS分级<span class="required">*</span></label>
+                <select name="birads_level" required>
+                    <option value="">请选择BI-RADS分级</option>
+                    <option value="1">1级 - 阴性</option>
+                    <option value="2">2级 - 良性</option>
+                    <option value="3">3级 - 可能良性</option>
+                    <option value="4">4级 - 可疑恶性</option>
+                    <option value="5">5级 - 高度可疑恶性</option>
+                    <option value="6">6级 - 确诊癌</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>家族史</label>
+                <select name="family_history">
+                    <option value="">请选择家族史</option>
+                    <option value="无家族史">无家族史</option>
+                    <option value="低危家族史">低危家族史（无乳腺癌家族史）</option>
+                    <option value="中危家族史">中危家族史（1位一级亲属）</option>
+                    <option value="高危家族史">高危家族史（多位一级亲属或BRCA突变）</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 2. 病程信息 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-calendar-alt" style="color: #67c23a;"></i>
+            病程信息
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>结节发现时间<span class="required">*</span></label>
+                <input type="date" name="nodule_discovery_time" required>
+            </div>
+            <div class="form-group">
+                <label>病程阶段</label>
+                <select name="course_stage">
+                    <option value="">请选择病程阶段</option>
+                    <option value="new_lt3m">新发（<3个月）</option>
+                    <option value="new_3-6m">新发（3-6个月）</option>
+                    <option value="new_6-12m">新发（6-12个月）</option>
+                    <option value="stable_gt1y">稳定期（>1年）</option>
+                    <option value="stable_gt2y">稳定期（>2年）</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>TNM分期</label>
+                <select name="tnm_stage">
+                    <option value="">请选择TNM分期</option>
+                    <option value="1">TNM 1期</option>
+                    <option value="2">TNM 2期</option>
+                    <option value="3">TNM 3期</option>
+                    <option value="4">TNM 4期</option>
+                    <option value="5">TNM 5期</option>
+                    <option value="6">TNM 6期</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 3. 症状信息 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-stethoscope" style="color: #f56c6c;"></i>
+            症状信息
+        </div>
+        <div class="form-row single">
+            <div class="form-group">
+                <label>主要症状<span class="required">*</span></label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="main_symptoms" value="疼痛">
+                        <span>疼痛</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="main_symptoms" value="乳头溢液">
+                        <span>乳头溢液</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="main_symptoms" value="皮肤变化">
+                        <span>皮肤变化</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="main_symptoms" value="无症状">
+                        <span>无症状</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>疼痛评分（0-10分）</label>
+                <input type="range" name="pain_level" min="0" max="10" value="0" id="painLevelSlider" oninput="updatePainLevel(this.value)">
+                <div class="range-labels">
+                    <span>无痛</span>
+                    <span class="range-value" id="painLevelValue">0</span>
+                    <span>剧痛</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>疼痛类型</label>
+                <select name="pain_type">
+                    <option value="">请选择疼痛类型</option>
+                    <option value="周期性疼痛">周期性疼痛</option>
+                    <option value="非周期性疼痛">非周期性疼痛</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>乳头溢液类型</label>
+                <select name="nipple_discharge_type">
+                    <option value="">请选择溢液类型</option>
+                    <option value="浆液性溢液">浆液性溢液</option>
+                    <option value="血性溢液">血性溢液</option>
+                    <option value="乳汁样溢液">乳汁样溢液</option>
+                    <option value="脓性溢液">脓性溢液</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>皮肤变化类型</label>
+                <select name="skin_change_type">
+                    <option value="">请选择皮肤变化</option>
+                    <option value="皮肤凹陷">皮肤凹陷</option>
+                    <option value="橘皮样改变">橘皮样改变</option>
+                    <option value="皮肤红肿">皮肤红肿</option>
+                    <option value="皮肤溃疡">皮肤溃疡</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 4. 影像学特征 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-x-ray" style="color: #909399;"></i>
+            影像学特征
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>结节位置</label>
+                <select name="nodule_location">
+                    <option value="">请选择结节位置</option>
+                    <option value="内上象限">内上象限</option>
+                    <option value="外上象限">外上象限</option>
+                    <option value="内下象限">内下象限</option>
+                    <option value="外下象限">外下象限</option>
+                    <option value="中央区">中央区</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>结节大小</label>
+                <select name="nodule_size">
+                    <option value="">请选择结节大小</option>
+                    <option value="微小结节（<5mm）">微小结节（<5mm）</option>
+                    <option value="小结节（5-10mm）">小结节（5-10mm）</option>
+                    <option value="中等结节（6-20mm）">中等结节（6-20mm）</option>
+                    <option value="大结节（>20mm）">大结节（>20mm）</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>边界特征</label>
+                <select name="boundary_features">
+                    <option value="">请选择边界特征</option>
+                    <option value="清晰光滑（规则型）">清晰光滑（规则型）</option>
+                    <option value="边界模糊">边界模糊</option>
+                    <option value="毛刺状">毛刺状</option>
+                    <option value="分叶状">分叶状</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>内部回声</label>
+                <select name="internal_echo">
+                    <option value="">请选择内部回声</option>
+                    <option value="低回声（实性）">低回声（实性）</option>
+                    <option value="高回声">高回声</option>
+                    <option value="混合回声">混合回声</option>
+                    <option value="无回声（囊性）">无回声（囊性）</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>血流信号</label>
+                <select name="blood_flow_signal">
+                    <option value="">请选择血流信号</option>
+                    <option value="无血流">无血流</option>
+                    <option value="低阻力">低阻力</option>
+                    <option value="高阻力">高阻力</option>
+                    <option value="丰富血流">丰富血流</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>弹性评分</label>
+                <select name="elasticity_score">
+                    <option value="">请选择弹性评分</option>
+                    <option value="1分">1分（软）</option>
+                    <option value="2分">2分（较软）</option>
+                    <option value="3分">3分（中等）</option>
+                    <option value="4分">4分（较硬）</option>
+                    <option value="5分">5分（硬）</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 5. 生物节律 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-clock" style="color: #e6a23c;"></i>
+            生物节律
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>节律类型</label>
+                <select name="rhythm_type">
+                    <option value="">请选择节律类型</option>
+                    <option value="自然月经周期">自然月经周期</option>
+                    <option value="人工生物节律">人工生物节律（绝经期/激素治疗）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>周期阶段</label>
+                <select name="cycle_phase">
+                    <option value="">请选择周期阶段</option>
+                    <optgroup label="自然月经周期">
+                        <option value="卵泡期">卵泡期</option>
+                        <option value="排卵期">排卵期</option>
+                        <option value="黄体期">黄体期</option>
+                        <option value="经前期">经前期</option>
+                    </optgroup>
+                    <optgroup label="人工生物节律">
+                        <option value="代谢激活期">代谢激活期</option>
+                        <option value="神经强化期">神经强化期</option>
+                        <option value="炎症控制期">炎症控制期</option>
+                        <option value="再生修复期">再生修复期</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>睡眠质量</label>
+                <select name="sleep_quality">
+                    <option value="">请选择睡眠质量</option>
+                    <option value="良好">良好（7-8小时，深度睡眠好）</option>
+                    <option value="一般">一般（6-7小时，偶尔失眠）</option>
+                    <option value="较差">较差（5-6小时，经常失眠）</option>
+                    <option value="很差">很差（<5小时，严重失眠）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>睡眠状况</label>
+                <select name="sleep_condition">
+                    <option value="">请选择睡眠状况</option>
+                    <option value="正常">正常</option>
+                    <option value="失眠">失眠</option>
+                    <option value="多梦">多梦</option>
+                    <option value="早醒">早醒</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 6. 检查历史 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-history" style="color: #f39c12;"></i>
+            检查历史
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>既往检查类型</label>
+                <select name="exam_history_type">
+                    <option value="">请选择检查类型</option>
+                    <option value="无检查史">无检查史</option>
+                    <option value="超声检查">超声检查</option>
+                    <option value="钼靶检查">钼靶检查</option>
+                    <option value="MRI检查">MRI检查</option>
+                    <option value="穿刺活检">穿刺活检</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>检查详情</label>
+                <input type="text" name="exam_history_detail" placeholder="如：高频超声、弹性成像等">
+            </div>
+        </div>
+        <div class="form-row single">
+            <div class="form-group">
+                <label>既往检查史</label>
+                <textarea name="previous_exam_history" rows="3" placeholder="详细描述既往检查情况..."></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 7. 生活方式 -->
+    <div class="form-section">
+        <div class="section-header">
+            <i class="fas fa-heart" style="color: #f56c6c;"></i>
+            生活方式
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>运动频率</label>
+                <select name="exercise_frequency">
+                    <option value="">请选择运动频率</option>
+                    <option value="从不">从不运动</option>
+                    <option value="偶尔">偶尔运动（每月1-2次）</option>
+                    <option value="有时">有时运动（每周1-2次）</option>
+                    <option value="经常">经常运动（每周3-4次）</option>
+                    <option value="每天">每天运动</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>生活方式</label>
+                <select name="lifestyle">
+                    <option value="">请选择生活方式</option>
+                    <option value="健康">健康（规律作息，健康饮食）</option>
+                    <option value="一般">一般（偶尔熬夜，饮食不规律）</option>
+                    <option value="不健康">不健康（经常熬夜，饮食不健康）</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 底部按钮 -->
+    <div class="form-actions">
+        <button type="button" class="btn" onclick="history.back()">返回</button>
+        <button type="submit" class="btn btn-primary btn-large">保存档案</button>
+        <button type="button" class="btn btn-success btn-large" onclick="saveAndGenerateReport(event)">
+            <i class="fas fa-magic"></i> 保存并生成报告
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 加载患者信息
+    fetch(`/api/patients/{{ patient_id }}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const p = data.data;
+                document.getElementById('patientName').textContent = p.name;
+                document.getElementById('patientGenderAge').textContent = `${p.gender || '-'} / ${p.age || '-'}岁`;
+                document.getElementById('patientPhone').textContent = p.phone || '-';
+                
+                // 自动填充年龄
+                if (p.age) {
+                    document.querySelector('[name="age"]').value = p.age;
+                }
+            }
+        });
+    
+    // 更新疼痛等级显示
+    function updatePainLevel(value) {
+        document.getElementById('painLevelValue').textContent = value;
+    }
+    
+    // 收集主要症状
+    function collectMainSymptoms() {
+        const checkboxes = document.querySelectorAll('[name="main_symptoms"]:checked');
+        return Array.from(checkboxes).map(cb => cb.value).join(',');
+    }
+    
+    // 保存档案
+    function saveHealthRecord(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const data = {};
+        
+        // 收集所有表单数据
+        for (let [key, value] of formData.entries()) {
+            if (key !== 'main_symptoms') {
+                data[key] = value;
+            }
+        }
+        
+        // 特殊处理：主要症状
+        data['symptoms'] = collectMainSymptoms();
+        
+        // 发送请求
+        fetch('/api/b/records', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('档案保存成功');
+                setTimeout(() => {
+                    window.location.href = '/records';
+                }, 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('保存失败：' + error.message, 'error');
+        });
+    }
+    
+    // 保存并生成报告
+    function saveAndGenerateReport(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(document.getElementById('healthRecordForm'));
+        const data = {};
+        
+        for (let [key, value] of formData.entries()) {
+            if (key !== 'main_symptoms') {
+                data[key] = value;
+            }
+        }
+        data['symptoms'] = collectMainSymptoms();
+        
+        // 先保存档案
+        fetch('/api/b/records', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                const recordId = result.data.id;
+                
+                // 生成报告
+                return fetch('/api/b/reports/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ record_id: recordId })
+                });
+            } else {
+                throw new Error(result.message);
+            }
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('报告生成成功');
+                setTimeout(() => {
+                    // 使用正确的字段名
+                    window.location.href = `/reports/${result.data.report_id}`;
+                }, 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage(error.message || '操作失败', 'error');
+        });
+    }
+</script>
+{% endblock %}
+

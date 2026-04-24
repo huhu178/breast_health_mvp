@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}查看报告 - 乳腺结节健康管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div class="card-title" style="margin: 0;">📄 健康管理报告</div>
+        <div>
+            <button class="btn" onclick="history.back()">返回</button>
+            <button class="btn btn-primary" onclick="downloadReport()">下载报告</button>
+        </div>
+    </div>
+    
+    <div id="reportContent" style="background: #fff; padding: 20px; min-height: 400px;">
+        <p style="text-align: center; color: #909399;">加载中...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 加载报告详情
+    const reportType = new URLSearchParams(window.location.search).get('type') || 'b_end';
+    fetch(`/api/b/reports/{{ report_id }}`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('reportContent').innerHTML = data.data.report_html || '<p>报告内容为空</p>';
+            } else {
+                console.error('加载报告失败:', data.message);
+                document.getElementById('reportContent').innerHTML = '<p style="color: #f56c6c;">加载失败: ' + (data.message || '未知错误') + '</p>';
+            }
+        })
+        .catch(err => {
+            console.error('加载报告失败:', err);
+            document.getElementById('reportContent').innerHTML = '<p style="color: #f56c6c;">加载失败，请刷新重试</p>';
+        });
+    
+    // 下载报告
+    function downloadReport() {
+        showMessage('下载功能开发中...', 'error');
+    }
+</script>
+{% endblock %}
+

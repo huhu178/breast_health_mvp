@@ -1,0 +1,404 @@
+<!-- PDF导出专用样式 -->
+<style>
+/* ================================
+   PDF/打印专用样式
+   ================================ */
+
+/* 通用样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', '微软雅黑', SimHei, sans-serif;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #333;
+    background: #fff;
+}
+
+/* 页面设置 */
+@page {
+    size: A4;
+    margin: 20mm;
+}
+
+/* 报告容器 */
+.breast-health-report {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 30px;
+    background: #fff;
+}
+
+/* 标题样式 */
+h1 {
+    font-size: 24px;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #3498db;
+    page-break-after: avoid;
+}
+
+h2 {
+    font-size: 18px;
+    color: #34495e;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    padding-left: 10px;
+    border-left: 4px solid #3498db;
+    page-break-after: avoid;
+}
+
+h3 {
+    font-size: 16px;
+    color: #555;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+}
+
+/* 段落样式 */
+p {
+    margin-bottom: 12px;
+    text-align: justify;
+    text-indent: 2em;
+    line-height: 2;
+}
+
+/* section分段 - 允许分页但控制孤行 */
+section {
+    margin-bottom: 25px;
+    page-break-inside: auto;     /* 允许长section分页 */
+    orphans: 4;                  /* 页面底部至少4行 */
+    widows: 4;                   /* 页面顶部至少4行 */
+}
+
+section:not(:last-child) {
+    padding-bottom: 20px;
+    border-bottom: 1px dashed #ddd;
+}
+
+/* 标题后的元素必须跟标题在一起 */
+h1 + *, h2 + *, h3 + * {
+    page-break-before: avoid !important;
+}
+
+h2 + * + * {
+    page-break-before: avoid;  /* 标题后至少2个元素不分页 */
+}
+
+/* 列表样式 */
+ul, ol {
+    margin-left: 2em;
+    margin-bottom: 15px;
+}
+
+li {
+    margin-bottom: 8px;
+    line-height: 1.8;
+}
+
+ul li {
+    list-style-type: disc;
+}
+
+ol li {
+    list-style-type: decimal;
+}
+
+/* 强调文本 */
+strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+em {
+    color: #e74c3c;
+    font-style: normal;
+}
+
+/* 表格样式 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+}
+
+table th {
+    background: #ecf0f1;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #2c3e50;
+    border: 1px solid #bdc3c7;
+}
+
+table td {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    line-height: 1.6;
+}
+
+table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* 风险徽章 */
+.risk-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.risk-high {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.risk-medium {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.risk-low {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* 行动清单 */
+.action-list {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 15px 15px 15px 35px;
+    margin: 15px 0;
+}
+
+.action-list li {
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+/* 重要提示框 */
+.important-notes {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.important-notes h2 {
+    margin-top: 0;
+    color: #e74c3c;
+}
+
+.important-notes ul {
+    margin-left: 1.5em;
+}
+
+/* 生活方式分类 */
+.lifestyle-categories {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.category {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 3px solid #3498db;
+}
+
+.category h3 {
+    margin-top: 0;
+    color: #3498db;
+}
+
+/* 页眉页脚 */
+.report-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #3498db;
+}
+
+.report-meta {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #666;
+}
+
+.report-meta span {
+    margin: 0 15px;
+}
+
+.report-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #ddd;
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+}
+
+.report-footer p {
+    margin-bottom: 8px;
+    text-indent: 0;
+}
+
+/* 随访计划表格特殊样式 */
+.follow-up-table th {
+    width: 30%;
+    background: #3498db;
+    color: #fff;
+}
+
+.follow-up-table td {
+    width: 70%;
+}
+
+/* 知识库引用 */
+.knowledge-reference {
+    font-style: italic;
+    color: #7f8c8d;
+}
+
+/* 免责声明 */
+.disclaimer {
+    color: #95a5a6;
+    font-size: 11px;
+}
+
+/* 打印时隐藏的元素 */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    /* ===== 强制分页符生效 ===== */
+    div[style*="page-break-after: always"] {
+        page-break-after: always !important;
+        display: block !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        visibility: hidden;
+    }
+    
+    /* 确保分页正确 - 防止孤标题 */
+    h1, h2, h3 {
+        page-break-after: avoid !important;
+    }
+    
+    /* 标题后的内容不要立即分页 */
+    h1 + *, h2 + *, h3 + * {
+        page-break-before: avoid !important;
+    }
+    
+    h2 + * + * {
+        page-break-before: avoid;
+    }
+    
+    /* section允许分页但控制孤行 */
+    section {
+        page-break-inside: auto;
+        orphans: 4;
+        widows: 4;
+    }
+    
+    /* 段落孤行控制 */
+    p {
+        orphans: 3;
+        widows: 3;
+    }
+    
+    /* 去除阴影和边框 */
+    * {
+        box-shadow: none !important;
+    }
+    
+    /* 确保黑白打印时对比度 */
+    .risk-badge {
+        border: 1px solid #333;
+    }
+}
+
+/* 屏幕显示时的分页提示 */
+@media screen {
+    div[style*="page-break-after: always"] {
+        margin: 30px 0;
+        padding: 15px;
+        text-align: center;
+        background: linear-gradient(to right, #e3f2fd 0%, #fff 50%, #e3f2fd 100%);
+        border-top: 2px dashed #90caf9;
+        border-bottom: 2px dashed #90caf9;
+        color: #1976d2;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    div[style*="page-break-after: always"]::after {
+        content: "━━━━━ 📄 第一页结束 / 第二页开始 ━━━━━";
+        letter-spacing: 2px;
+    }
+}
+
+/* 特殊元素样式 */
+.summary-content {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 15px;
+    margin: 15px 0;
+    line-height: 2;
+    font-size: 15px;
+}
+
+.risk-details {
+    margin: 15px 0;
+    line-height: 2;
+}
+
+.executive-summary {
+    background: #f0f8ff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+/* 确保内容不会太密集 */
+section > * + * {
+    margin-top: 10px;
+}
+
+/* emoji 图标大小 */
+h1::before, h2::before {
+    margin-right: 8px;
+}
+
+/* 避免孤行 */
+p, li {
+    orphans: 2;
+    widows: 2;
+}
+
+/* PDF导出优化：确保颜色和背景正常显示 */
+@media screen {
+    body {
+        background: #f5f7fa;
+    }
+    
+    .breast-health-report {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    }
+}
+</style>
+
