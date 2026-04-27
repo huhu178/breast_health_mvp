@@ -193,7 +193,6 @@ const flowNodes = computed(() => {
     { label: '上传报告', sub: current.value.uploadTime },
     { label: 'AI解析', sub: 'AI处理中' },
     { label: '结构化结果', sub: '字段提取' },
-    { label: '生成健康管理报告', sub: '草稿生成' },
     { label: '医生复核', sub: idx >= 2 ? '已完成' : '待处理' },
     { label: '返回队列', sub: idx >= 4 ? '已完成' : '待处理' }
   ].map((n, i) => ({
@@ -265,7 +264,7 @@ function resetFilters() {
 .kv .v{font-weight:900;color:#0f172a;margin-top:4px}
 .hline{height:1px;background:#edf2f7;margin:12px 0}
 .section-label{font-weight:850;margin-bottom:8px;color:#0f172a}
-.flow-line{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:10px 0;text-align:center;font-size:11px;color:#64748b}
+.flow-line{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:10px 0;text-align:center;font-size:11px;color:#64748b}
 .flow-dot{width:18px;height:18px;border-radius:50%;background:#cbd5e1;margin:0 auto 6px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:900}
 .flow-node.done .flow-dot{background:#22c55e}
 .flow-node.active .flow-dot{background:#155eef}
