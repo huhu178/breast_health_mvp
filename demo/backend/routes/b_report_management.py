@@ -54,6 +54,23 @@ def get_all_reports(current_user):
             if patient:
                 report_dict['patient_name'] = patient.name
                 report_dict['patient_code'] = patient.patient_code
+                # 兼容前端列表展示：补齐 patient / nodule_type / 基础字段
+                report_dict['patient'] = patient.to_dict()
+                report_dict['nodule_type'] = getattr(patient, 'nodule_type', None) or 'breast'
+                report_dict['patient_gender'] = getattr(patient, 'gender', None) or report_dict['patient'].get('gender')
+                report_dict['patient_phone'] = getattr(patient, 'phone', None) or report_dict['patient'].get('phone')
+                report_dict['patient_source'] = getattr(patient, 'source_channel', None) or report_dict['patient'].get('source_channel') or report_dict['patient'].get('source')
+
+            # 添加档案信息（年龄通常在档案/记录里）
+            if getattr(report, 'record_id', None):
+                record = BHealthRecord.query.get(report.record_id)
+                if record:
+                    try:
+                        record_dict = record.to_dict()
+                    except Exception:
+                        record_dict = {}
+                    report_dict['record'] = record_dict
+                    report_dict['patient_age'] = getattr(record, 'age', None) or record_dict.get('age')
             # 添加报告类型
             report_dict['report_type'] = 'b_end'
             reports_data.append(report_dict)

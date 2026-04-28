@@ -82,22 +82,6 @@
               <div class="label">备注</div>
               <input v-model="form.note" placeholder="简短备注（不超过一行）">
             </div>
-
-            <!-- 第4行：身高、体重、糖尿病史 -->
-            <div class="field col-2">
-              <div class="label">身高（cm）</div>
-              <input v-model="form.height" type="number" placeholder="例如：165">
-            </div>
-            <div class="field col-2">
-              <div class="label">体重（kg）</div>
-              <input v-model="form.weight" type="number" placeholder="例如：60">
-            </div>
-            <div class="field col-2">
-              <div class="label">糖尿病史</div>
-              <select v-model="form.diabetes_history">
-                <option>无</option><option>有</option>
-              </select>
-            </div>
           </div>
         </section>
 
@@ -375,25 +359,8 @@
             </div>
           </div>
 
-          <!-- 综合风险 + 是否复核（公共，始终显示） -->
+          <!-- 底部操作行 -->
           <div class="grid-12" style="margin-top:10px">
-            <div class="field col-2 required">
-              <div class="label">综合风险等级</div>
-              <select v-model="form.risk">
-                <option>高风险</option><option>中风险</option><option>低风险</option>
-              </select>
-            </div>
-            <div class="field col-2 required">
-              <div class="label">是否医生复核</div>
-              <div class="toggle-row">
-                <span class="toggle" :class="{ on: form.needReview }" @click="form.needReview = !form.needReview"></span>
-                <span class="muted" style="font-weight:800">{{ form.needReview ? '是' : '否' }}</span>
-              </div>
-            </div>
-            <div class="field col-3 required">
-              <div class="label">负责医生</div>
-              <div class="cur-doctor">{{ user }}</div>
-            </div>
             <div class="field col-5" style="display:flex;align-items:flex-end;gap:8px">
               <button class="mini-action" type="button" @click="save" :disabled="saving">{{ saving ? '保存中...' : '保存档案' }}</button>
               <button class="mini-action primary-action" type="button" @click="generateReport" :disabled="generating">{{ generating ? 'AI生成中...' : '生成健康档案' }}</button>
@@ -421,7 +388,6 @@
             <div class="pv-row"><span class="k">姓名</span><span class="v">{{ form.name || '—' }}</span></div>
             <div class="pv-row"><span class="k">来源</span><span class="v">{{ previewSource }}</span></div>
             <div class="pv-row"><span class="k">结节类型</span><span class="v">{{ visibleNodules.join('、') || '—' }}</span></div>
-            <div class="pv-row"><span class="k">风险等级</span><span class="v">{{ form.risk || '—' }}</span></div>
             <div class="pv-row"><span class="k">负责人</span><span class="v">{{ form.doctor || '—' }}</span></div>
           </div>
         </section>

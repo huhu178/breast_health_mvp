@@ -416,7 +416,6 @@
             <div class="plan-filter-actions">
               <button class="btn-link-lite" type="button" @click="resetTaskFilters">重置</button>
               <button class="primary" type="button">查询</button>
-              <button class="primary" type="button" @click="openNewTaskFromActive">新建随访任务</button>
             </div>
           </div>
         </section>
@@ -430,20 +429,12 @@
                 <span class="muted" style="font-size:12px;font-weight:700">· 患者 {{ filteredPlanPatients.length }} · 任务 {{ filteredTasks.length }}</span>
               </div>
               <div class="panel-tools">
-                <div class="seg-tabs">
-                  <button class="seg-tab" type="button" :data-on="planLeftMode==='patients'" @click="planLeftMode='patients'">患者</button>
-                  <button class="seg-tab" type="button" :data-on="planLeftMode==='tasks'" @click="planLeftMode='tasks'">任务</button>
-                </div>
-                <template v-if="planLeftMode==='tasks'">
-                  <button class="btn-link-lite" type="button" @click="toggleAllTaskSelection">{{ allTasksSelected ? '取消全选' : '全选' }}</button>
-                  <button class="btn-link-lite" type="button" @click="bulkAssignSelected">批量分派</button>
-                </template>
               </div>
             </div>
             <div class="pad pad-lg" style="padding-bottom:0">
-              <div class="muted" style="font-size:12px">先在“患者”里选择并制定任务，再在“任务”里批量分派与执行闭环。</div>
+              <div class="muted" style="font-size:12px">选择患者后在右侧制定/调整随访任务；任务分派与执行记录在右侧完成。</div>
             </div>
-            <div v-if="planLeftMode==='patients'" class="pat-table">
+            <div class="pat-table">
               <div class="pat-head">
                 <div>患者</div>
                 <div>结节类型</div>
@@ -466,32 +457,6 @@
                 </div>
                 <div v-if="!filteredPlanPatients.length" class="muted" style="font-size:12px;padding:10px 12px">暂无匹配患者</div>
               </div>
-            </div>
-
-            <div v-else class="task-rows">
-              <button
-                v-for="t in filteredTasks"
-                :key="t.id"
-                type="button"
-                class="task-row"
-                :class="{ active: t.id === activeTaskId }"
-                @click="selectTask(t.id)"
-              >
-                <div class="tr-top">
-                  <b style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.patientName }}</b>
-                  <span class="pill mini" :data-tone="t.riskTone">{{ t.risk }}</span>
-                </div>
-                <div class="tr-sub muted">{{ t.gender }}·{{ t.age }}岁 · {{ t.phoneMasked }}</div>
-                <div class="tr-meta">
-                  <span class="tag2">{{ taskStatusLabel(t.status) }}</span>
-                  <span class="muted" style="font-size:12px">{{ t.channel }}</span>
-                  <span class="muted" style="font-size:12px">· {{ t.owner || '未分派' }}</span>
-                </div>
-                <div class="tr-ck">
-                  <input type="checkbox" :checked="selectedTaskIds.has(t.id)" @click.stop @change="toggleTaskSelection(t.id, $event.target.checked)" />
-                </div>
-              </button>
-              <div v-if="!filteredTasks.length" class="muted" style="font-size:12px;padding:10px 12px">暂无任务，可先在“患者”中制定任务。</div>
             </div>
             <div class="pager" style="margin-top:10px">
               <div class="muted" style="font-size:12px">分页（示意）</div>
@@ -1366,6 +1331,27 @@
       <div class="rp-modal-body" v-html="rpViewHtml"></div>
     </div>
   </div>
+
+  <!-- 审核AI建议弹窗 -->
+  <div v-if="rpAuditId" class="rp-modal-mask" @click.self="rpAuditId=''">
+    <div class="rp-modal">
+      <div class="rp-modal-head">
+        <div class="rp-modal-title">审核AI生成内容</div>
+        <span class="muted" style="font-size:12px">可直接编辑后点击审核通过</span>
+        <button class="rp-modal-close" type="button" @click="rpAuditId=''">✕</button>
+      </div>
+      <div class="rp-modal-body">
+        <div class="rp-audit-label">影像解读摘要</div>
+        <textarea class="rp-audit-ta" v-model="rpAuditPara1" rows="5"></textarea>
+        <div class="rp-audit-label" style="margin-top:14px">AI健康建议</div>
+        <textarea class="rp-audit-ta" v-model="rpAuditPara2" rows="5"></textarea>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : '审核通过' }}</button>
+          <button class="btn" type="button" @click="rpAuditId=''">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -1497,7 +1483,8 @@ const filteredPlanPatients = computed(() => {
 watch(
   () => (followTasks.value || []).length,
   (n) => {
-    if (n > 0 && planLeftMode.value === 'patients') planLeftMode.value = 'tasks'
+    // 左侧固定展示患者列表，不再切换到任务视图
+    void n
   }
 )
 
@@ -1670,10 +1657,7 @@ function makeTaskFromPatient(p) {
  * @returns {void}
  */
 function openNewTaskFromActive() {
-  if (!activePatient.value) return
-  const t = makeTaskFromPatient(activePatient.value)
-  followTasks.value = [t, ...(followTasks.value || [])]
-  selectTask(t.id)
+  // 已移除“新建随访任务”按钮入口：任务仅从患者行“制定任务”进入
 }
 
 /**
@@ -1688,7 +1672,7 @@ function createTaskForPatient(p) {
   const t = makeTaskFromPatient(p)
   followTasks.value = [t, ...(followTasks.value || [])]
   selectTask(t.id)
-  planLeftMode.value = 'tasks'
+  // 左侧固定展示患者列表
 }
 
 /**
@@ -2572,31 +2556,46 @@ async function loadReports() {
     const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
-      rpList.value = (data.data?.reports || []).filter(r => r.risk_level && r.risk_level !== '—').map(r => ({
-        id: r.id,
-        name: r.patient_name || '—',
-        gender: r.patient?.gender || r.gender || '—',
-        age: r.patient?.age || r.age || '—',
-        phone: r.patient?.phone ? r.patient.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : (r.phone || '—'),
-        source: r.patient?.source || r.source || '—',
-        reportType: '健康报告',
-        nodules: noduleTypeLabel(r.nodule_type || r.patient?.nodule_type),
-        noduleKey: r.nodule_type || r.patient?.nodule_type || 'breast',
-        uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
-        aiStatus: r.status === 'finalized' ? '已完成' : '未完成',
-        risk: r.risk_level || '—',
-        riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
-        owner: r.created_by_name || '李医生',
-        summary: r.summary || '',
-        reportStatus: r.status === 'finalized' ? '已完成' : '待审核',
-        reportHtml: r.report_html || '',
-        flow: [
-          { label: '建档', done: true, cur: false, time: '' },
-          { label: '生成报告', done: true, cur: false, time: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '' },
-          { label: '人工审核', done: r.status === 'finalized', cur: r.status !== 'finalized', time: r.status === 'finalized' ? '已完成' : '当前步骤' },
-          { label: '推送患者', done: false, cur: false, time: '待处理' },
-        ]
-      }))
+      rpList.value = (data.data?.reports || [])
+        .filter(r => r.risk_level && r.risk_level !== '—')
+        .map((r) => {
+          const patient = r.patient || {}
+          const record = r.record || {}
+          const gender = patient.gender || r.patient_gender || r.gender || '—'
+          const age = record.age || r.patient_age || patient.age || r.age || '—'
+          const phoneRaw = patient.phone || r.patient_phone || r.phone || ''
+          const phoneMasked = phoneRaw
+            ? String(phoneRaw).replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+            : '—'
+          const sourceRaw = patient.source || patient.source_channel || r.patient_source || r.source || '—'
+          const nType = r.nodule_type || patient.nodule_type || r.patient_nodule_type || 'breast'
+
+          return ({
+            id: r.id,
+            name: r.patient_name || '—',
+            gender,
+            age,
+            phone: phoneMasked,
+            source: sourceLabel(sourceRaw) || sourceRaw,
+            reportType: '健康报告',
+            nodules: noduleTypeLabel(nType),
+            noduleKey: nType,
+            uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
+            aiStatus: r.status === 'finalized' ? '已完成' : '未完成',
+            risk: r.risk_level || '—',
+            riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
+            owner: r.created_by_name || '李医生',
+            summary: r.summary || '',
+            reportStatus: r.status === 'finalized' ? '已完成' : '待审核',
+            reportHtml: r.report_html || '',
+            flow: [
+              { label: '建档', done: true, cur: false, time: '' },
+              { label: '生成报告', done: true, cur: false, time: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '' },
+              { label: '人工审核', done: r.status === 'finalized', cur: r.status !== 'finalized', time: r.status === 'finalized' ? '已完成' : '当前步骤' },
+              { label: '推送患者', done: false, cur: false, time: '待处理' },
+            ]
+          })
+        })
       if (rpList.value.length) rpActiveId.value = rpList.value[0].id
     }
   } catch (e) {
@@ -3259,21 +3258,21 @@ function backToQueue() {
 .pm-record{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
 
 /* 随访计划页 */
-.plan-page{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
+.plan-page{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;background:#f3f6fb;padding:12px}
 .plan-filter{margin-bottom:12px}
 .plan-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .plan-filter-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
 
-.plan-workbench{display:grid;grid-template-columns:520px minmax(0,1fr);gap:12px;align-items:start}
-.plan-task-list{min-height:620px;display:flex;flex-direction:column}
+.plan-workbench{flex:1;min-height:0;display:grid;grid-template-columns:520px minmax(0,1fr);gap:12px;overflow:hidden}
+.plan-task-list{min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .seg-tabs{display:flex;align-items:center;border:1px solid #e6edf7;border-radius:999px;overflow:hidden;background:#fff}
 .seg-tab{height:28px;padding:0 12px;border:none;background:transparent;font-weight:950;color:#334155;cursor:pointer}
 .seg-tab[data-on="true"]{background:#eef5ff;color:#155eef}
 .seg-tab + .seg-tab{border-left:1px solid #e6edf7}
 
-.pat-table{padding:10px 12px;display:grid;gap:10px;min-height:0;overflow:auto}
+.pat-table{padding:10px 12px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
 .pat-head{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;padding:8px 10px;border:1px solid #eef2f7;background:#f8fafc;border-radius:12px;font-weight:950;color:#0f172a;font-size:12px}
-.pat-rows{display:grid;gap:10px}
+.pat-rows{display:grid;gap:10px;overflow:auto;min-height:0;flex:1;scrollbar-width:thin}
 .pat-row{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;align-items:center;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px}
 .pat-row[data-active="true"]{border-color:#155eef;background:#eef5ff}
 .pat-main{border:none;background:transparent;text-align:left;cursor:pointer;min-width:0}
@@ -3286,7 +3285,7 @@ function backToQueue() {
 .tr-sub{margin-top:4px;font-size:12px;line-height:1.5;color:#334155}
 .tr-meta{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .tr-ck{position:absolute;right:10px;bottom:10px}
-.plan-task-detail{min-height:620px;display:flex;flex-direction:column}
+.plan-task-detail{min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .plan-task-detail .pad{overflow:auto;flex:1;min-height:0}
 .detail-grid{display:grid;grid-template-columns:1fr;gap:12px}
 .detail-card{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px}
