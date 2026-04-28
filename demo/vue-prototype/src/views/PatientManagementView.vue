@@ -5,61 +5,185 @@
       <div v-if="subTab === 'queue'" class="pm-overview">
         <!-- 左：患者任务队列（大表格） -->
         <section class="card overview-left">
-          <div class="card-head">
-            <div class="card-title">患者任务队列</div>
-            <div class="panel-tools">
-              <input class="search" placeholder="姓名/手机号" />
-              <select class="stage-select" :value="activeStage" @change="setStage($event.target.value)">
-                <option v-for="t in stageTabs" :key="t.key" :value="t.key">{{ t.label }}</option>
-              </select>
-              <button class="primary" type="button" @click="goRecord">+ 新建档案</button>
+
+          <!-- 统计卡片 -->
+          <div class="stat-cards">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#eff6ff;color:#2563eb">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">患者总数</div>
+                <div class="stat-val">{{ queue.length }}</div>
+                <div class="stat-sub" style="color:#2563eb">较昨日 +{{ Math.max(0, queue.length - 8) }}</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fff1f2;color:#dc2626">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">高风险患者</div>
+                <div class="stat-val">{{ queue.filter(p=>p.riskTone==='r').length }}</div>
+                <div class="stat-sub" style="color:#dc2626">较昨日 +2</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fffbeb;color:#d97706">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">待处理报告</div>
+                <div class="stat-val">{{ queue.filter(p=>statusKey(p)==='review').length }}</div>
+                <div class="stat-sub" style="color:#d97706">较昨日 -1</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#ecfdf5;color:#059669">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">待审核报告</div>
+                <div class="stat-val">{{ queue.filter(p=>p.stage==='review').length }}</div>
+                <div class="stat-sub" style="color:#059669">较昨日 -1</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f5f3ff;color:#7c3aed">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">待推送患者</div>
+                <div class="stat-val">{{ queue.filter(p=>p.stage==='push').length }}</div>
+                <div class="stat-sub" style="color:#7c3aed">较昨日 +1</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fff1f2;color:#e11d48">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">异常待处理</div>
+                <div class="stat-val">{{ queue.filter(p=>p.stage==='abnormal').length }}</div>
+                <div class="stat-sub" style="color:#e11d48">较昨日 +2</div>
+              </div>
             </div>
           </div>
 
+          <!-- 筛选条件 -->
+          <div class="q-filter-bar">
+            <div class="q-filter-title">筛选条件</div>
+            <div class="q-filter-row">
+              <div class="q-filter-item">
+                <label>姓名/手机号</label>
+                <input class="q-filter-input" v-model="qSearch" placeholder="请输入姓名或手机号" />
+              </div>
+              <div class="q-filter-item">
+                <label>患者来源</label>
+                <select class="q-filter-select" v-model="qSource">
+                  <option value="">全部</option>
+                  <option>门诊</option>
+                  <option>体检中心</option>
+                  <option>社区</option>
+                  <option>药店</option>
+                </select>
+              </div>
+              <div class="q-filter-item">
+                <label>结节类型</label>
+                <select class="q-filter-select" v-model="qNodule">
+                  <option value="">全部</option>
+                  <option>乳腺结节</option>
+                  <option>肺部结节</option>
+                  <option>甲状腺结节</option>
+                  <option>乳腺+肺部结节</option>
+                  <option>乳腺+甲状腺结节</option>
+                  <option>肺部+甲状腺结节</option>
+                  <option>三合并结节</option>
+                </select>
+              </div>
+              <div class="q-filter-item">
+                <label>风险等级</label>
+                <select class="q-filter-select" v-model="qRisk">
+                  <option value="">全部</option>
+                  <option>高风险</option>
+                  <option>中风险</option>
+                  <option>低风险</option>
+                </select>
+              </div>
+              <div class="q-filter-item">
+                <label>当前状态</label>
+                <select class="q-filter-select" v-model="qStatus">
+                  <option value="">全部</option>
+                  <option value="gen">建立档案</option>
+                  <option value="review">待医生复核</option>
+                  <option value="plan">随访计划制定</option>
+                  <option value="follow">AI随访中</option>
+                  <option value="push">待推送</option>
+                  <option value="abnormal">异常待处理</option>
+                </select>
+              </div>
+              <div class="q-filter-actions">
+                <button class="btn" type="button" @click="qSearch='';qSource='';qNodule='';qRisk='';qStatus=''">重置</button>
+                <button class="primary" type="button">查询</button>
+                <button class="primary" type="button" @click="goRecord">+ 新建档案</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 表格 -->
+          <div class="q-table-head-row">
+            <span class="muted">患者列表 共 {{ queueFiltered.length }} 条</span>
+          </div>
           <div class="q-table-wrap">
             <table class="q-table">
               <thead>
                 <tr>
-                  <th style="width:88px">姓名</th>
-                  <th style="width:92px">性别/年龄</th>
-                  <th style="width:122px">手机</th>
-                  <th style="width:72px">来源</th>
-                  <th>结节类型</th>
-                  <th style="width:76px">风险</th>
-                  <th style="width:168px">当前阶段</th>
-                  
+                  <th style="width:90px">患者姓名</th>
+                  <th style="width:130px">性别/年龄/手机号</th>
+                  <th style="width:160px">结节类型</th>
+                  <th style="width:72px">风险等级</th>
+                  <th style="width:100px">当前状态</th>
+                  <th style="width:96px">下次随访</th>
+                  <th style="width:72px">负责人</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="p in filteredQueue"
+                  v-for="p in queueFiltered"
                   :key="p.id"
                   class="q-row"
                   :class="{ active: p.id === activePatientId }"
                   @click="activePatientId = p.id"
                 >
                   <td><b>{{ p.name }}</b></td>
-                  <td class="muted">{{ p.gender }} · {{ p.age }}岁</td>
-                  <td class="muted">{{ p.phoneMasked }}</td>
-                  <td class="muted">{{ sourceLabel(p.source) }}</td>
-                  <td class="truncate">{{ p.nodules }}</td>
+                  <td class="muted" style="font-size:11px">{{ p.gender }} / {{ p.age }}岁 / {{ p.phoneMasked }}</td>
+                  <td>
+                    <div style="display:flex;gap:3px;flex-wrap:wrap">
+                      <span v-for="tag in noduleTags(p)" :key="tag.label" class="nodule-tag" :data-type="tag.type">{{ tag.label }}</span>
+                    </div>
+                  </td>
                   <td><span class="pill" :data-tone="p.riskTone">{{ p.risk }}</span></td>
-                  <td><span class="tag2">{{ statusLabel(p) }}</span></td>
-                  
+                  <td><span class="status-tag" :data-s="statusKey(p)">{{ statusLabel(p) }}</span></td>
+                  <td class="muted" style="font-size:11px">{{ p.nextVisit || '—' }}</td>
+                  <td class="muted">{{ p.owner }}</td>
+                  <td>
+                    <div style="display:flex;gap:8px">
+                      <button class="tbl-act" type="button" @click.stop="activePatientId=p.id">查看</button>
+                      <button class="tbl-act" type="button" @click.stop="setSubTab('follow')">随访</button>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div class="pager">
-            <span class="muted">共 1,236 条</span>
+            <span class="muted">共 {{ queueFiltered.length }} 条</span>
             <div class="pages">
               <button class="page-btn" type="button">‹</button>
               <button class="page-btn active" type="button">1</button>
               <button class="page-btn" type="button">2</button>
-              <button class="page-btn" type="button">3</button>
-              <span class="muted">…</span>
-              <button class="page-btn" type="button">124</button>
               <button class="page-btn" type="button">›</button>
             </div>
             <div class="muted">10 条/页</div>
@@ -158,9 +282,370 @@
         </aside>
       </div>
 
-      <!-- record tab：嵌入建档表单 -->
+      <!-- record tab：患者建档（表单） -->
       <div v-else-if="subTab === 'record'" class="pm-record">
         <RecordView :embedded="true" @back="backToQueue" />
+      </div>
+
+      <!-- followup-plan tab：随访计划制定（展示计划内容） -->
+      <div v-else-if="subTab === 'followup-plan'" class="plan-page">
+        <!-- 顶部筛选条 -->
+        <section class="card plan-filter">
+          <div class="pad pad-lg plan-filter-row">
+            <label class="pf" style="min-width:220px">
+              <span class="k">患者检索</span>
+              <input class="pf-in" v-model="taskFilters.q" placeholder="姓名 / 手机号" />
+            </label>
+            <label class="pf">
+              <span class="k">风险等级</span>
+              <select class="pf-in" v-model="taskFilters.risk">
+                <option value="">全部</option>
+                <option value="高风险">高风险</option>
+                <option value="中风险">中风险</option>
+                <option value="低风险">低风险</option>
+              </select>
+            </label>
+            <label class="pf">
+              <span class="k">触达方式</span>
+              <select class="pf-in" v-model="taskFilters.channel">
+                <option value="">全部</option>
+                <option value="企微">企微</option>
+                <option value="电话">电话</option>
+                <option value="小程序">小程序</option>
+                <option value="企微/电话/小程序">企微/电话/小程序</option>
+              </select>
+            </label>
+            <label class="pf">
+              <span class="k">负责人</span>
+              <input class="pf-in" v-model="taskFilters.owner" placeholder="例如：张医生/运营A" />
+            </label>
+            <div class="plan-filter-actions">
+              <button class="btn-link-lite" type="button" @click="resetTaskFilters">重置</button>
+              <button class="primary" type="button" @click="openNewTaskFromActive">新建随访任务</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="plan-workbench">
+          <!-- 左：任务列表 -->
+          <section class="card plan-task-list">
+            <div class="card-head one-line">
+              <div class="card-title" style="display:flex;align-items:center;gap:10px;min-width:0">
+                <span>工作台列表</span>
+                <span class="muted" style="font-size:12px;font-weight:700">· 患者 {{ filteredPlanPatients.length }} · 任务 {{ filteredTasks.length }}</span>
+              </div>
+              <div class="panel-tools">
+                <div class="seg-tabs">
+                  <button class="seg-tab" type="button" :data-on="planLeftMode==='patients'" @click="planLeftMode='patients'">患者</button>
+                  <button class="seg-tab" type="button" :data-on="planLeftMode==='tasks'" @click="planLeftMode='tasks'">任务</button>
+                </div>
+                <template v-if="planLeftMode==='tasks'">
+                  <button class="btn-link-lite" type="button" @click="toggleAllTaskSelection">{{ allTasksSelected ? '取消全选' : '全选' }}</button>
+                  <button class="btn-link-lite" type="button" @click="bulkAssignSelected">批量分派</button>
+                </template>
+              </div>
+            </div>
+            <div class="pad pad-lg" style="padding-bottom:0">
+              <div class="muted" style="font-size:12px">先在“患者”里选择并制定任务，再在“任务”里批量分派与执行闭环。</div>
+            </div>
+            <div v-if="planLeftMode==='patients'" class="pat-table">
+              <div class="pat-head">
+                <div>患者</div>
+                <div>结节类型</div>
+                <div>风险</div>
+                <div>负责人</div>
+                <div style="text-align:right">操作</div>
+              </div>
+              <div class="pat-rows">
+                <div v-for="p in filteredPlanPatients" :key="p.id" class="pat-row" :data-active="p.id===activePatientId">
+                  <button type="button" class="pat-main" @click="activePatientId=p.id">
+                    <div class="pat-name"><b>{{ p.name }}</b></div>
+                    <div class="muted" style="font-size:12px">{{ p.gender }}·{{ p.age }}岁 · {{ p.phoneMasked }}</div>
+                  </button>
+                  <div class="pat-cell">{{ p.nodules }}</div>
+                  <div class="pat-cell"><span class="pill mini" :data-tone="p.riskTone">{{ p.risk }}</span></div>
+                  <div class="pat-cell">{{ p.owner || '未分派' }}</div>
+                  <div class="pat-cell" style="text-align:right">
+                    <button class="kb-act" type="button" @click="createTaskForPatient(p)">制定任务</button>
+                  </div>
+                </div>
+                <div v-if="!filteredPlanPatients.length" class="muted" style="font-size:12px;padding:10px 12px">暂无匹配患者</div>
+              </div>
+            </div>
+
+            <div v-else class="task-rows">
+              <button
+                v-for="t in filteredTasks"
+                :key="t.id"
+                type="button"
+                class="task-row"
+                :class="{ active: t.id === activeTaskId }"
+                @click="selectTask(t.id)"
+              >
+                <div class="tr-top">
+                  <b style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.patientName }}</b>
+                  <span class="pill mini" :data-tone="t.riskTone">{{ t.risk }}</span>
+                </div>
+                <div class="tr-sub muted">{{ t.gender }}·{{ t.age }}岁 · {{ t.phoneMasked }}</div>
+                <div class="tr-meta">
+                  <span class="tag2">{{ taskStatusLabel(t.status) }}</span>
+                  <span class="muted" style="font-size:12px">{{ t.channel }}</span>
+                  <span class="muted" style="font-size:12px">· {{ t.owner || '未分派' }}</span>
+                </div>
+                <div class="tr-ck">
+                  <input type="checkbox" :checked="selectedTaskIds.has(t.id)" @click.stop @change="toggleTaskSelection(t.id, $event.target.checked)" />
+                </div>
+              </button>
+              <div v-if="!filteredTasks.length" class="muted" style="font-size:12px;padding:10px 12px">暂无任务，可先在“患者”中制定任务。</div>
+            </div>
+            <div class="pager" style="margin-top:10px">
+              <div class="muted" style="font-size:12px">分页（示意）</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn-link-lite" type="button">上一页</button>
+                <span class="muted" style="font-size:12px">1 / 1</span>
+                <button class="btn-link-lite" type="button">下一页</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 右：任务详情 -->
+          <section class="card plan-task-detail">
+            <div class="card-head one-line">
+              <div class="card-title">随访任务详情</div>
+              <div class="panel-tools">
+                <select class="stage-select" v-model="planDay" :disabled="planState.loading || !!planState.error">
+                  <option v-for="d in planDayList" :key="d" :value="d">Day {{ d.replace('day','') }}</option>
+                </select>
+                <button class="btn-link-lite" type="button" @click="loadPlan">刷新计划</button>
+              </div>
+            </div>
+
+            <div class="pad pad-lg">
+              <div v-if="!activeTask" class="muted">请选择左侧一条随访任务。</div>
+              <template v-else>
+                <div class="detail-grid">
+                  <section class="detail-card">
+                    <div class="detail-top">
+                      <div class="detail-top-main">
+                        <div class="detail-top-title">
+                          <b>{{ activeTask.patientName }}</b>
+                          <span class="muted">（{{ activeTask.gender }}·{{ activeTask.age }}岁）</span>
+                          <span class="pill mini" :data-tone="activeTask.riskTone" style="margin-left:8px">{{ activeTask.risk }}</span>
+                        </div>
+                        <div class="detail-top-sub muted">{{ activeTask.phoneMasked }} · {{ activeTask.owner || '未分派' }} · {{ activeTask.channel }}</div>
+                      </div>
+                      <div class="detail-top-actions">
+                        <button class="btn-link-lite" type="button" @click="bulkAssignSelected">分派</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="detail-card">
+                    <div class="detail-title">随访任务制定</div>
+                    <div class="detail-sub muted">{{ planState.title || '随访计划模板' }} · Day {{ planDay.replace('day','') }}</div>
+
+                    <div class="plan-form" style="margin-bottom:0">
+                      <div class="plan-flow-title" style="margin-bottom:8px">表单 / 知识库</div>
+                      <div class="pf-grid" style="grid-template-columns:1fr 1fr 1fr">
+                        <label class="pf">
+                          <span class="k">复查周期</span>
+                          <select class="pf-in" v-model="draft.cycle">
+                            <option value="3个月">3个月</option>
+                            <option value="6个月">6个月</option>
+                            <option value="12个月">12个月</option>
+                          </select>
+                        </label>
+                        <label class="pf">
+                          <span class="k">触达方式</span>
+                          <select class="pf-in" v-model="draft.channel">
+                            <option value="企微">企微</option>
+                            <option value="电话">电话</option>
+                            <option value="小程序">小程序</option>
+                            <option value="企微/电话/小程序">企微/电话/小程序</option>
+                          </select>
+                        </label>
+                        <label class="pf">
+                          <span class="k">提醒策略</span>
+                          <select class="pf-in" v-model="draft.reminder">
+                            <option value="到期前3天提醒">到期前3天提醒</option>
+                            <option value="到期前7天提醒">到期前7天提醒</option>
+                            <option value="逾期转人工">逾期转人工</option>
+                            <option value="异常优先转医生">异常优先转医生</option>
+                          </select>
+                        </label>
+
+                        <div class="pf" style="grid-column:1/-1">
+                          <div class="kb-head">
+                            <div>
+                              <div class="k">内容库（仅选用）</div>
+                              <div class="muted" style="font-size:12px;margin-top:4px">按分组选择条目；正文预览在右侧抽屉。修改/导入在“管理知识库”。</div>
+                            </div>
+                            <div class="kb-head-actions">
+                              <button class="btn-link-lite" type="button" @click="kbUi.managerOpen = true">管理知识库</button>
+                            </div>
+                          </div>
+
+                          <div class="kb-groups">
+                            <button v-for="g in KB_GROUPS" :key="g.key" type="button" class="kb-group" @click="openKbDrawer(g.key)">
+                              <div class="kb-group-title">{{ g.label }}</div>
+                              <div class="kb-group-sub muted">已选 {{ (kbSelectedByGroup[g.key] || []).length }} 项</div>
+                              <div class="kb-group-tags">
+                                <span v-for="it in (kbSelectedByGroup[g.key] || []).slice(0, 3)" :key="it.key" class="kb-tag">{{ it.label }}</span>
+                                <span v-if="(kbSelectedByGroup[g.key] || []).length > 3" class="kb-tag muted">+{{ (kbSelectedByGroup[g.key] || []).length - 3 }}</span>
+                              </div>
+                            </button>
+                          </div>
+
+                          <div class="kb-picked muted" style="font-size:12px">
+                            已选：<span v-if="kbSelected.length">{{ kbSelected.map(x=>x.label).slice(0, 8).join('、') }}<span v-if="kbSelected.length>8"> 等{{ kbSelected.length }}项</span></span>
+                            <span v-else>暂无</span>
+                          </div>
+                        </div>
+
+                        <label class="pf" style="grid-column:1/-1">
+                          <span class="k">备注</span>
+                          <textarea class="pf-in" v-model="draft.note" style="height:76px;padding:10px;resize:vertical"></textarea>
+                        </label>
+                      </div>
+                      <div class="plan-flow-actions" style="justify-content:flex-start;margin-top:10px">
+                        <button class="primary" type="button" @click="applyDraftToPlan">生成并保存任务</button>
+                        <button class="btn-link-lite" type="button" @click="savePlanForActive">保存计划</button>
+                        <button class="btn-link-lite" type="button" @click="startAiFollowup">开启 AI 随访</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="detail-card">
+                    <div class="detail-title">执行记录</div>
+                    <div class="exec-list">
+                      <div v-for="(e, idx) in activeTask.logs" :key="idx" class="exec-row">
+                        <div class="exec-at">{{ e.at }}</div>
+                        <div class="exec-main">
+                          <div class="exec-line"><b>{{ e.by }}</b> · {{ e.action }}</div>
+                          <div class="muted" style="white-space:pre-wrap">{{ e.note }}</div>
+                        </div>
+                      </div>
+                      <div v-if="!activeTask.logs?.length" class="muted" style="font-size:12px">暂无执行记录</div>
+                    </div>
+                  </section>
+                </div>
+
+                <!-- 内容库抽屉：选择 + 预览 -->
+                <div v-if="kbUi.drawerOpen" class="kb-drawer" role="dialog" aria-modal="true">
+                  <div class="kb-drawer-card">
+                    <div class="kb-drawer-head">
+                      <div class="kb-drawer-title">选择内容 · {{ (KB_GROUPS.find(x=>x.key===kbUi.drawerGroup)?.label) || '内容库' }}</div>
+                      <button class="kb-x" type="button" @click="kbUi.drawerOpen=false">×</button>
+                    </div>
+                    <div class="kb-drawer-body">
+                      <div class="kb-drawer-left">
+                        <div class="kb-drawer-search">
+                          <input class="pf-in" v-model="kbUi.drawerQuery" placeholder="搜索条目标题" />
+                        </div>
+                        <div class="kb-drawer-list">
+                          <button
+                            v-for="it in kbDrawerItems"
+                            :key="it.key"
+                            type="button"
+                            class="kb-li"
+                            :data-on="kbUi.drawerActiveKey===it.key"
+                            @click="kbUi.drawerActiveKey=it.key"
+                          >
+                            <label class="kb-li-ck" @click.stop>
+                              <input
+                                type="checkbox"
+                                :checked="it.enabled"
+                                @change="it.isCustom ? setCustomEnabled(it.key, $event.target.checked) : setKbEnabled(it.key, $event.target.checked)"
+                              />
+                            </label>
+                            <div class="kb-li-main">
+                              <div class="kb-li-title">{{ it.label }}</div>
+                              <div class="kb-li-sub muted">{{ it.isCustom ? '自定义条目' : '模板条目' }}</div>
+                            </div>
+                          </button>
+                          <div v-if="!kbDrawerItems.length" class="muted" style="font-size:12px;padding:10px 12px">无匹配条目</div>
+                        </div>
+                      </div>
+                      <div class="kb-drawer-right">
+                        <div class="kb-prev-head">
+                          <div class="kb-prev-title">{{ kbDrawerActive?.label || '—' }}</div>
+                          <div class="kb-prev-actions">
+                            <button class="btn-link-lite" type="button" @click="kbUi.managerOpen=true">管理知识库</button>
+                            <button class="btn-link-lite" type="button" @click="openKbEditor({ key: kbDrawerActive?.key, label: kbDrawerActive?.label, text: kbDrawerActive?.isCustom ? kbDrawerActive?.text : getKbText(kbDrawerActive?.key) })">编辑此条</button>
+                          </div>
+                        </div>
+                        <div class="kb-prev-body">{{ kbDrawerActive ? (kbDrawerActive.isCustom ? (kbDrawerActive.text || '—') : (getKbText(kbDrawerActive.key) || '—')) : '—' }}</div>
+                      </div>
+                    </div>
+                    <div class="kb-drawer-actions">
+                      <button class="btn-link-lite" type="button" @click="kbUi.drawerOpen=false">完成</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 知识库管理（独立弹窗） -->
+                <div v-if="kbUi.managerOpen" class="kb-modal" role="dialog" aria-modal="true">
+                  <div class="kb-modal-card">
+                    <div class="kb-modal-head">
+                      <div class="kb-modal-title">知识库管理</div>
+                      <button class="kb-x" type="button" @click="kbUi.managerOpen=false">×</button>
+                    </div>
+                    <div class="kb-modal-body">
+                      <div class="kb-toolbar">
+                        <button class="btn-link-lite" type="button" @click="openKbEditor({ key: (kbItems.find(x=>!x.isCustom)?.key || 'knowledgeCard') })">修改模板</button>
+                        <button class="btn-link-lite" type="button" @click="openKbEditor({})">添加条目</button>
+                        <button class="btn-link-lite" type="button" @click="kbUploadInputRef?.click()">上传</button>
+                        <button class="btn-link-lite" type="button" @click="kbImportInputRef?.click()">导入(JSON)</button>
+                      </div>
+
+                      <div class="kb-list" role="list" style="margin-top:10px">
+                        <div v-for="it in kbItems" :key="it.key" class="kb-row" role="listitem">
+                          <div class="kb-ck" style="cursor:default">
+                            <span class="kb-name">{{ it.label }}</span>
+                            <span class="muted" style="font-size:12px">{{ it.isCustom ? '自定义' : '模板' }}</span>
+                          </div>
+                          <div class="kb-actions">
+                            <button class="kb-act" type="button" @click="openKbEditor({ key: it.key, label: it.label, text: it.isCustom ? it.text : getKbText(it.key) })">编辑</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="kb-modal-actions">
+                      <button class="btn-link-lite" type="button" @click="kbUi.managerOpen=false">关闭</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 条目编辑器（复用） -->
+                <div v-if="kbUi.editorOpen" class="kb-modal" role="dialog" aria-modal="true">
+                  <div class="kb-modal-card">
+                    <div class="kb-modal-head">
+                      <div class="kb-modal-title">知识库条目{{ kbUi.editorKey ? '修改' : '添加' }}</div>
+                      <button class="kb-x" type="button" @click="kbUi.editorOpen=false">×</button>
+                    </div>
+                    <div class="kb-modal-body">
+                      <label class="pf" style="gap:6px">
+                        <span class="k">标题</span>
+                        <input class="pf-in" v-model="kbUi.editorLabel" placeholder="例如：复查提醒 / 护理要点" />
+                      </label>
+                      <label class="pf" style="gap:6px;margin-top:10px">
+                        <span class="k">内容</span>
+                        <textarea class="pf-in" v-model="kbUi.editorText" style="height:180px;padding:10px;resize:vertical" placeholder="输入条目正文（支持换行）"></textarea>
+                      </label>
+                    </div>
+                    <div class="kb-modal-actions">
+                      <button class="btn-link-lite" type="button" @click="kbUi.editorOpen=false">取消</button>
+                      <button class="primary" type="button" @click="saveKbEditor">保存</button>
+                    </div>
+                  </div>
+                </div>
+
+                <input ref="kbImportInputRef" class="kb-file" type="file" accept="application/json" @change="onKbImport($event)" />
+                <input ref="kbUploadInputRef" class="kb-file" type="file" accept=".xlsx,.xls" @change="onKbUpload($event)" />
+              </template>
+            </div>
+          </section>
+        </div>
       </div>
 
       <!-- follow tab：患者随访聊天记录查看（三栏：患者列表 | 手机聊天 | 助手面板） -->
@@ -250,7 +735,7 @@
                 </div>
                 <div class="screen-chat-lg">
                   <div class="screen-date-divider">今天</div>
-                  <template v-for="(msg, i) in currentAssistantChat" :key="i">
+                  <template v-for="(msg, i) in simulatedAssistantChat" :key="i">
                     <div v-if="msg.from === 'ai'" class="sc-msg ai">
                       <div class="sc-avatar" :style="{ background: currentAssistant?.bg, color: currentAssistant?.color }">{{ currentAssistant?.ico }}</div>
                       <div class="sc-bubble ai-bubble">{{ msg.text }}</div>
@@ -322,6 +807,29 @@
                   </button>
                 </div>
               </div>
+
+              <div class="assist-plan-zone" ref="assistPlanZoneRef">
+                <div class="assist-selector-title" style="margin-top:12px">
+                  今日随访内容 <span class="muted" style="font-weight:400">· Day {{ planDay.replace('day','') }}</span>
+                </div>
+                <div v-if="planState.loading" class="muted" style="padding:8px 0">计划加载中…</div>
+                <div v-else-if="planState.error" class="muted" style="padding:8px 0">{{ planState.error }}</div>
+                <div v-else class="assist-plan-list">
+                  <details v-for="p in orderedAssistantPlanPanels" :key="p.key" class="assist-plan" :open="p.key === activeAssistant">
+                    <summary class="assist-plan-sum">
+                      <span class="assist-plan-ico" :style="{ background: p.bg, color: p.color }">{{ p.ico }}</span>
+                      <span class="assist-plan-name">{{ p.name }}</span>
+                      <span class="assist-plan-mini muted">{{ p.summary || '点击展开查看' }}</span>
+                    </summary>
+                    <div class="assist-plan-body">
+                      <div v-for="(s, idx) in p.sections" :key="idx" class="assist-plan-sec">
+                        <div class="assist-plan-sec-h">{{ s.h }}</div>
+                        <div class="assist-plan-sec-p">{{ s.p }}</div>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -367,25 +875,9 @@
                 <option>低风险</option>
               </select>
             </div>
-            <div class="rp-filter-item">
-              <div class="rp-filter-label">处理状态</div>
-              <select class="rp-filter-select" v-model="rpStatus">
-                <option value="">待处理等 6 种</option>
-                <option>待处理</option>
-                <option>AI解析中</option>
-                <option>待生成报告</option>
-                <option>待医生复核</option>
-                <option>已完成</option>
-                <option>异常报告</option>
-              </select>
-            </div>
             <div class="rp-filter-actions">
-              <button class="btn" type="button" @click="rpSearch='';rpSource='';rpNodule='';rpRisk='';rpStatus=''">重置</button>
+              <button class="btn" type="button" @click="rpSearch='';rpSource='';rpNodule='';rpRisk=''">重置</button>
               <button class="primary" type="button">查询</button>
-              <button class="primary" type="button" style="display:flex;align-items:center;gap:5px">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                上传报告
-              </button>
             </div>
           </div>
         </div>
@@ -408,8 +900,6 @@
                 <thead>
                   <tr>
                     <th style="width:80px">患者</th>
-                    <th style="width:60px">来源</th>
-                    <th style="width:72px">报告类型</th>
                     <th style="width:88px">结节类型</th>
                     <th style="width:110px">上传时间</th>
                     <th style="width:80px">AI解析</th>
@@ -424,8 +914,6 @@
                       <div style="font-weight:700;font-size:13px">{{ r.name }}</div>
                       <div class="muted" style="font-size:11px">{{ r.gender }}/{{ r.age }}岁 · {{ r.phone }}</div>
                     </td>
-                    <td class="muted">{{ r.source }}</td>
-                    <td class="muted">{{ r.reportType }}</td>
                     <td><span class="nodule-tag" :data-type="r.noduleKey">{{ r.nodules }}</span></td>
                     <td class="muted" style="font-size:11px">{{ r.uploadAt }}</td>
                     <td><span class="rp-status-tag" :data-s="r.aiStatus">{{ r.aiStatus }}</span></td>
@@ -433,9 +921,8 @@
                     <td class="muted">{{ r.owner }}</td>
                     <td>
                       <div style="display:flex;gap:4px">
-                        <button class="mini-link" type="button">查看</button>
-                        <button class="mini-link" type="button">处理</button>
-                        <button class="mini-link" type="button">复核</button>
+                        <button class="mini-link" type="button" @click.stop="finalizeReport(r.id)" :disabled="rpFinalizing || r.reportStatus === '已完成'">{{ r.reportStatus === '已完成' ? '已审核' : '审核通过' }}</button>
+                        <button class="mini-link" type="button" @click.stop="viewReport(r.id)">查看</button>
                       </div>
                     </td>
                   </tr>
@@ -499,9 +986,10 @@
               <section class="card">
                 <div class="card-head"><div class="card-title">快捷操作</div></div>
                 <div class="rp-actions">
-                  <button class="primary" type="button">处理报告</button>
-                  <button class="btn" type="button">发起患者</button>
-                  <button class="btn" type="button">推送患者</button>
+                  <button class="primary" type="button" @click="finalizeReport(rpActive.id)" :disabled="rpFinalizing || rpActive.reportStatus === '已完成'">
+                    {{ rpFinalizing ? '处理中...' : rpActive.reportStatus === '已完成' ? '已审核通过' : '审核通过' }}
+                  </button>
+                  <button class="btn" type="button" @click="viewReport(rpActive.id)">查看报告</button>
                   <button class="btn" type="button">创建随访任务</button>
                 </div>
               </section>
@@ -705,17 +1193,68 @@
           </template>
         </aside>
       </div>
+
     </section>
+  </div>
+
+  <!-- 报告查看弹窗 -->
+  <div v-if="rpViewVisible" class="rp-modal-mask" @click.self="rpViewVisible=false">
+    <div class="rp-modal">
+      <div class="rp-modal-head">
+        <div class="rp-modal-title">健康管理报告</div>
+        <button class="rp-modal-close" type="button" @click="rpViewVisible=false">✕</button>
+      </div>
+      <div class="rp-modal-body" v-html="rpViewHtml"></div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import RecordView from './RecordView.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+// 当前子页（必须在 watch 之前声明，避免 immediate 回调引用未初始化变量）
+const subTab = ref('queue')
+
+// 子页定义（URL query.tab -> subTab）
+const subTabs = [
+  { key: 'queue', label: '患者队列' },
+  { key: 'record', label: '档案与报告' },
+  { key: 'review', label: '健康报告审核' },
+  { key: 'followup-plan', label: '随访计划' },
+  { key: 'follow', label: 'AI助手随访' },
+  { key: 'abnormal', label: '异常与复查' }
+]
+const allowedSubTabs = new Set(subTabs.map((t) => t.key))
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    const key = typeof tab === 'string' ? tab : ''
+    if (allowedSubTabs.has(key)) subTab.value = key
+    else subTab.value = 'queue'
+  },
+  { immediate: true }
+)
+
+/**
+ * @isdoc
+ * @description 统一切换患者管理子页（写入 URL，并立即更新本地 subTab）
+ * @param {string} key
+ * @returns {void}
+ */
+function setSubTab(key) {
+  const k = String(key || '').trim()
+  if (!allowedSubTabs.has(k)) return
+  subTab.value = k
+  if (route.name !== 'patient') return
+  if (route.query.tab === k) return
+  router.replace({ query: { ...route.query, tab: k } })
+}
 
 const activeStage = ref('all')
 const activePatientId = ref('p1')
@@ -723,10 +1262,886 @@ const followPatientId = ref('p1')
 const followSearch = ref('')
 const followRiskFilter = ref('')
 const followStageFilter = ref('')
-const subTab = ref('queue')
 const showAllTimeline = ref(false)
 const reviewReject = ref(false)
 const activeAssistant = ref('hlp')
+const assistPlanZoneRef = ref(null)
+
+const planState = ref({
+  loading: true,
+  error: '',
+  title: '',
+  sourceFile: '',
+  days: {}
+})
+const planDay = ref('day1')
+
+// 患者队列（必须提前声明，避免 watcher immediate 引用 TDZ）
+const queue = ref([])
+
+// 随访任务工作台（筛选 + 列表 + 详情）
+const taskFilters = ref({
+  q: '',
+  risk: '',
+  channel: '',
+  owner: '',
+})
+
+const planLeftMode = ref('patients') // patients | tasks
+
+const followTasks = ref([])
+const activeTaskId = ref('')
+const selectedTaskIds = ref(new Set())
+
+const activeTask = computed(() => (followTasks.value || []).find((t) => t.id === activeTaskId.value) || null)
+
+const filteredTasks = computed(() => {
+  const q = String(taskFilters.value.q || '').trim()
+  const risk = String(taskFilters.value.risk || '')
+  const channel = String(taskFilters.value.channel || '')
+  const owner = String(taskFilters.value.owner || '').trim()
+
+  return (followTasks.value || []).filter((t) => {
+    if (q) {
+      const hay = `${t.patientName} ${t.phoneMasked}`.toLowerCase()
+      if (!hay.includes(q.toLowerCase())) return false
+    }
+    if (risk && t.risk !== risk) return false
+    if (channel && t.channel !== channel) return false
+    if (owner && !String(t.owner || '').includes(owner)) return false
+    return true
+  })
+})
+
+const filteredPlanPatients = computed(() => {
+  const q = String(taskFilters.value.q || '').trim()
+  const risk = String(taskFilters.value.risk || '')
+  const owner = String(taskFilters.value.owner || '').trim()
+  return (planPatients.value || []).filter((p) => {
+    if (q) {
+      const hay = `${p.name} ${p.phoneMasked}`.toLowerCase()
+      if (!hay.includes(q.toLowerCase())) return false
+    }
+    if (risk && p.risk !== risk) return false
+    if (owner && !String(p.owner || '').includes(owner)) return false
+    return true
+  })
+})
+
+watch(
+  () => (followTasks.value || []).length,
+  (n) => {
+    if (n > 0 && planLeftMode.value === 'patients') planLeftMode.value = 'tasks'
+  }
+)
+
+const allTasksSelected = computed(() => {
+  const list = filteredTasks.value || []
+  if (!list.length) return false
+  return list.every((t) => selectedTaskIds.value.has(t.id))
+})
+
+// 初始：把“已存在 planTask 的患者”放进任务队列（示意）
+watch(
+  () => subTab.value,
+  (k) => {
+    if (k !== 'followup-plan') return
+    if ((followTasks.value || []).length) return
+    const seeded = (queue.value || [])
+      .filter((p) => p?.planTask)
+      .slice(0, 8)
+      .map((p) => makeTaskFromPatient(p))
+    followTasks.value = seeded
+    if (seeded[0]) selectTask(seeded[0].id)
+  },
+  { immediate: true }
+)
+
+/**
+ * @isdoc
+ * @description 加载随访计划（从 public/plans 读取 JSON）
+ * @returns {Promise<void>}
+ */
+async function loadPlan() {
+  planState.value.loading = true
+  planState.value.error = ''
+  try {
+    const res = await fetch('/plans/thyroid-lung-psych.json', { cache: 'no-cache' })
+    if (!res.ok) throw new Error(`加载计划失败：${res.status}`)
+    const data = await res.json()
+    planState.value = {
+      loading: false,
+      error: '',
+      title: data?.title ?? '',
+      sourceFile: data?.sourceFile ?? '',
+      days: data?.days ?? {}
+    }
+    if (!planState.value.days?.[planDay.value]) {
+      const first = Object.keys(planState.value.days ?? {})[0]
+      if (first) planDay.value = first
+    }
+  } catch (e) {
+    planState.value.loading = false
+    planState.value.error = e?.message || '加载计划失败'
+  }
+}
+
+/**
+ * @isdoc
+ * @description 重置筛选条件
+ * @returns {void}
+ */
+function resetTaskFilters() {
+  taskFilters.value = { q: '', risk: '', channel: '', owner: '' }
+}
+
+/**
+ * @isdoc
+ * @description 任务状态展示文案
+ * @param {'draft'|'assigned'|'executing'|'review'|'done'} s
+ * @returns {string}
+ */
+function taskStatusLabel(s) {
+  // 状态收敛：仅保留 待分派 / 待执行 / 已完成
+  if (s === 'draft') return '待分派'
+  if (s === 'done') return '已完成'
+  // executing/review/assigned 统一归为“待执行”
+  return '待执行'
+  return '—'
+}
+
+/**
+ * @isdoc
+ * @description 选择任务并联动患者
+ * @param {string} id
+ * @returns {void}
+ */
+function selectTask(id) {
+  activeTaskId.value = id
+  const t = (followTasks.value || []).find((x) => x.id === id)
+  if (t?.patientId) activePatientId.value = t.patientId
+}
+
+/**
+ * @isdoc
+ * @description 勾选任务
+ * @param {string} id
+ * @param {boolean} checked
+ * @returns {void}
+ */
+function toggleTaskSelection(id, checked) {
+  const s = new Set(selectedTaskIds.value)
+  if (checked) s.add(id)
+  else s.delete(id)
+  selectedTaskIds.value = s
+}
+
+/**
+ * @isdoc
+ * @description 全选/取消全选
+ * @returns {void}
+ */
+function toggleAllTaskSelection() {
+  const list = filteredTasks.value || []
+  const s = new Set(selectedTaskIds.value)
+  if (allTasksSelected.value) {
+    list.forEach((t) => s.delete(t.id))
+  } else {
+    list.forEach((t) => s.add(t.id))
+  }
+  selectedTaskIds.value = s
+}
+
+/**
+ * @isdoc
+ * @description 批量分派（示意：使用输入框）
+ * @returns {void}
+ */
+function bulkAssignSelected() {
+  const owner = window.prompt('输入负责人（示例：运营A/张医生）：', taskFilters.value.owner || '') || ''
+  if (!owner.trim()) return
+  const ids = Array.from(selectedTaskIds.value)
+  followTasks.value = (followTasks.value || []).map((t) => {
+    if (!ids.includes(t.id)) return t
+    const next = { ...t, owner, status: t.status === 'draft' ? 'assigned' : t.status }
+    next.logs = Array.isArray(next.logs) ? next.logs : []
+    next.logs.unshift({ at: '现在', by: '系统', action: '批量分派', note: `负责人：${owner}` })
+    return next
+  })
+}
+
+/**
+ * @isdoc
+ * @description 由患者+表单生成一条任务
+ * @param {any} p
+ * @returns {any}
+ */
+function makeTaskFromPatient(p) {
+  const id = `t_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`
+  return {
+    id,
+    patientId: p.id,
+    patientName: p.name,
+    gender: p.gender,
+    age: p.age,
+    phoneMasked: p.phoneMasked,
+    risk: p.risk,
+    riskTone: p.riskTone,
+    owner: p.owner || '',
+    channel: draft.value.channel,
+    cycle: draft.value.cycle,
+    reminder: draft.value.reminder,
+    day: planDay.value,
+    status: p.owner ? 'assigned' : 'draft',
+    kbSnapshot: JSON.parse(JSON.stringify(draft.value.kbEnabled || {})),
+    logs: [{ at: '现在', by: '医生/运营', action: '创建任务', note: `Day ${planDay.value.replace('day', '')} · ${draft.value.channel} · ${draft.value.cycle}` }],
+  }
+}
+
+/**
+ * @isdoc
+ * @description 新建任务入口（基于当前患者）
+ * @returns {void}
+ */
+function openNewTaskFromActive() {
+  if (!activePatient.value) return
+  const t = makeTaskFromPatient(activePatient.value)
+  followTasks.value = [t, ...(followTasks.value || [])]
+  selectTask(t.id)
+}
+
+/**
+ * @isdoc
+ * @description 从患者行创建任务并进入详情
+ * @param {any} p
+ * @returns {void}
+ */
+function createTaskForPatient(p) {
+  if (!p?.id) return
+  activePatientId.value = p.id
+  const t = makeTaskFromPatient(p)
+  followTasks.value = [t, ...(followTasks.value || [])]
+  selectTask(t.id)
+  planLeftMode.value = 'tasks'
+}
+
+/**
+ * @isdoc
+ * @description 任务流程节点（示意）
+ * @param {any} t
+ * @returns {{k:string,label:string,state:'todo'|'doing'|'done'}[]}
+ */
+function taskFlowNodes(t) {
+  const s = t?.status || 'draft'
+  const at = (k) => {
+    if (s === 'draft') return k === 'assign' ? 'doing' : 'todo'
+    if (s === 'assigned') return (k === 'assign' ? 'done' : k === 'execute' ? 'doing' : 'todo')
+    if (s === 'executing') return (k === 'assign' ? 'done' : k === 'execute' ? 'done' : k === 'review' ? 'doing' : 'todo')
+    if (s === 'review') return (k === 'assign' || k === 'execute' ? 'done' : k === 'review' ? 'done' : k === 'done' ? 'doing' : 'todo')
+    if (s === 'done') return (k === 'assign' || k === 'execute' || k === 'review' || k === 'done') ? 'done' : 'todo'
+    return 'todo'
+  }
+  return [
+    { k: 'assign', label: '分派', state: at('assign') },
+    { k: 'execute', label: '执行', state: at('execute') },
+    { k: 'review', label: '复核', state: at('review') },
+    { k: 'done', label: '闭环', state: at('done') },
+  ]
+}
+
+/**
+ * @isdoc
+ * @description 推进任务状态并写入日志
+ * @param {'assign'|'execute'|'review'|'done'} action
+ * @returns {void}
+ */
+function advanceTask(action) {
+  const t = activeTask.value
+  if (!t) return
+  let nextStatus = t.status
+  if (action === 'assign') nextStatus = 'assigned'
+  if (action === 'execute') nextStatus = 'executing'
+  if (action === 'review') nextStatus = 'review'
+  if (action === 'done') nextStatus = 'done'
+
+  const note = window.prompt('补充说明（可选）：', '') || ''
+  followTasks.value = (followTasks.value || []).map((x) => {
+    if (x.id !== t.id) return x
+    const y = { ...x, status: nextStatus }
+    y.logs = Array.isArray(y.logs) ? y.logs : []
+    y.logs.unshift({ at: '现在', by: '操作员', action: `状态变更：${taskStatusLabel(nextStatus)}`, note })
+    return y
+  })
+}
+
+onMounted(() => {
+  loadPlan()
+  loadPatients()
+  loadReports()
+})
+
+const planDayList = computed(() => {
+  const keys = Object.keys(planState.value.days ?? {})
+  return keys.sort((a, b) => Number(a.replace('day', '')) - Number(b.replace('day', '')))
+})
+
+const currentPlanRows = computed(() => planState.value.days?.[planDay.value] ?? [])
+
+function pickFirst(prefix) {
+  const hit = currentPlanRows.value.find((r) => {
+    const s = String(r?.summary ?? '').trim()
+    return s === prefix || s.includes(prefix)
+  })
+  if (!hit) return ''
+  const s = String(hit.summary ?? '').trim()
+  const r = String(hit.remind ?? '').trim()
+  // 这类行通常 summary 只是“运动/心理”，正文在 remind
+  const text = (s === prefix || s.length <= 3) ? r : (r ? `${s}\n${r}` : s)
+  // 取首段作为“要点”
+  return text.split('\n').map((x) => x.trim()).filter(Boolean)[0] || text
+}
+
+const planQuick = computed(() => {
+  const sport = pickFirst('运动')
+  const psych = pickFirst('心理')
+  return { sport, psych }
+})
+
+const KB_DEFAULT_ITEMS = [
+  { key: 'breakfast', label: '早餐建议' },
+  { key: 'lunch', label: '午餐建议' },
+  { key: 'dinner', label: '晚餐建议' },
+  { key: 'knowledgeCard', label: '知识卡' },
+  { key: 'medication', label: '用药/禁忌提醒' },
+  { key: 'sport', label: '运动处方' },
+  { key: 'psych', label: '心理干预' },
+  { key: 'questionnaire', label: '随访问卷' },
+  { key: 'reminderScript', label: '提醒话术' },
+  { key: 'escalationRule', label: '异常转人工规则' },
+]
+
+const draft = ref({
+  cycle: '6个月',
+  channel: '企微/电话/小程序',
+  reminder: '到期前3天提醒',
+  kbEnabled: {
+    breakfast: true,
+    lunch: true,
+    dinner: true,
+    knowledgeCard: true,
+    medication: true,
+    sport: true,
+    psych: true,
+    questionnaire: false,
+    reminderScript: true,
+    escalationRule: true,
+  },
+  /** @type {Record<string, string>} */
+  kbOverrides: {},
+  /** @type {{ key: string, label: string, text: string, enabled: boolean }[]} */
+  kbCustom: [],
+  note: ''
+})
+
+const kbUi = ref({
+  editorOpen: false,
+  editorKey: '',
+  editorLabel: '',
+  editorText: '',
+  managerOpen: false,
+  drawerOpen: false,
+  drawerGroup: 'diet',
+  drawerQuery: '',
+  drawerActiveKey: '',
+})
+
+const kbImportInputRef = ref(null)
+const kbUploadInputRef = ref(null)
+
+/**
+ * @isdoc
+ * @description 将表单草稿应用到当前患者计划（保存到内存）
+ * @returns {void}
+ */
+function applyDraftToPlan() {
+  const p = activePatient.value
+  if (!p) return
+  const meals = pickMeals()
+  const knowledge = pickKnowledge()
+  const sport = pickSport()
+  const psych = pickPsych()
+  const cautions = pickCautions()
+  const intro = pickIntro()
+
+  const kbText = (key) => {
+    const ov = String(draft.value.kbOverrides?.[key] || '').trim()
+    if (ov) return ov
+    if (key === 'breakfast') return meals.breakfast || ''
+    if (key === 'lunch') return meals.lunch || ''
+    if (key === 'dinner') return meals.dinner || ''
+    if (key === 'knowledgeCard') return knowledge || ''
+    if (key === 'medication') return cautions || knowledge || ''
+    if (key === 'sport') return sport || ''
+    if (key === 'psych') return psych || ''
+    if (key === 'questionnaire') return [
+      '1）今天是否有持续咳嗽/胸闷/气短？（无/轻/中/重）',
+      '2）是否有吞咽不适/声音嘶哑/颈部压迫感？（无/有）',
+      '3）睡眠与情绪状态如何？（良好/一般/较差）',
+      '4）是否按计划完成运动与饮食？（是/否）',
+    ].join('\n')
+    if (key === 'reminderScript') return [
+      `您好，已为您更新 Day ${planDay.value.replace('day', '')} 随访任务。`,
+      `请按“${draft.value.cycle}复查周期”执行，并完成饮食/运动/心理打卡。`,
+      '如出现持续咳嗽、胸痛、咳血、明显吞咽困难等情况，请及时就医并联系医生。',
+    ].join('\n')
+    if (key === 'escalationRule') return [
+      '异常转人工/医生规则（示意）：',
+      '- 出现咳血/胸痛/呼吸困难/持续发热 → 立即转医生',
+      '- 出现声音嘶哑加重/吞咽困难 → 48小时内转医生评估',
+      '- 连续 3 天未打卡或失联 → 转人工电话随访',
+    ].join('\n')
+    return ''
+  }
+
+  const enabledKeys = Object.entries(draft.value.kbEnabled || {})
+    .filter(([, v]) => !!v)
+    .map(([k]) => k)
+
+  const customEnabled = (draft.value.kbCustom || []).filter((x) => !!x.enabled)
+
+  p.planTask = {
+    day: planDay.value,
+    cycle: draft.value.cycle,
+    channel: draft.value.channel,
+    reminder: draft.value.reminder,
+    kb: {
+      breakfast: enabledKeys.includes('breakfast') ? kbText('breakfast') : null,
+      lunch: enabledKeys.includes('lunch') ? kbText('lunch') : null,
+      dinner: enabledKeys.includes('dinner') ? kbText('dinner') : null,
+      knowledgeCard: enabledKeys.includes('knowledgeCard') ? kbText('knowledgeCard') : null,
+      medication: enabledKeys.includes('medication') ? kbText('medication') : null,
+      sport: enabledKeys.includes('sport') ? kbText('sport') : null,
+      psych: enabledKeys.includes('psych') ? kbText('psych') : null,
+      questionnaire: enabledKeys.includes('questionnaire') ? kbText('questionnaire') : null,
+      reminderScript: enabledKeys.includes('reminderScript') ? kbText('reminderScript') : null,
+      escalationRule: enabledKeys.includes('escalationRule') ? kbText('escalationRule') : null,
+      custom: customEnabled.map((x) => ({ key: x.key, label: x.label, text: String(x.text || '').trim() })),
+      goal: intro || null,
+    },
+    note: draft.value.note
+  }
+  // 也同步写入 plan（用于后续开启 AI随访）
+  savePlanForActive()
+  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
+  p.timeline.push({ at: '现在', tone: 'b', text: `生成随访任务：Day ${planDay.value.replace('day','')}`, meta: '已保存' })
+
+  // 同步生成/更新随访任务队列（工作台左侧列表）
+  const newTask = makeTaskFromPatient(p)
+  followTasks.value = [newTask, ...(followTasks.value || [])]
+  selectTask(newTask.id)
+}
+
+function pickRowLike(q) {
+  const key = String(q || '').trim()
+  if (!key) return null
+  return currentPlanRows.value.find((r) => String(r?.summary ?? '').includes(key)) || null
+}
+
+function pickRowText(q) {
+  const hit = pickRowLike(q)
+  if (!hit) return ''
+  const s = String(hit.summary ?? '').trim()
+  const r = String(hit.remind ?? '').trim()
+  if (r && (s === q || s.length <= 6)) return r
+  return r ? `${s}\n${r}` : s
+}
+
+function pickIntro() {
+  const first = currentPlanRows.value.find((r) => !String(r?.time ?? '').trim()) || currentPlanRows.value[0]
+  const s = String(first?.summary ?? '').trim()
+  const r = String(first?.remind ?? '').trim()
+  return r ? `${s}\n${r}`.trim() : s
+}
+
+function pickMeals() {
+  const breakfast = pickRowText('早餐打卡跟进')
+  const lunch = pickRowText('午餐打卡跟进')
+  const dinner = pickRowText('晚餐打卡跟进')
+  return { breakfast, lunch, dinner }
+}
+
+function pickKnowledge() {
+  // 表里可能是“知识卡”或“DayX 知识卡…”
+  return pickRowText('知识卡')
+}
+
+function pickSport() {
+  return pickRowText('运动')
+}
+
+function pickPsych() {
+  return pickRowText('心理')
+}
+
+function pickCautions() {
+  const t = pickKnowledge()
+  if (!t) return ''
+  const lines = t.split('\n').map((x) => x.trim()).filter(Boolean)
+  const hit = lines.filter((x) => /^注意|^避免|^提示|^推荐|^空腹服药/.test(x)).slice(0, 6)
+  return hit.join('\n') || lines.slice(0, 4).join('\n')
+}
+
+/**
+ * @isdoc
+ * @description 获取知识库条目正文（含覆盖与动态生成）
+ * @param {string} key
+ * @returns {string}
+ */
+function getKbText(key) {
+  const ov = String(draft.value.kbOverrides?.[key] || '').trim()
+  if (ov) return ov
+
+  const meals = pickMeals()
+  const knowledge = pickKnowledge()
+  const sport = pickSport()
+  const psych = pickPsych()
+  const cautions = pickCautions()
+
+  if (key === 'breakfast') return meals.breakfast || ''
+  if (key === 'lunch') return meals.lunch || ''
+  if (key === 'dinner') return meals.dinner || ''
+  if (key === 'knowledgeCard') return knowledge || ''
+  if (key === 'medication') return cautions || knowledge || ''
+  if (key === 'sport') return sport || ''
+  if (key === 'psych') return psych || ''
+  if (key === 'questionnaire') return [
+    '1）今天是否有持续咳嗽/胸闷/气短？（无/轻/中/重）',
+    '2）是否有吞咽不适/声音嘶哑/颈部压迫感？（无/有）',
+    '3）睡眠与情绪状态如何？（良好/一般/较差）',
+    '4）是否按计划完成运动与饮食？（是/否）',
+  ].join('\n')
+  if (key === 'reminderScript') return [
+    `您好，已为您更新 Day ${planDay.value.replace('day', '')} 随访任务。`,
+    `请按“${draft.value.cycle}复查周期”执行，并完成饮食/运动/心理打卡。`,
+    '如出现持续咳嗽、胸痛、咳血、明显吞咽困难等情况，请及时就医并联系医生。',
+  ].join('\n')
+  if (key === 'escalationRule') return [
+    '异常转人工/医生规则（示意）：',
+    '- 出现咳血/胸痛/呼吸困难/持续发热 → 立即转医生',
+    '- 出现声音嘶哑加重/吞咽困难 → 48小时内转医生评估',
+    '- 连续 3 天未打卡或失联 → 转人工电话随访',
+  ].join('\n')
+  return ''
+}
+
+/**
+ * @isdoc
+ * @description 切换知识库条目启用状态
+ * @param {string} key
+ * @param {boolean} val
+ * @returns {void}
+ */
+function setKbEnabled(key, val) {
+  draft.value.kbEnabled = draft.value.kbEnabled || {}
+  draft.value.kbEnabled[key] = !!val
+}
+
+/**
+ * @isdoc
+ * @description 切换自定义条目启用状态
+ * @param {string} key
+ * @param {boolean} val
+ * @returns {void}
+ */
+function setCustomEnabled(key, val) {
+  draft.value.kbCustom = Array.isArray(draft.value.kbCustom) ? draft.value.kbCustom : []
+  const hit = draft.value.kbCustom.find((x) => x.key === key)
+  if (hit) hit.enabled = !!val
+}
+
+/**
+ * @isdoc
+ * @description 打开编辑器（支持新增/修改）
+ * @param {{ key?: string, label?: string, text?: string, isCustom?: boolean }=} opt
+ * @returns {void}
+ */
+function openKbEditor(opt = {}) {
+  const key = String(opt.key || '').trim()
+  const label = String(opt.label || '').trim()
+  kbUi.value.editorOpen = true
+  kbUi.value.editorKey = key
+  kbUi.value.editorLabel = label || (KB_DEFAULT_ITEMS.find((x) => x.key === key)?.label || '自定义条目')
+  kbUi.value.editorText = String(opt.text ?? (key ? getKbText(key) : '')).trim()
+}
+
+/**
+ * @isdoc
+ * @description 保存编辑内容到覆盖/自定义条目
+ * @returns {void}
+ */
+function saveKbEditor() {
+  const key = String(kbUi.value.editorKey || '').trim()
+  const label = String(kbUi.value.editorLabel || '').trim() || '自定义条目'
+  const text = String(kbUi.value.editorText || '').trim()
+
+  if (key && KB_DEFAULT_ITEMS.some((x) => x.key === key)) {
+    draft.value.kbOverrides = draft.value.kbOverrides || {}
+    draft.value.kbOverrides[key] = text
+    setKbEnabled(key, true)
+  } else {
+    const newKey = key || `custom_${Date.now()}`
+    draft.value.kbCustom = Array.isArray(draft.value.kbCustom) ? draft.value.kbCustom : []
+    const idx = draft.value.kbCustom.findIndex((x) => x.key === newKey)
+    const item = { key: newKey, label, text, enabled: true }
+    if (idx >= 0) draft.value.kbCustom.splice(idx, 1, item)
+    else draft.value.kbCustom.unshift(item)
+  }
+
+  kbUi.value.editorOpen = false
+}
+
+const kbItems = computed(() => {
+  const base = KB_DEFAULT_ITEMS.map((x) => ({
+    key: x.key,
+    label: x.label,
+    enabled: !!draft.value.kbEnabled?.[x.key],
+    text: getKbText(x.key),
+    isCustom: false,
+  }))
+  const custom = (draft.value.kbCustom || []).map((x) => ({
+    key: x.key,
+    label: x.label || '自定义条目',
+    enabled: !!x.enabled,
+    text: String(x.text || '').trim(),
+    isCustom: true,
+  }))
+  return [...base, ...custom]
+})
+
+const KB_GROUPS = [
+  { key: 'diet', label: '饮食', items: ['breakfast', 'lunch', 'dinner'] },
+  { key: 'knowledge', label: '知识卡', items: ['knowledgeCard', 'medication'] },
+  { key: 'sport', label: '运动', items: ['sport'] },
+  { key: 'psych', label: '心理', items: ['psych'] },
+  { key: 'ops', label: '运营工具', items: ['questionnaire', 'reminderScript', 'escalationRule'] },
+  { key: 'custom', label: '自定义', items: [] },
+]
+
+const kbSelected = computed(() => kbItems.value.filter((x) => x.enabled))
+
+const kbSelectedByGroup = computed(() => {
+  const map = {}
+  for (const g of KB_GROUPS) map[g.key] = []
+  kbSelected.value.forEach((it) => {
+    const baseKey = it.isCustom ? 'custom' : (KB_GROUPS.find((g) => g.items.includes(it.key))?.key || 'ops')
+    map[baseKey] = map[baseKey] || []
+    map[baseKey].push(it)
+  })
+  return map
+})
+
+/**
+ * @isdoc
+ * @description 打开知识库抽屉（分组选择/预览）
+ * @param {string} groupKey
+ * @returns {void}
+ */
+function openKbDrawer(groupKey) {
+  kbUi.value.drawerOpen = true
+  kbUi.value.drawerGroup = groupKey || 'diet'
+  kbUi.value.drawerQuery = ''
+  const first = (kbDrawerItems.value || [])[0]
+  kbUi.value.drawerActiveKey = first?.key || ''
+}
+
+const kbDrawerItems = computed(() => {
+  const g = String(kbUi.value.drawerGroup || 'diet')
+  const q = String(kbUi.value.drawerQuery || '').trim().toLowerCase()
+
+  const group = KB_GROUPS.find((x) => x.key === g) || KB_GROUPS[0]
+  const inGroup = (it) => {
+    if (g === 'custom') return !!it.isCustom
+    if (it.isCustom) return false
+    return group.items.includes(it.key)
+  }
+  return kbItems.value
+    .filter(inGroup)
+    .filter((it) => (q ? `${it.label} ${it.key}`.toLowerCase().includes(q) : true))
+})
+
+const kbDrawerActive = computed(() => {
+  const key = String(kbUi.value.drawerActiveKey || '')
+  return kbDrawerItems.value.find((x) => x.key === key) || kbDrawerItems.value[0] || null
+})
+
+/**
+ * @isdoc
+ * @description 导入知识库条目（JSON）
+ * @param {Event} e
+ * @returns {void}
+ */
+function onKbImport(e) {
+  const input = e?.target
+  const file = input?.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const json = JSON.parse(String(reader.result || '{}'))
+      const items = Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : [])
+      const normalized = items
+        .map((x) => ({
+          key: String(x?.key || '').trim() || `custom_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
+          label: String(x?.label || '自定义条目').trim(),
+          text: String(x?.text || '').trim(),
+          enabled: x?.enabled !== false,
+        }))
+        .filter((x) => x.text || x.label)
+      draft.value.kbCustom = [...normalized, ...(draft.value.kbCustom || [])]
+    } catch (err) {
+      // 轻量 demo：忽略错误
+    }
+  }
+  reader.readAsText(file)
+  if (input) input.value = ''
+}
+
+/**
+ * @isdoc
+ * @description 上传原表（示意：仅记录文件名）
+ * @param {Event} e
+ * @returns {void}
+ */
+function onKbUpload(e) {
+  const input = e?.target
+  const file = input?.files?.[0]
+  if (!file) return
+  draft.value.note = `${draft.value.note || ''}${draft.value.note ? '\n' : ''}已上传原表：${file.name}`.trim()
+  if (input) input.value = ''
+}
+
+const assistantPlanPanels = computed(() => {
+  const meals = pickMeals()
+  const intro = pickIntro()
+  const knowledge = pickKnowledge()
+  const sport = pickSport()
+  const psych = pickPsych()
+  const cautions = pickCautions()
+
+  const mk = (key, name, ico, bg, color, summary, sections) => ({ key, name, ico, bg, color, summary, sections })
+
+  return [
+    mk('hlp', '名医分身', '名', '#eef5ff', '#155eef', '知识卡/重点提示', [
+      { h: '知识卡（重点）', p: knowledge || '—' },
+      { h: '注意事项', p: cautions || '—' },
+    ]),
+    mk('health', '健康管理', '健', '#ecfff3', '#16a34a', '三餐+健康习惯', [
+      { h: '早餐', p: meals.breakfast || '—' },
+      { h: '午餐', p: meals.lunch || '—' },
+      { h: '晚餐', p: meals.dinner || '—' },
+      { h: '今日提醒', p: cautions || '—' },
+    ]),
+    mk('pharma', 'AI药师', '药', '#fff7ed', '#f97316', '用药/禁忌提醒', [
+      { h: '用药与禁忌（从知识卡提取）', p: cautions || knowledge || '—' },
+    ]),
+    mk('chronic', '慢病管理', '慢', '#f5f3ff', '#8b5cf6', '运动+代谢管理', [
+      { h: '运动处方', p: sport || '—' },
+      { h: '饮食与代谢提示', p: cautions || '—' },
+    ]),
+    mk('psych', '心理咨询', '心', '#fff1f2', '#ef4444', '心理干预', [
+      { h: '心理练习', p: psych || '—' },
+    ]),
+    mk('rehab', '运动康复', '动', '#ecfff3', '#16a34a', '运动训练', [
+      { h: '今日运动', p: sport || '—' },
+    ]),
+    mk('lifestyle', '生活规划', '活', '#fffbeb', '#d97706', '今日目标+习惯', [
+      { h: '今日目标', p: intro || '—' },
+      { h: '习惯提醒', p: cautions || '—' },
+    ]),
+    mk('tcm', '中医药膳', '膳', '#f5f0ff', '#8b5cf6', '中医调理要点', [
+      { h: '调理思路', p: intro || '—' },
+      { h: '药膳/饮食建议', p: meals.breakfast || meals.dinner || '—' },
+    ]),
+    mk('welfare', '健康福利', '福', '#ecfdf5', '#16a34a', '提醒与权益', [
+      { h: '随访提醒', p: `已为您生成 Day ${planDay.value.replace('day','')} 随访内容，可按计划执行并打卡。` },
+      { h: '关键提醒', p: cautions || '—' },
+    ]),
+  ]
+})
+
+const orderedAssistantPlanPanels = computed(() => {
+  const list = assistantPlanPanels.value || []
+  const key = activeAssistant.value
+  const idx = list.findIndex((x) => x.key === key)
+  if (idx <= 0) return list
+  return [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)]
+})
+
+watch(
+  () => activeAssistant.value,
+  async () => {
+    await nextTick()
+    assistPlanZoneRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+)
+
+/**
+ * @isdoc
+ * @description 将当前选择的 Day 与计划摘要保存到当前患者对象（mock：写入内存）
+ * @returns {void}
+ */
+function savePlanForActive() {
+  const p = activePatient.value
+  if (!p) return
+  p.plan = {
+    title: planState.value.title || '甲状腺结节合并肺结节健康管理方案（含心理）',
+    day: planDay.value,
+    sport: planQuick.value.sport,
+    psych: planQuick.value.psych,
+  }
+  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
+  p.timeline.push({ at: '现在', tone: 'b', text: `更新随访计划：Day ${planDay.value.replace('day', '')}`, meta: '已保存' })
+}
+
+/**
+ * @isdoc
+ * @description 保存患者表单（mock：写入时间线，提示已保存）
+ * @returns {void}
+ */
+function savePatientForm() {
+  const p = activePatient.value
+  if (!p) return
+  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
+  p.timeline.push({ at: '现在', tone: 'b', text: '更新患者信息', meta: '已保存' })
+}
+
+/**
+ * @isdoc
+ * @description 开启 AI 随访：状态切换为 follow，并跳转到 AI随访页展示
+ * @returns {void}
+ */
+function startAiFollowup() {
+  const p = activePatient.value
+  if (!p) return
+  // 先保存一次，保证计划存在
+  savePlanForActive()
+
+  p.stage = 'follow'
+  p.stageLabel = 'AI随访中'
+  p.serviceStatus = 'AI随访中'
+  p.nextStep = '按计划随访'
+
+  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
+  p.timeline.push({ at: '现在', tone: 'g', text: '开启 AI随访', meta: `Day ${planDay.value.replace('day', '')}` })
+
+  // 在聊天里塞一条“AI随访建议”提示（若结构存在）
+  p.chat = Array.isArray(p.chat) ? p.chat : []
+  p.chat.push({ from: 'ai', text: `已开启AI随访（Day ${planDay.value.replace('day', '')}）。我将按随访任务向您推送摘要与打卡入口。` })
+  p.chat.push({ type: 'card', ico: '🧾', title: `查看随访任务（Day ${planDay.value.replace('day', '')}）`, sub: '随访任务已生成 · 点击查看' })
+
+  followPatientId.value = p.id
+  setSubTab('follow')
+}
 
 const aiAssistants = [
   {
@@ -932,7 +2347,8 @@ const currentAssistant = computed(() => aiAssistants.find(a => a.key === activeA
 const followPatient = computed(() => queue.value.find(p => p.id === followPatientId.value) || queue.value[0])
 
 const followFilteredQueue = computed(() => {
-  return queue.value.filter(p => {
+  // AI随访页：只展示 AI随访中的患者
+  return queue.value.filter((p) => statusKey(p) === 'follow').filter(p => {
     const s = followSearch.value.trim().toLowerCase()
     if (s && !p.name.toLowerCase().includes(s) && !p.phoneMasked.includes(s)) return false
     if (followRiskFilter.value && p.risk !== followRiskFilter.value) return false
@@ -943,126 +2359,133 @@ const followFilteredQueue = computed(() => {
 
 const currentAssistantChat = computed(() => currentAssistant.value?.chat || [])
 
+const activeAssistantPlan = computed(() => {
+  const key = activeAssistant.value
+  return (assistantPlanPanels.value || []).find((p) => p.key === key) || null
+})
+
+const simulatedAssistantChat = computed(() => {
+  const a = currentAssistant.value
+  const plan = activeAssistantPlan.value
+  const dayNum = planDay.value.replace('day', '')
+  const patientName = followPatient.value?.name || '您'
+  const assistantName = a?.name || 'AI助手'
+
+  if (!plan) {
+    return [
+      { from: 'ai', text: `您好，我是${assistantName}，将为您提供随访支持。` },
+      { from: 'ai', text: `当前 Day ${dayNum} 暂无可展示内容。` },
+    ]
+  }
+
+  // 手机端不刷屏长文：只给摘要 + 引导去右侧“制定/预览”面板查看详情
+  const sections = Array.isArray(plan.sections) ? plan.sections : []
+  const firstSec = sections.find((s) => String(s?.p || '').trim()) || sections[0]
+  const firstText = String(firstSec?.p || '').trim().split('\n').map((x) => x.trim()).filter(Boolean)[0] || ''
+
+  return [
+    { from: 'ai', text: `您好，${patientName}。我是${assistantName}，已为您生成 Day ${dayNum} 的随访建议摘要。` },
+    ...(firstText ? [{ from: 'ai', text: `摘要：${firstText}` }] : []),
+    { type: 'card', ico: '🧾', title: `查看并填写随访任务（Day ${dayNum}）`, sub: `${plan.name} · 点击在右侧完成制定` },
+    { from: 'ai', text: '提示：内容较长已折叠，请在右侧表单中选择知识库条目并保存。' },
+  ]
+})
+
 const rpSearch = ref('')
 const rpSource = ref('')
 const rpNodule = ref('')
 const rpRisk = ref('')
-const rpStatus = ref('')
 const rpActiveId = ref(1)
 
-const rpList = ref([
-  { id: 1, name: '张*国', gender: '男', age: 56, phone: '138****5678', source: '门诊', reportType: 'CT报告', nodules: '肺部合并乳腺结节', noduleKey: 'combo', uploadAt: '2026-04-23 08:15', aiStatus: '解析完成', risk: '中高风险', riskTone: 'o', owner: '李医生',
-    summary: '胸部CT提示右上肺见约8mm磨玻璃结节，边界尚清，建议3个月复查；左乳外上象限见结节影，建议进一步乳腺超声评估。',
-    aiFields: { site: '肺部/乳腺', count: 2, size: '8mm', feature: '磨玻璃', birads: '3类', advice: '随访复查' },
-    noduleTags: ['肺部结节', '乳腺结节', '肺部合并乳腺结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 08:15', done: true, cur: false },
-      { label: 'AI解析', time: '04-23 08:16', done: true, cur: false },
-      { label: '结构化结果', time: '04-23 08:17', done: true, cur: false },
-      { label: '生成健康报告', time: '当前步骤', done: false, cur: true },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 2, name: '李*华', gender: '女', age: 48, phone: '159****2468', source: '体检中心', reportType: '超声报告', nodules: '甲状腺结节', noduleKey: 'thyroid', uploadAt: '2026-04-23 08:05', aiStatus: 'AI解析中', risk: '低风险', riskTone: 'g', owner: '王医生',
-    summary: '甲状腺超声示右叶见约5mm低回声结节，边界清晰，TI-RADS 3类，建议6个月随访复查。',
-    aiFields: { site: '甲状腺', count: 1, size: '5mm', feature: '低回声', birads: 'TI-RADS 3类', advice: '6个月随访' },
-    noduleTags: ['甲状腺结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 08:05', done: true, cur: false },
-      { label: 'AI解析', time: '进行中', done: false, cur: true },
-      { label: '结构化结果', time: '待处理', done: false, cur: false },
-      { label: '生成健康报告', time: '待处理', done: false, cur: false },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 3, name: '王*明', gender: '男', age: 62, phone: '136****1123', source: '门诊', reportType: 'CT报告', nodules: '肺部结节', noduleKey: 'lung', uploadAt: '2026-04-23 07:58', aiStatus: '待处理', risk: '高风险', riskTone: 'r', owner: '未分派',
-    summary: '胸部CT示左上肺见约12mm实性结节，边缘不规则，建议进一步PET-CT检查排除恶性。',
-    aiFields: { site: '肺部', count: 1, size: '12mm', feature: '实性', birads: 'Lung-RADS 4B', advice: '进一步检查' },
-    noduleTags: ['肺部结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 07:58', done: true, cur: false },
-      { label: 'AI解析', time: '待处理', done: false, cur: true },
-      { label: '结构化结果', time: '待处理', done: false, cur: false },
-      { label: '生成健康报告', time: '待处理', done: false, cur: false },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 4, name: '赵*丽', gender: '女', age: 45, phone: '186****3344', source: '体检中心', reportType: '体检报告', nodules: '三合并结节', noduleKey: 'triple', uploadAt: '2026-04-23 07:45', aiStatus: '异常报告', risk: '高风险', riskTone: 'r', owner: '李医生',
-    summary: '体检报告提示肺部、甲状腺、乳腺均发现结节，建议分别进行专科评估，优先处理肺部高风险结节。',
-    aiFields: { site: '肺/甲/乳', count: 3, size: '10mm', feature: '混合', birads: '多类型', advice: '专科评估' },
-    noduleTags: ['肺部结节', '甲状腺结节', '乳腺结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 07:45', done: true, cur: false },
-      { label: 'AI解析', time: '04-23 07:46', done: true, cur: false },
-      { label: '结构化结果', time: '异常标记', done: false, cur: true },
-      { label: '生成健康报告', time: '待处理', done: false, cur: false },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 5, name: '陈*强', gender: '男', age: 59, phone: '137****8899', source: '门诊', reportType: 'CT报告', nodules: '肺部结节', noduleKey: 'lung', uploadAt: '2026-04-23 07:30', aiStatus: '待生成报告', risk: '中风险', riskTone: 'o', owner: '刘医生',
-    summary: '胸部CT示右下肺见约6mm磨玻璃结节，边界清晰，Lung-RADS 3类，建议3个月随访。',
-    aiFields: { site: '肺部', count: 1, size: '6mm', feature: '磨玻璃', birads: 'Lung-RADS 3类', advice: '3个月随访' },
-    noduleTags: ['肺部结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 07:30', done: true, cur: false },
-      { label: 'AI解析', time: '04-23 07:31', done: true, cur: false },
-      { label: '结构化结果', time: '04-23 07:32', done: true, cur: false },
-      { label: '生成健康报告', time: '当前步骤', done: false, cur: true },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 6, name: '刘*芳', gender: '女', age: 53, phone: '139****6677', source: '门诊', reportType: '超声报告', nodules: '乳腺结节', noduleKey: 'breast', uploadAt: '2026-04-23 07:18', aiStatus: '解析完成', risk: '低风险', riskTone: 'g', owner: '王医生',
-    summary: '乳腺超声示左乳外上象限见约7mm低回声结节，边界清晰，BI-RADS 3类，建议6个月随访。',
-    aiFields: { site: '乳腺', count: 1, size: '7mm', feature: '低回声', birads: 'BI-RADS 3类', advice: '6个月随访' },
-    noduleTags: ['乳腺结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 07:18', done: true, cur: false },
-      { label: 'AI解析', time: '04-23 07:19', done: true, cur: false },
-      { label: '结构化结果', time: '04-23 07:20', done: true, cur: false },
-      { label: '生成健康报告', time: '当前步骤', done: false, cur: true },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 7, name: '孙*军', gender: '男', age: 61, phone: '158****9900', source: '体检中心', reportType: '体检报告', nodules: '甲状腺合并乳腺结节', noduleKey: 'combo', uploadAt: '2026-04-23 07:05', aiStatus: 'AI解析中', risk: '中风险', riskTone: 'o', owner: '未分派',
-    summary: '体检报告提示甲状腺右叶及左乳均见结节，建议分别进行超声精查。',
-    aiFields: { site: '甲状腺/乳腺', count: 2, size: '9mm', feature: '低回声', birads: '多类型', advice: '超声精查' },
-    noduleTags: ['甲状腺结节', '乳腺结节'],
-    reportStatus: '待生成',
-    flow: [
-      { label: '上传报告', time: '04-23 07:05', done: true, cur: false },
-      { label: 'AI解析', time: '进行中', done: false, cur: true },
-      { label: '结构化结果', time: '待处理', done: false, cur: false },
-      { label: '生成健康报告', time: '待处理', done: false, cur: false },
-      { label: '送医生复核', time: '待处理', done: false, cur: false },
-    ]
-  },
-  { id: 8, name: '周*萍', gender: '女', age: 47, phone: '150****2211', source: '门诊', reportType: '钼靶报告', nodules: '乳腺结节', noduleKey: 'breast', uploadAt: '2026-04-23 06:50', aiStatus: '待医生复核', risk: '中风险', riskTone: 'o', owner: '李医生',
-    summary: '钼靶报告示右乳外上象限见约8mm高密度结节，边缘清晰，BI-RADS 3类，建议超声进一步评估。',
-    aiFields: { site: '乳腺', count: 1, size: '8mm', feature: '高密度', birads: 'BI-RADS 3类', advice: '超声评估' },
-    noduleTags: ['乳腺结节'],
-    reportStatus: '待审核',
-    flow: [
-      { label: '上传报告', time: '04-23 06:50', done: true, cur: false },
-      { label: 'AI解析', time: '04-23 06:51', done: true, cur: false },
-      { label: '结构化结果', time: '04-23 06:52', done: true, cur: false },
-      { label: '生成健康报告', time: '04-23 06:53', done: true, cur: false },
-      { label: '送医生复核', time: '当前步骤', done: false, cur: true },
-    ]
-  },
-])
+const rpList = ref([])
+const rpLoading = ref(false)
+
+async function loadReports() {
+  rpLoading.value = true
+  try {
+    const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
+    const data = await res.json()
+    if (data.success) {
+      rpList.value = (data.data?.reports || []).map(r => ({
+        id: r.id,
+        name: r.patient_name || '—',
+        gender: r.patient?.gender || '—',
+        age: r.patient?.age || '—',
+        phone: r.patient?.phone ? r.patient.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
+        source: r.patient?.source || '—',
+        reportType: '健康报告',
+        nodules: noduleTypeLabel(r.nodule_type),
+        noduleKey: r.nodule_type || 'breast',
+        uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
+        aiStatus: r.status === 'draft' ? '待审核' : r.status === 'finalized' ? '已完成' : r.status || '—',
+        risk: r.risk_level || '—',
+        riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
+        owner: r.created_by_name || '—',
+        summary: r.summary || '',
+        reportStatus: r.status === 'finalized' ? '已完成' : '待审核',
+        reportHtml: r.report_html || '',
+        flow: [
+          { label: '建档', done: true, cur: false, time: '' },
+          { label: '生成报告', done: true, cur: false, time: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '' },
+          { label: '人工审核', done: r.status === 'finalized', cur: r.status !== 'finalized', time: r.status === 'finalized' ? '已完成' : '当前步骤' },
+          { label: '推送患者', done: false, cur: false, time: '待处理' },
+        ]
+      }))
+      if (rpList.value.length) rpActiveId.value = rpList.value[0].id
+    }
+  } catch (e) {
+    console.error('加载报告列表失败', e)
+  } finally {
+    rpLoading.value = false
+  }
+}
+
+const rpFinalizing = ref(false)
+const rpViewHtml = ref('')
+const rpViewVisible = ref(false)
+
+async function finalizeReport(reportId) {
+  if (!reportId) return
+  rpFinalizing.value = true
+  try {
+    const res = await fetch(`/api/b/reports/${reportId}/finalize`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    const data = await res.json()
+    if (data.success) {
+      await loadReports()
+      alert('审核通过，报告已生成！')
+    } else {
+      alert(data.message || '审核失败')
+    }
+  } catch (e) {
+    console.error('审核失败', e)
+    alert('网络错误，请重试')
+  } finally {
+    rpFinalizing.value = false
+  }
+}
+
+async function viewReport(reportId) {
+  try {
+    const res = await fetch(`/api/b/reports/${reportId}`, { credentials: 'include' })
+    const data = await res.json()
+    if (data.success) {
+      rpViewHtml.value = data.data?.report_html || data.data?.summary || '暂无报告内容'
+      rpViewVisible.value = true
+    }
+  } catch (e) {
+    console.error('获取报告失败', e)
+  }
+}
 
 const rpFilteredList = computed(() => {
   return rpList.value.filter(r => {
     if (rpSearch.value && !r.name.includes(rpSearch.value) && !r.phone.includes(rpSearch.value)) return false
     if (rpSource.value && r.source !== rpSource.value) return false
     if (rpRisk.value && r.risk !== rpRisk.value) return false
-    if (rpStatus.value && r.aiStatus !== rpStatus.value) return false
     return true
   })
 })
@@ -1177,16 +2600,16 @@ function stageActions(p) {
   }
   if (k === 'review') {
     return [
-      { label: '审核报告', primary: true, onClick: () => (subTab.value = 'review') },
+      { label: '审核报告', primary: true, onClick: () => setSubTab('review') },
       { label: '退回修改', primary: false, onClick: () => toast?.show('退回修改（示意）') },
     ]
   }
   if (k === 'plan') {
-    return [{ label: '制定随访计划', primary: true, onClick: () => toast?.show('制定随访计划（示意）') }]
+    return [{ label: '制定随访计划', primary: true, onClick: () => setSubTab('followup-plan') }]
   }
   if (k === 'follow') {
     return [
-      { label: '查看随访记录', primary: true, onClick: () => (subTab.value = 'follow') },
+      { label: '查看随访记录', primary: true, onClick: () => setSubTab('follow') },
       { label: '人工接管', primary: false, onClick: () => toast?.show('人工接管（示意）') },
     ]
   }
@@ -1216,10 +2639,10 @@ function primaryLabel(p) {
 function doPrimary(p) {
   const k = statusKey(p)
   if (k === 'new') return goRecord()
-  if (k === 'gen') return (subTab.value = 'record')
-  if (k === 'review') return (subTab.value = 'review')
-  if (k === 'plan') return toast?.show('制定随访计划（示意）')
-  return (subTab.value = 'follow')
+  if (k === 'gen') return setSubTab('record')
+  if (k === 'review') return setSubTab('review')
+  if (k === 'plan') return setSubTab('followup-plan')
+  return setSubTab('follow')
 }
 
 /**
@@ -1300,34 +2723,7 @@ const steps = computed(() => ([
   { label: '档案更新', ic: '更', sub: '—', cls: '' }
 ]))
 
-const subTabs = [
-  { key: 'queue', label: '患者队列' },
-  { key: 'record', label: '档案与报告' },
-  { key: 'review', label: '健康报告审核' },
-  { key: 'follow', label: 'AI助手随访' },
-  { key: 'abnormal', label: '异常与复查' }
-]
-
-const allowedSubTabs = new Set(subTabs.map((t) => t.key))
-
-watch(
-  () => route.query.tab,
-  (tab) => {
-    const key = typeof tab === 'string' ? tab : ''
-    if (allowedSubTabs.has(key)) subTab.value = key
-  },
-  { immediate: true }
-)
-
-watch(
-  () => subTab.value,
-  (key) => {
-    if (route.name !== 'patient') return
-    if (route.query.tab === key) return
-    router.replace({ query: { ...route.query, tab: key } })
-  },
-  { immediate: true }
-)
+// subTabs/allowedSubTabs/setSubTab 已提前定义（由路由 query.tab 驱动）
 
 /**
  * @isdoc
@@ -1383,352 +2779,172 @@ const nextActions = [
   '创建复查提醒'
 ]
 
-const queue = ref([
-  {
-    id: 'p1',
-    name: '王先生',
-    gender: '男',
-    age: 58,
-    phoneMasked: '138****5678',
-    source: '门诊',
-    owner: '健康管理师',
-    nodules: '肺结节合并甲状腺结节',
-    risk: '高风险',
-    riskTone: 'r',
-    stage: 'review',
-    stageLabel: '健康管理报告待审核',
-    nextStep: '医生确认后推送患者',
-    serviceStatus: '报告待审核',
-    report: {
-      status: '待审核',
-      summary: '肺部磨玻璃结节 8mm，建议 3 个月复查；甲状腺结节 TI-RADS 3 类，建议随访复查。'
-    },
-    rawReports: [
-      { type: 'pdf', name: '20260420_胸部CT报告.pdf', size: '1.32 MB', at: '2026-04-20', state: '已上传', stateTone: 'g' },
-      { type: 'zip', name: '胸部CT原始影像(DICOM).zip', size: '256.7 MB', at: '2026-04-20', state: '解析中', stateTone: 'o' },
-      { type: 'pdf', name: '20260420_甲状腺超声报告.pdf', size: '0.84 MB', at: '2026-04-20', state: '已上传', stateTone: 'g' }
-    ],
-    aiReadSummary: '影像提示右上肺磨玻璃结节 8mm，倾向炎性/腺瘤样病变可能；建议 3 个月复查。甲状腺 TI-RADS 3 类，建议随访复查并结合既往对比。',
-    reportDoc: {
-      title: '健康管理报告（示意）',
-      sections: [
-        { h: '一、结节概况', p: '本次检查提示肺部磨玻璃结节 8mm，甲状腺结节 TI-RADS 3 类。' },
-        { h: '二、风险分层', p: '综合结节大小、形态及患者基础情况，建议按高风险路径随访。' },
-        { h: '三、随访建议', p: '建议 3 个月复查胸部 CT；甲状腺建议 6-12 个月复查超声。' },
-        { h: '四、生活方式建议', p: '规律作息、控糖控盐、适度有氧运动；如出现持续咳嗽/胸痛等症状及时就医。' }
-      ]
-    },
-    auditTrail: [
-      { at: '08:18', by: 'AI', action: '生成健康管理报告', note: '生成摘要与建议' },
-      { at: '08:30', by: '李医生', action: '审核通过', note: '同意推送患者' }
-    ],
-    chat: [
-      { at: '09:20', from: 'AI健康管理师', text: '已为您安排 3 个月复查提醒，近期如有咳嗽加重请及时就医。' },
-      { at: '20:10', from: '患者', text: '最近有点咳嗽，需要马上去医院吗？' },
-      { at: '20:12', from: 'AI健康管理师', text: '请确认是否有咳血/胸痛/持续发热等；如有请立即就医，我们也建议安排电话随访。' }
-    ],
-    followTodos: [
-      { title: '复查提醒', state: '已排程', tone: 'g', detail: '3个月复查胸部CT提醒已创建' },
-      { title: '饮食建议', state: '待推送', tone: 'o', detail: '控糖食谱与晚餐建议' },
-      { title: '运动计划', state: '已推送', tone: 'g', detail: '低强度快走 20min' }
-    ],
-    abnormal: {
-      keywords: ['持续咳嗽', '高风险', '复查逾期'],
-      interventions: [
-        { at: '20:12', by: 'AI', action: '异常识别', note: '建议人工电话随访' },
-        { at: '20:30', by: '健管师', action: '电话随访', note: '已沟通症状与就医建议' }
-      ],
-      recallPlan: '已创建 3 个月复查提醒（小程序 + 企微 + 短信）',
-      recallState: '待回收',
-      recallTone: 'o',
-      recallHint: '复查报告未回收，建议二次提醒'
-    },
-    reviewers: '医生 / 药师 / 健管师',
-    assistants: [
-      { name: 'AI中医药膳师', state: '已启用', stateTone: 'g', todayTask: '晚餐控糖食谱，待推送', response: '未读' },
-      { name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '3个月复查提醒，已排程', response: '已读' },
-      { name: 'AI药师', state: '待启用', stateTone: 'o', todayTask: '用药核对提醒，待配置', response: '—' },
-      { name: 'AI慢病管理师', state: '待启用', stateTone: 'o', todayTask: '合并慢病评估，待配置', response: '—' },
-      { name: 'AI心理咨询师', state: '已启用', stateTone: 'o', todayTask: '检后焦虑评估，患者未回复', response: '未回复' },
-      { name: 'AI运动康复师', state: '已启用', stateTone: 'g', todayTask: '低强度快走计划，已推送', response: '已读' },
-      { name: 'AI健康生活方式规划师', state: '已启用', stateTone: 'g', todayTask: '饮食/作息建议，待推送', response: '未读' },
-      { name: 'AI健康福利官', state: '待启用', stateTone: 'o', todayTask: '服务权益提醒，待配置', response: '—' },
-      { name: 'AI名医数字分身/AIHLP健康规划师', state: '已启用', stateTone: 'g', todayTask: '阶段性建议（高风险路径）', response: '待人工确认' }
-    ],
-    timeline: [
-      { at: '08:10', tone: 'b', text: '创建患者档案' },
-      { at: '08:15', tone: 'b', text: '上传胸部CT报告、甲状腺超声报告', meta: '原始报告已入库，等待解析' },
-      { at: '08:18', tone: 'p', text: 'AI生成健康管理报告', meta: '生成摘要与随访建议' },
-      { at: '08:30', tone: 'g', text: '健康管理报告审核通过', meta: '待推送患者' },
-      { at: '08:35', tone: 'b', text: '推送小程序，企微同步提醒' },
-      { at: '09:20', tone: 'p', text: 'AI健康管理师发送复查提醒' },
-      { at: '12:00', tone: 'p', text: 'AI中医药膳师推送晚餐控糖食谱' },
-      { at: '18:30', tone: 'p', text: 'AI运动康复师推送低强度快走计划' },
-      { at: '20:10', tone: 'y', text: '患者反馈“最近有点咳嗽”', meta: '来自企微聊天' },
-      { at: '20:12', tone: 'r', text: 'AI识别异常，建议人工电话随访', meta: '异常：持续咳嗽/风险升高' }
-    ]
-  },
-  {
-    id: 'p2',
-    name: '李女士',
-    gender: '女',
-    age: 46,
-    phoneMasked: '139****2468',
-    source: '体检',
-    owner: '张医生',
-    nodules: '乳腺结节',
-    risk: '中风险',
-    riskTone: 'o',
-    stage: 'upload',
-    stageLabel: '原始报告待上传',
-    nextStep: '上传体检报告后生成健康管理报告',
-    serviceStatus: '待上传报告',
-    report: { status: '未生成', summary: '等待上传原始检查/体检报告。' },
-    rawReports: [],
-    aiReadSummary: '暂无原始报告，无法生成 AI 解读摘要。',
-    reportDoc: { title: '健康管理报告（未生成）', sections: [{ h: '提示', p: '请先上传原始检查/体检报告。' }] },
-    auditTrail: [{ at: '09:05', by: '系统', action: '建档完成', note: '等待上传报告' }],
-    chat: [{ at: '09:08', from: '系统', text: '已提醒上传体检报告，上传后将自动生成健康管理报告。' }],
-    followTodos: [{ title: '上传原始报告', state: '待完成', tone: 'o', detail: '体检中心 PDF / 影像 DICOM' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '待创建', recallState: '—', recallTone: 'g', recallHint: '暂无' },
-    reviewers: '医生 / 药师 / 健管师',
-    assistants: [
-      { name: 'AI中医药膳师', state: '待启用', stateTone: 'o', todayTask: '入组后生成食谱建议', response: '—' },
-      { name: 'AI健康管理师', state: '待启用', stateTone: 'o', todayTask: '完成建档后自动启用随访', response: '—' },
-      { name: 'AI药师', state: '待启用', stateTone: 'o', todayTask: '用药史采集与核对', response: '—' },
-      { name: 'AI慢病管理师', state: '待启用', stateTone: 'o', todayTask: '慢病风险评估', response: '—' },
-      { name: 'AI心理咨询师', state: '待启用', stateTone: 'o', todayTask: '检后焦虑评估', response: '—' },
-      { name: 'AI运动康复师', state: '待启用', stateTone: 'o', todayTask: '运动处方生成', response: '—' },
-      { name: 'AI健康生活方式规划师', state: '待启用', stateTone: 'o', todayTask: '生活方式建议', response: '—' },
-      { name: 'AI健康福利官', state: '待启用', stateTone: 'o', todayTask: '服务权益提醒', response: '—' },
-      { name: 'AI名医数字分身/AIHLP健康规划师', state: '待启用', stateTone: 'o', todayTask: '阶段性建议', response: '—' }
-    ],
-    timeline: [
-      { at: '09:05', tone: 'b', text: '创建患者档案' },
-      { at: '09:08', tone: 'y', text: '提醒上传体检报告', meta: '短信/企微双通道' }
-    ]
-  },
-  {
-    id: 'p3',
-    name: '张先生',
-    gender: '男',
-    age: 62,
-    phoneMasked: '137****1357',
-    source: '门诊',
-    owner: '刘医生',
-    nodules: '甲状腺结节',
-    risk: '低风险',
-    riskTone: 'g',
-    stage: 'follow',
-    stageLabel: 'AI随访中',
-    nextStep: '按计划执行复查提醒与生活方式干预',
-    serviceStatus: 'AI随访中',
-    report: { status: '已推送', summary: 'TI-RADS 3 类，建议 6-12 个月随访复查。' },
-    rawReports: [
-      { type: 'pdf', name: '20260318_甲状腺超声报告.pdf', size: '0.62 MB', at: '2026-03-18', state: '已归档', stateTone: 'g' }
-    ],
-    aiReadSummary: 'TI-RADS 3 类倾向良性，建议 6-12 个月随访复查，并关注结节大小变化。',
-    reportDoc: {
-      title: '健康管理报告（已推送）',
-      sections: [
-        { h: '结节概况', p: '甲状腺结节 TI-RADS 3 类，倾向良性。' },
-        { h: '随访建议', p: '建议 6-12 个月复查超声；如出现吞咽不适、声音嘶哑等及时就医。' }
-      ]
-    },
-    auditTrail: [{ at: '07:20', by: '张医生', action: '审核通过并推送', note: '小程序已送达' }],
-    chat: [
-      { at: '07:40', from: 'AI健康管理师', text: '已为您安排 6 个月复查提醒，请按计划复查。' },
-      { at: '10:00', from: '患者', text: '问卷已填写，谢谢。' }
-    ],
-    followTodos: [
-      { title: '复查提醒', state: '已排程', tone: 'g', detail: '6个月复查超声提醒' },
-      { title: '生活方式建议', state: '已推送', tone: 'g', detail: '本周作息建议' }
-    ],
-    abnormal: {
-      keywords: ['复查提醒'],
-      interventions: [{ at: '07:40', by: 'AI', action: '推送提醒', note: '小程序 + 企微' }],
-      recallPlan: '已创建 6 个月复查提醒',
-      recallState: '进行中',
-      recallTone: 'g',
-      recallHint: '暂无异常'
-    },
-    reviewers: '医生 / 药师 / 健管师',
-    assistants: [
-      { name: 'AI中医药膳师', state: '已启用', stateTone: 'g', todayTask: '养生建议，已推送', response: '已读' },
-      { name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '6个月复查提醒，已排程', response: '已读' },
-      { name: 'AI药师', state: '待启用', stateTone: 'o', todayTask: '用药提醒，待配置', response: '—' },
-      { name: 'AI慢病管理师', state: '待启用', stateTone: 'o', todayTask: '慢病评估，待配置', response: '—' },
-      { name: 'AI心理咨询师', state: '待启用', stateTone: 'o', todayTask: '情绪评估，待配置', response: '—' },
-      { name: 'AI运动康复师', state: '已启用', stateTone: 'g', todayTask: '轻量运动建议，已推送', response: '已读' },
-      { name: 'AI健康生活方式规划师', state: '已启用', stateTone: 'g', todayTask: '本周作息建议，已推送', response: '已读' },
-      { name: 'AI健康福利官', state: '待启用', stateTone: 'o', todayTask: '服务权益提醒，待配置', response: '—' },
-      { name: 'AI名医数字分身/AIHLP健康规划师', state: '已启用', stateTone: 'g', todayTask: '阶段性建议（低风险路径）', response: '已确认' }
-    ],
-    timeline: [
-      { at: '07:40', tone: 'b', text: '复查提醒已推送', meta: '小程序 + 企微' },
-      { at: '10:00', tone: 'p', text: 'AI随访问卷回收', meta: '患者已填写' }
-    ]
-  },
-  {
-    id: 'p4', name: '陈女士', gender: '女', age: 52, phoneMasked: '136****8899', source: '体检', owner: '李医生',
-    nodules: '乳腺结节', risk: '高风险', riskTone: 'r', stage: 'abnormal', stageLabel: '异常预警',
-    nextStep: '升级医生复核', serviceStatus: '异常处置中',
-    report: { status: '已推送' }, rawReports: [{ type: 'pdf', name: '20260415_乳腺超声报告.pdf', size: '0.91 MB', at: '2026-04-15', state: '已归档', stateTone: 'g' }],
-    aiReadSummary: 'BI-RADS 4A 类，建议穿刺活检或 3 个月复查。',
-    reportDoc: { title: '健康管理报告', sections: [{ h: '结节概况', p: 'BI-RADS 4A，建议活检。' }] },
-    auditTrail: [{ at: '10:00', by: 'AI', action: '异常识别', note: '建议人工介入' }],
-    chat: [{ at: '10:05', from: 'AI健康管理师', text: '已识别异常，建议尽快就医。' }],
-    followTodos: [{ title: '电话随访', state: '待完成', tone: 'r', detail: '确认患者是否已就医' }],
-    abnormal: { keywords: ['BI-RADS 4A', '高风险', '未就医'], interventions: [{ at: '10:00', by: 'AI', action: '异常识别', note: '建议人工电话随访' }], recallPlan: '待创建', recallState: '待处置', recallTone: 'r', recallHint: '需尽快处置' },
-    reviewers: '医生 / 药师 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '异常跟进', response: '待处理' }],
-    timeline: [{ at: '10:00', tone: 'r', text: 'AI识别异常', meta: 'BI-RADS 4A 高风险' }]
-  },
-  {
-    id: 'p5', name: '赵先生', gender: '男', age: 45, phoneMasked: '135****3344', source: '门诊', owner: '王医生',
-    nodules: '肺结节', risk: '低风险', riskTone: 'g', stage: 'push', stageLabel: '待推送患者',
-    nextStep: '推送健康管理报告', serviceStatus: '待推送',
-    report: { status: '审核通过' }, rawReports: [{ type: 'pdf', name: '20260418_胸部CT报告.pdf', size: '1.1 MB', at: '2026-04-18', state: '已上传', stateTone: 'g' }],
-    aiReadSummary: '右下肺小结节 5mm，倾向良性，建议 12 个月复查。',
-    reportDoc: { title: '健康管理报告', sections: [{ h: '结节概况', p: '右下肺小结节 5mm，低风险。' }, { h: '随访建议', p: '12 个月复查胸部 CT。' }] },
-    auditTrail: [{ at: '09:00', by: '王医生', action: '审核通过', note: '可推送患者' }],
-    chat: [],
-    followTodos: [{ title: '推送报告', state: '待完成', tone: 'o', detail: '小程序 + 企微' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '12个月复查提醒', recallState: '待创建', recallTone: 'o', recallHint: '推送后自动创建' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '待启用', stateTone: 'o', todayTask: '推送后启用', response: '—' }],
-    timeline: [{ at: '09:00', tone: 'g', text: '健康管理报告审核通过', meta: '待推送患者' }]
-  },
-  {
-    id: 'p6', name: '孙女士', gender: '女', age: 39, phoneMasked: '139****5566', source: '体检中心', owner: '健康管理师',
-    nodules: '甲状腺结节', risk: '低风险', riskTone: 'g', stage: 'aiGen', stageLabel: '待生成报告',
-    nextStep: '生成AI健康管理报告', serviceStatus: '待生成报告',
-    report: { status: '未生成' }, rawReports: [{ type: 'pdf', name: '20260419_甲状腺超声报告.pdf', size: '0.55 MB', at: '2026-04-19', state: '已上传', stateTone: 'g' }],
-    aiReadSummary: '暂未生成，报告已上传待处理。',
-    reportDoc: { title: '健康管理报告（未生成）', sections: [{ h: '提示', p: '请生成AI健康管理报告。' }] },
-    auditTrail: [{ at: '08:40', by: '系统', action: '报告上传完成', note: '等待AI生成' }],
-    chat: [],
-    followTodos: [{ title: '生成AI报告', state: '待完成', tone: 'o', detail: '甲状腺超声报告已上传' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '待创建', recallState: '—', recallTone: 'g', recallHint: '暂无' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '待启用', stateTone: 'o', todayTask: '生成报告后启用', response: '—' }],
-    timeline: [{ at: '08:40', tone: 'b', text: '上传甲状腺超声报告', meta: '等待AI生成报告' }]
-  },
-  {
-    id: 'p7', name: '周先生', gender: '男', age: 67, phoneMasked: '137****7788', source: '门诊', owner: '刘医生',
-    nodules: '肺结节合并乳腺结节', risk: '高风险', riskTone: 'r', stage: 'recall', stageLabel: '复查待回收',
-    nextStep: '催收复查报告', serviceStatus: '复查待回收',
-    report: { status: '已推送' }, rawReports: [{ type: 'pdf', name: '20260101_胸部CT报告.pdf', size: '1.5 MB', at: '2026-01-01', state: '已归档', stateTone: 'g' }],
-    aiReadSummary: '肺部结节 10mm，高风险，已逾期复查。',
-    reportDoc: { title: '健康管理报告（已推送）', sections: [{ h: '结节概况', p: '肺部结节 10mm，高风险。' }] },
-    auditTrail: [{ at: '2026-01-05', by: '刘医生', action: '审核通过并推送', note: '已送达' }],
-    chat: [{ at: '2026-04-01', from: 'AI健康管理师', text: '您的复查时间已到，请尽快安排复查。' }],
-    followTodos: [{ title: '复查回收', state: '逾期', tone: 'r', detail: '3个月复查已逾期' }],
-    abnormal: { keywords: ['复查逾期', '高风险'], interventions: [{ at: '2026-04-01', by: 'AI', action: '发送复查提醒', note: '患者未回复' }], recallPlan: '已创建复查提醒', recallState: '逾期未回收', recallTone: 'r', recallHint: '建议电话催收' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '催收复查报告', response: '未回复' }],
-    timeline: [{ at: '2026-04-01', tone: 'r', text: '复查逾期未回收', meta: '建议电话催收' }]
-  },
-  {
-    id: 'p8', name: '吴女士', gender: '女', age: 55, phoneMasked: '138****2233', source: '体检', owner: '张医生',
-    nodules: '乳腺结节', risk: '中风险', riskTone: 'o', stage: 'review', stageLabel: '健康管理报告待审核',
-    nextStep: '医生审核后推送', serviceStatus: '报告待审核',
-    report: { status: '待审核' }, rawReports: [{ type: 'pdf', name: '20260421_乳腺超声报告.pdf', size: '0.78 MB', at: '2026-04-21', state: '已上传', stateTone: 'g' }],
-    aiReadSummary: 'BI-RADS 3 类，建议 6 个月复查超声。',
-    reportDoc: { title: '健康管理报告', sections: [{ h: '结节概况', p: 'BI-RADS 3 类，倾向良性。' }, { h: '随访建议', p: '6 个月复查超声。' }] },
-    auditTrail: [{ at: '09:30', by: 'AI', action: '生成健康管理报告', note: '待审核' }],
-    chat: [],
-    followTodos: [{ title: '审核报告', state: '待完成', tone: 'o', detail: '等待医生审核' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '6个月复查提醒', recallState: '待创建', recallTone: 'o', recallHint: '审核通过后创建' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '待启用', stateTone: 'o', todayTask: '审核通过后启用', response: '—' }],
-    timeline: [{ at: '09:30', tone: 'p', text: 'AI生成健康管理报告', meta: '待医生审核' }]
-  },
-  {
-    id: 'p9', name: '郑先生', gender: '男', age: 50, phoneMasked: '136****4455', source: '门诊', owner: '王医生',
-    nodules: '甲状腺结节', risk: '中风险', riskTone: 'o', stage: 'follow', stageLabel: 'AI随访中',
-    nextStep: '按计划随访', serviceStatus: 'AI随访中',
-    report: { status: '已推送' }, rawReports: [{ type: 'pdf', name: '20260310_甲状腺超声报告.pdf', size: '0.6 MB', at: '2026-03-10', state: '已归档', stateTone: 'g' }],
-    aiReadSummary: 'TI-RADS 4A 类，建议 3 个月复查。',
-    reportDoc: { title: '健康管理报告（已推送）', sections: [{ h: '结节概况', p: 'TI-RADS 4A，中风险。' }] },
-    auditTrail: [{ at: '08:00', by: '王医生', action: '审核通过并推送', note: '已送达' }],
-    chat: [{ at: '08:10', from: 'AI健康管理师', text: '已安排 3 个月复查提醒。' }],
-    followTodos: [{ title: '复查提醒', state: '已排程', tone: 'g', detail: '3个月复查超声' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '3个月复查提醒', recallState: '进行中', recallTone: 'g', recallHint: '暂无异常' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '随访中', response: '已读' }],
-    timeline: [{ at: '08:10', tone: 'b', text: '复查提醒已推送', meta: '小程序 + 企微' }]
-  },
-  {
-    id: 'p10', name: '冯女士', gender: '女', age: 43, phoneMasked: '135****6677', source: '体检中心', owner: '健康管理师',
-    nodules: '肺结节', risk: '低风险', riskTone: 'g', stage: 'upload', stageLabel: '原始报告待上传',
-    nextStep: '上传体检报告', serviceStatus: '待上传报告',
-    report: { status: '未生成' }, rawReports: [],
-    aiReadSummary: '暂无原始报告。',
-    reportDoc: { title: '健康管理报告（未生成）', sections: [{ h: '提示', p: '请上传原始报告。' }] },
-    auditTrail: [{ at: '10:20', by: '系统', action: '建档完成', note: '等待上传报告' }],
-    chat: [],
-    followTodos: [{ title: '上传原始报告', state: '待完成', tone: 'o', detail: '体检中心 PDF' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '待创建', recallState: '—', recallTone: 'g', recallHint: '暂无' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '待启用', stateTone: 'o', todayTask: '上传后启用', response: '—' }],
-    timeline: [{ at: '10:20', tone: 'b', text: '创建患者档案', meta: '等待上传报告' }]
-  },
-  {
-    id: 'p11', name: '蒋先生', gender: '男', age: 61, phoneMasked: '139****8800', source: '门诊', owner: '李医生',
-    nodules: '肺结节', risk: '高风险', riskTone: 'r', stage: 'abnormal', stageLabel: '异常预警',
-    nextStep: '电话随访确认症状', serviceStatus: '异常处置中',
-    report: { status: '已推送' }, rawReports: [{ type: 'pdf', name: '20260320_胸部CT报告.pdf', size: '1.2 MB', at: '2026-03-20', state: '已归档', stateTone: 'g' }],
-    aiReadSummary: '左上肺磨玻璃结节 9mm，高风险，患者反馈胸痛。',
-    reportDoc: { title: '健康管理报告（已推送）', sections: [{ h: '结节概况', p: '左上肺磨玻璃结节 9mm，高风险。' }] },
-    auditTrail: [{ at: '2026-03-22', by: '李医生', action: '审核通过并推送', note: '已送达' }],
-    chat: [{ at: '2026-04-20', from: '患者', text: '最近胸口有点痛，需要复查吗？' }],
-    followTodos: [{ title: '电话随访', state: '待完成', tone: 'r', detail: '确认胸痛症状' }],
-    abnormal: { keywords: ['胸痛', '高风险'], interventions: [{ at: '2026-04-20', by: 'AI', action: '异常识别', note: '患者反馈胸痛' }], recallPlan: '紧急复查', recallState: '待处置', recallTone: 'r', recallHint: '建议立即电话随访' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '异常跟进', response: '待处理' }],
-    timeline: [{ at: '2026-04-20', tone: 'r', text: '患者反馈胸痛', meta: '建议紧急随访' }]
-  },
-  {
-    id: 'p12', name: '韩女士', gender: '女', age: 48, phoneMasked: '137****1122', source: '体检', owner: '张医生',
-    nodules: '乳腺结节', risk: '低风险', riskTone: 'g', stage: 'follow', stageLabel: 'AI随访中',
-    nextStep: '按计划随访', serviceStatus: 'AI随访中',
-    report: { status: '已推送' }, rawReports: [{ type: 'pdf', name: '20260228_乳腺超声报告.pdf', size: '0.7 MB', at: '2026-02-28', state: '已归档', stateTone: 'g' }],
-    aiReadSummary: 'BI-RADS 2 类，良性，建议 12 个月常规复查。',
-    reportDoc: { title: '健康管理报告（已推送）', sections: [{ h: '结节概况', p: 'BI-RADS 2 类，良性。' }] },
-    auditTrail: [{ at: '2026-03-01', by: '张医生', action: '审核通过并推送', note: '已送达' }],
-    chat: [{ at: '2026-03-02', from: 'AI健康管理师', text: '已安排 12 个月复查提醒。' }],
-    followTodos: [{ title: '复查提醒', state: '已排程', tone: 'g', detail: '12个月复查超声' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '12个月复查提醒', recallState: '进行中', recallTone: 'g', recallHint: '暂无异常' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '已启用', stateTone: 'g', todayTask: '随访中', response: '已读' }],
-    timeline: [{ at: '2026-03-02', tone: 'b', text: '复查提醒已推送', meta: '小程序' }]
-  },
-  {
-    id: 'p13', name: '杨先生', gender: '男', age: 54, phoneMasked: '138****9900', source: '门诊', owner: '刘医生',
-    nodules: '甲状腺结节合并肺结节', risk: '中风险', riskTone: 'o', stage: 'aiGen', stageLabel: '待生成报告',
-    nextStep: '生成AI健康管理报告', serviceStatus: '待生成报告',
-    report: { status: '未生成' }, rawReports: [{ type: 'pdf', name: '20260422_甲状腺超声报告.pdf', size: '0.65 MB', at: '2026-04-22', state: '已上传', stateTone: 'g' }, { type: 'pdf', name: '20260422_胸部CT报告.pdf', size: '1.0 MB', at: '2026-04-22', state: '已上传', stateTone: 'g' }],
-    aiReadSummary: '暂未生成，报告已上传待处理。',
-    reportDoc: { title: '健康管理报告（未生成）', sections: [{ h: '提示', p: '请生成AI健康管理报告。' }] },
-    auditTrail: [{ at: '11:00', by: '系统', action: '报告上传完成', note: '等待AI生成' }],
-    chat: [],
-    followTodos: [{ title: '生成AI报告', state: '待完成', tone: 'o', detail: '两份报告已上传' }],
-    abnormal: { keywords: [], interventions: [], recallPlan: '待创建', recallState: '—', recallTone: 'g', recallHint: '暂无' },
-    reviewers: '医生 / 健管师',
-    assistants: [{ name: 'AI健康管理师', state: '待启用', stateTone: 'o', todayTask: '生成报告后启用', response: '—' }],
-    timeline: [{ at: '11:00', tone: 'b', text: '上传甲状腺超声 + 胸部CT报告', meta: '等待AI生成报告' }]
+queue.value = []
+
+// 10条本地 mock 数据（后端无数据时展示）
+const MOCK_QUEUE = [
+  { id:'m1', name:'张*国', gender:'男', age:56, phoneMasked:'138****5678', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'review', lastReport:'CT报告', nextVisit:'2026-06-15' },
+  { id:'m2', name:'李*婷', gender:'女', age:48, phoneMasked:'139****2468', source:'体检中心', owner:'王医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'超声报告', nextVisit:'2026-05-20' },
+  { id:'m3', name:'王*梅', gender:'女', age:62, phoneMasked:'137****1357', source:'门诊', owner:'赵医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', nextVisit:'2026-07-01' },
+  { id:'m4', name:'赵*强', gender:'男', age:59, phoneMasked:'136****8899', source:'体检中心', owner:'刘医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'abnormal', lastReport:'CT报告', nextVisit:'2026-05-10' },
+  { id:'m5', name:'陈*霞', gender:'女', age:45, phoneMasked:'138****3344', source:'门诊', owner:'周医生', nodules:'乳腺+肺部结节', noduleType:'breast_lung', risk:'中风险', riskTone:'o', stage:'push', lastReport:'AI解析完成', nextVisit:'2026-06-05' },
+  { id:'m6', name:'刘*峰', gender:'男', age:71, phoneMasked:'139****7788', source:'体检中心', owner:'陈医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'医生复核中', nextVisit:'2026-08-12' },
+  { id:'m7', name:'孙*英', gender:'女', age:52, phoneMasked:'137****6677', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'低风险', riskTone:'g', stage:'gen', lastReport:'超声报告', nextVisit:'2026-05-28' },
+  { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'赵医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'CT报告', nextVisit:'2026-06-18' },
+  { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'王医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'超声报告', nextVisit:'2026-09-03' },
+  { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'刘医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', nextVisit:'2026-05-15' },
+]
+
+// 筛选条件
+const qSearch = ref('')
+const qSource = ref('')
+const qNodule = ref('')
+const qRisk = ref('')
+const qStatus = ref('')
+
+
+async function loadPatients() {
+  try {
+    const res = await fetch('/api/b/patients?per_page=50', { credentials: 'include' })
+    const data = await res.json()
+    if (data.success) {
+      const items = data.data?.items || data.data || []
+      queue.value = items.map(p => ({
+        id: p.id,
+        _apiId: p.id,
+        name: p.name || '—',
+        gender: p.gender || '—',
+        age: p.age || '—',
+        phoneMasked: p.phone ? p.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
+        source: p.source_channel === 'manual' ? '门诊' : (p.source_channel || '门诊'),
+        owner: p.manager_name || '—',
+        nodules: noduleTypeLabel(p.nodule_type),
+        noduleType: p.nodule_type || 'breast',
+        risk: p.risk_level || (p.reports?.[0]?.risk_level) || '—',
+        riskTone: (p.risk_level || p.reports?.[0]?.risk_level) === '高风险' ? 'r' : (p.risk_level || p.reports?.[0]?.risk_level) === '中风险' ? 'o' : 'g',
+        stage: p.reports?.length ? 'review' : 'gen',
+        stageLabel: p.reports?.length ? '健康报告待审核' : '健康报告待生成',
+        nextStep: '',
+        serviceStatus: '',
+        report: { status: '—', summary: '' },
+        rawReports: [],
+        aiReadSummary: '',
+        reportDoc: { title: '', sections: [] },
+        auditTrail: [],
+        chat: [],
+        followTodos: [],
+        abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
+        reviewers: '',
+        assistants: [],
+        timeline: [],
+        planTask: null,
+      }))
+    }
+  } catch (e) {
+    console.error('加载患者列表失败', e)
   }
-])
+  // 后端无数据时用 mock
+  if (!queue.value.length) queue.value = MOCK_QUEUE.map(p => ({
+    ...p,
+    stageLabel: '', nextStep: '', serviceStatus: '',
+    report: { status: '—', summary: '' }, rawReports: [],
+    aiReadSummary: '', reportDoc: { title: '', sections: [] },
+    auditTrail: [], chat: [], followTodos: [],
+    abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
+    reviewers: '', assistants: [], timeline: [], planTask: null,
+  }))
+}
+
+function noduleTypeLabel(t) {
+  const map = {
+    breast: '乳腺结节', lung: '肺部结节', thyroid: '甲状腺结节',
+    breast_lung: '乳腺+肺部结节', breast_thyroid: '乳腺+甲状腺结节',
+    lung_thyroid: '肺部+甲状腺结节', triple: '三合并结节'
+  }
+  return map[t] || t || '—'
+}
+
+function noduleTags(p) {
+  const type = p.noduleType || ''
+  const parts = type.split('_')
+  if (parts.length === 1 && type) return [{ label: noduleTypeLabel(type), type }]
+  const map = { breast: '乳腺结节', lung: '肺部结节', thyroid: '甲状腺结节', triple: '三合并' }
+  if (type === 'triple') return [{ label: '三合并结节', type: 'triple' }]
+  return parts.map(k => ({ label: map[k] || k, type: k }))
+}
+
+const queueFiltered = computed(() => {
+  let list = queue.value
+  if (qSearch.value) list = list.filter(p => p.name.includes(qSearch.value) || (p.phoneMasked || '').includes(qSearch.value))
+  if (qSource.value) list = list.filter(p => sourceLabel(p.source) === qSource.value || p.source === qSource.value)
+  if (qNodule.value) list = list.filter(p => p.nodules === qNodule.value)
+  if (qRisk.value) list = list.filter(p => p.risk === qRisk.value)
+  if (qStatus.value) list = list.filter(p => statusKey(p) === qStatus.value)
+  return list
+})
 
 const filteredQueue = computed(() => {
   if (activeStage.value === 'all') return queue.value
   return queue.value.filter((p) => statusKey(p) === activeStage.value)
 })
 
+// 随访计划页：只展示“随访计划待制定”的患者
+const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === 'plan'))
+
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0]
 })
+
+watch(
+  () => activePatientId.value,
+  () => {
+    // 若患者已保存过计划 day，则切换到该 day
+    const d = activePatient.value?.plan?.day
+    if (typeof d === 'string' && d.startsWith('day')) planDay.value = d
+  },
+  { immediate: true }
+)
+
+/**
+ * @isdoc
+ * @description 根据当前子页(tab)强制绑定患者池(stage)
+ * @param {string} tab
+ * @returns {'all'|'gen'|'review'|'plan'|'follow'}
+ */
+function stageForTab(tab) {
+  if (tab === 'followup-plan') return 'plan'
+  if (tab === 'follow') return 'follow'
+  if (tab === 'review') return 'review'
+  if (tab === 'record') return 'gen'
+  return 'all'
+}
+
+watch(
+  () => subTab.value,
+  (tab) => {
+    // 强制让每个子页只看自己的患者池
+    const stage = stageForTab(tab)
+    activeStage.value = stage
+
+    const list = stage === 'plan'
+      ? planPatients.value
+      : stage === 'follow'
+        ? queue.value.filter((p) => statusKey(p) === 'follow')
+        : stage === 'review'
+          ? queue.value.filter((p) => statusKey(p) === 'review')
+          : stage === 'gen'
+            ? queue.value.filter((p) => statusKey(p) === 'gen')
+            : queue.value
+
+    if (list.length && !list.some((p) => p.id === activePatientId.value)) {
+      activePatientId.value = list[0].id
+    }
+    if (tab === 'follow' && list.length && !list.some((p) => p.id === followPatientId.value)) {
+      followPatientId.value = list[0].id
+    }
+  },
+  { immediate: true }
+)
 
 const midTitle = computed(() => {
   const map = {
@@ -1785,7 +3001,7 @@ function setStage(key) {
   if (list.length && !list.some((p) => p.id === activePatientId.value)) {
     activePatientId.value = list[0].id
   }
-  if (subTab.value !== 'queue') subTab.value = 'queue'
+  if (subTab.value !== 'queue') setSubTab('queue')
 }
 
 // countBy 已废弃：状态统计改为 statusKey 映射
@@ -1802,8 +3018,7 @@ function goRecord() {
  * @description 返回患者队列（用于患者建档页头返回按钮）
  */
 function backToQueue() {
-  subTab.value = 'queue'
-  router.replace({ path: '/patient', query: { ...route.query, tab: 'queue' } })
+  setSubTab('queue')
 }
 </script>
 
@@ -1811,6 +3026,126 @@ function backToQueue() {
 .pm{height:100%;display:flex;flex-direction:column;overflow:hidden;margin:-16px -20px}
 .pm-shell{flex:1;min-height:0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
 .pm-record{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
+
+/* 随访计划页 */
+.plan-page{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
+.plan-filter{margin-bottom:12px}
+.plan-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.plan-filter-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+
+.plan-workbench{display:grid;grid-template-columns:520px minmax(0,1fr);gap:12px;align-items:start}
+.plan-task-list{min-height:620px;display:flex;flex-direction:column}
+.seg-tabs{display:flex;align-items:center;border:1px solid #e6edf7;border-radius:999px;overflow:hidden;background:#fff}
+.seg-tab{height:28px;padding:0 12px;border:none;background:transparent;font-weight:950;color:#334155;cursor:pointer}
+.seg-tab[data-on="true"]{background:#eef5ff;color:#155eef}
+.seg-tab + .seg-tab{border-left:1px solid #e6edf7}
+
+.pat-table{padding:10px 12px;display:grid;gap:10px;min-height:0;overflow:auto}
+.pat-head{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;padding:8px 10px;border:1px solid #eef2f7;background:#f8fafc;border-radius:12px;font-weight:950;color:#0f172a;font-size:12px}
+.pat-rows{display:grid;gap:10px}
+.pat-row{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;align-items:center;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px}
+.pat-row[data-active="true"]{border-color:#155eef;background:#eef5ff}
+.pat-main{border:none;background:transparent;text-align:left;cursor:pointer;min-width:0}
+.pat-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pat-cell{font-size:12px;color:#334155;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-rows{padding:10px 12px;display:grid;gap:10px;overflow:auto;min-height:0}
+.task-row{position:relative;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px;text-align:left;cursor:pointer}
+.task-row.active{border-color:#155eef;background:#eef5ff}
+.tr-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tr-sub{margin-top:4px;font-size:12px;line-height:1.5;color:#334155}
+.tr-meta{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tr-ck{position:absolute;right:10px;bottom:10px}
+.plan-task-detail{min-height:620px;display:flex;flex-direction:column}
+.plan-task-detail .pad{overflow:auto;flex:1;min-height:0}
+.detail-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.detail-card{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px}
+.detail-title{font-weight:950;color:#0f172a;margin-bottom:6px}
+.detail-sub{font-size:12px;margin-bottom:10px}
+.detail-top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.detail-top-title{font-size:13px;color:#0f172a;font-weight:950;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.detail-top-sub{font-size:12px;margin-top:4px}
+.detail-top-actions{display:flex;gap:8px;align-items:center}
+.exec-list{display:grid;gap:10px}
+.exec-row{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:start}
+.exec-at{color:#64748b;font-weight:950;font-size:12px;white-space:nowrap;line-height:1.6}
+.exec-line{color:#0f172a;font-weight:800;font-size:12px}
+.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.pf{display:flex;flex-direction:column;gap:6px}
+.pf .k{color:#64748b;font-weight:850;font-size:12px}
+.pf-in{height:34px;border:1px solid #d9e2ef;border-radius:10px;padding:0 10px;outline:none;background:#fff}
+.pf-in:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.10)}
+
+.plan-card{min-height:520px}
+.plan-quick{display:grid;gap:8px;margin-bottom:12px}
+.plan-quick-item{background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:10px 12px;color:#334155;line-height:1.7}
+.plan-flow{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px;margin-bottom:12px}
+.plan-flow-title{font-weight:950;color:#0f172a;margin-bottom:10px}
+.plan-flow-bar{margin-top:6px}
+.plan-flow-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
+.plan-form{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px;margin-bottom:12px}
+.kb-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.kb-head-actions{display:flex;gap:10px;align-items:center}
+.kb-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.kb-group{border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer}
+.kb-group:hover{border-color:#cfe0ff;background:#fbfdff}
+.kb-group-title{font-weight:950;color:#0f172a}
+.kb-group-sub{font-size:12px;margin-top:2px}
+.kb-group-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.kb-tag{border:1px solid #e6edf7;background:#f8fafc;border-radius:999px;padding:2px 8px;font-size:12px;color:#334155;font-weight:850}
+.kb-picked{margin-top:10px}
+
+.kb-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
+.kb-list{border:1px solid #eef2f7;border-radius:12px;background:#fbfdff;overflow:hidden}
+.kb-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid #eef2f7}
+.kb-row:first-child{border-top:none}
+.kb-ck{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer}
+.kb-ck input{width:16px;height:16px}
+.kb-name{font-weight:950;color:#0f172a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-actions{display:flex;gap:8px;align-items:center}
+.kb-act{border:1px solid #e6edf7;background:#fff;border-radius:10px;height:28px;padding:0 10px;font-weight:900;color:#334155;cursor:pointer}
+.kb-act:hover{border-color:#cfe0ff;background:#eef5ff;color:#155eef}
+.kb-preview{display:grid;gap:8px;margin-top:8px}
+.kb-panel{border:1px solid #eef2f7;border-radius:12px;background:#fff;overflow:hidden}
+.kb-panel > summary{list-style:none;cursor:pointer;padding:10px 12px;font-weight:950;color:#0f172a;display:flex;align-items:center;justify-content:space-between}
+.kb-panel > summary::-webkit-details-marker{display:none}
+.kb-panel[open] > summary{background:#fbfdff;border-bottom:1px solid #eef2f7}
+.kb-body{padding:10px 12px;color:#475569;font-size:12px;line-height:1.75;white-space:pre-wrap}
+.kb-body:empty{color:#94a3b8}
+.kb-drawer{position:fixed;inset:0;background:rgba(15,23,42,.35);display:flex;align-items:stretch;justify-content:flex-end;z-index:60}
+.kb-drawer-card{width:min(980px,92vw);height:100%;background:#fff;border-left:1px solid #e6edf7;box-shadow:-18px 0 60px rgba(15,23,42,.18);display:flex;flex-direction:column}
+.kb-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2f7}
+.kb-drawer-title{font-weight:950;color:#0f172a}
+.kb-drawer-body{display:grid;grid-template-columns:380px minmax(0,1fr);gap:0;flex:1;min-height:0}
+.kb-drawer-left{border-right:1px solid #eef2f7;display:flex;flex-direction:column;min-height:0}
+.kb-drawer-search{padding:12px 12px;border-bottom:1px solid #eef2f7;background:#fbfdff}
+.kb-drawer-list{flex:1;min-height:0;overflow:auto;padding:10px 10px;display:grid;gap:8px}
+.kb-li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:center;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px;text-align:left;cursor:pointer}
+.kb-li[data-on="true"]{border-color:#155eef;background:#eef5ff}
+.kb-li-ck input{width:16px;height:16px}
+.kb-li-title{font-weight:950;color:#0f172a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-li-sub{font-size:12px;margin-top:2px}
+.kb-drawer-right{padding:12px 14px;min-height:0;overflow:auto}
+.kb-prev-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.kb-prev-title{font-weight:950;color:#0f172a}
+.kb-prev-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kb-prev-body{white-space:pre-wrap;line-height:1.75;color:#334155;font-size:12px}
+.kb-drawer-actions{padding:12px 14px;border-top:1px solid #eef2f7;background:#fbfdff;display:flex;justify-content:flex-end}
+.kb-modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.kb-modal-card{width:min(720px,96vw);background:#fff;border-radius:14px;box-shadow:0 18px 60px rgba(15,23,42,.20);border:1px solid rgba(255,255,255,.6);overflow:hidden}
+.kb-modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2f7}
+.kb-modal-title{font-weight:950;color:#0f172a}
+.kb-x{width:30px;height:30px;border-radius:10px;border:1px solid #e6edf7;background:#fff;cursor:pointer;font-size:18px;line-height:1;color:#334155}
+.kb-modal-body{padding:12px 14px}
+.kb-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 14px;border-top:1px solid #eef2f7;background:#fbfdff}
+.kb-file{position:absolute;left:-9999px;opacity:0;width:1px;height:1px}
+.plan-items{border-top:1px dashed #e6edf7;padding-top:12px;display:grid;gap:10px;max-height:520px;overflow:auto}
+.plan-item{border:1px solid #eef2f7;border-radius:12px;background:#fff;overflow:hidden}
+.plan-sum-row{list-style:none;display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;cursor:pointer}
+.plan-sum-row::-webkit-details-marker{display:none}
+.plan-time{color:#64748b;font-weight:950;font-size:12px;white-space:nowrap;line-height:1.6}
+.plan-sum{color:#0f172a;font-weight:750;line-height:1.7;font-size:13px;white-space:pre-wrap}
+.plan-detail{border-top:1px solid #eef2f7;padding:10px 12px;background:#fbfdff}
+.plan-remind{color:#64748b;line-height:1.7;font-size:12px;white-space:pre-wrap}
 
 .pm-body{flex:1;min-height:0;display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:12px;padding:12px;background:#fff}
 .panel{min-height:0}
@@ -1989,7 +3324,40 @@ function backToQueue() {
 .truncate{max-width:360px;overflow:hidden;text-overflow:ellipsis}
 
 .pm-overview{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;padding:12px;background:#fff;overflow:hidden}
-.overview-left{min-height:0;display:flex;flex-direction:column}
+.overview-left{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* 统计卡片 */
+.stat-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:12px 12px 0}
+.stat-card{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e6edf7;border-radius:10px;padding:12px 14px}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+.stat-body{min-width:0}
+.stat-label{font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
+.stat-val{font-size:22px;font-weight:900;color:#111827;line-height:1.2}
+.stat-sub{font-size:11px;font-weight:700;margin-top:2px}
+
+/* 筛选栏 */
+.q-filter-bar{padding:12px 12px 0}
+.q-filter-title{font-size:13px;font-weight:800;color:#374151;margin-bottom:8px}
+.q-filter-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.q-filter-item{display:flex;flex-direction:column;gap:4px}
+.q-filter-item label{font-size:11px;font-weight:700;color:#64748b}
+.q-filter-input{height:32px;border:1px solid #d9e2ef;border-radius:6px;padding:0 10px;outline:none;min-width:160px;font-size:13px}
+.q-filter-input:focus{border-color:#155eef;box-shadow:0 0 0 2px rgba(21,94,239,.1)}
+.q-filter-select{height:32px;border:1px solid #d9e2ef;border-radius:6px;padding:0 10px;outline:none;font-size:13px;min-width:110px;background:#fff}
+.q-filter-select:focus{border-color:#155eef}
+.q-filter-actions{display:flex;gap:6px;align-items:flex-end;padding-bottom:0}
+
+/* 表格头行 */
+.q-table-head-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 6px;font-size:13px}
+
+/* 状态标签 */
+.status-tag{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}
+.status-tag[data-s="gen"]{background:#eff6ff;color:#1d4ed8}
+.status-tag[data-s="review"]{background:#fff7ed;color:#c2410c}
+.status-tag[data-s="plan"]{background:#f5f3ff;color:#6d28d9}
+.status-tag[data-s="follow"]{background:#ecfdf5;color:#059669}
+.status-tag[data-s="push"]{background:#fdf4ff;color:#a21caf}
+.status-tag[data-s="abnormal"]{background:#fff1f2;color:#dc2626}
 .overview-right{min-height:0;height:100%;display:flex;flex-direction:column;gap:12px;overflow-y:auto;overflow-x:hidden;padding-right:12px;padding-bottom:12px;box-sizing:border-box}
 .workbench{display:grid;gap:10px}
 .wb-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -2040,6 +3408,8 @@ function backToQueue() {
 .flow5h-node[data-state="current"] .seg{background:linear-gradient(90deg,#155eef 0%,#e5e7eb 70%)}
 
 .ops{display:grid;gap:8px}
+.tbl-act{border:0;background:transparent;color:#155eef;font-size:12px;font-weight:700;padding:0;cursor:pointer}
+.tbl-act:hover{color:#0f4fd4;text-decoration:underline}
 .btn-link-lite{
   border:0;
   background:transparent;
@@ -2208,6 +3578,20 @@ function backToQueue() {
 .assist-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;border:1.5px solid #fff}
 .assist-dot[data-tone="g"]{background:#16a34a}
 .assist-dot[data-tone="o"]{background:#f97316}
+
+/* 助手-计划折叠面板 */
+.assist-plan-zone{background:#fff;border:1px solid #e6edf7;border-radius:10px;padding:10px 12px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+.assist-plan-list{display:grid;gap:8px}
+.assist-plan{border:1px solid #eef2f7;border-radius:10px;background:#fff;overflow:hidden}
+.assist-plan-sum{list-style:none;display:grid;grid-template-columns:30px 72px 1fr;gap:10px;align-items:center;padding:9px 10px;cursor:pointer}
+.assist-plan-sum::-webkit-details-marker{display:none}
+.assist-plan-ico{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:950;font-size:12px;flex-shrink:0}
+.assist-plan-name{font-weight:950;color:#0f172a;font-size:12px;white-space:nowrap}
+.assist-plan-mini{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.assist-plan-body{border-top:1px solid #eef2f7;padding:10px 10px;background:#fbfdff;display:grid;gap:10px}
+.assist-plan-sec{display:grid;gap:6px}
+.assist-plan-sec-h{font-weight:950;color:#0f172a;font-size:12px}
+.assist-plan-sec-p{color:#334155;line-height:1.7;font-size:12px;white-space:pre-wrap}
 
 /* 助手介绍图（右侧控制面板） */
 .assist-img-wrap{
@@ -2442,5 +3826,16 @@ function backToQueue() {
 /* 快捷操作 */
 .rp-actions{display:flex;gap:8px;padding:10px 12px;flex-wrap:wrap}
 .rp-empty{display:flex;align-items:center;justify-content:center;height:200px;color:#94a3b8;font-size:13px}
+
+/* 报告查看弹窗 */
+.rp-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center}
+.rp-modal{background:#fff;border-radius:12px;width:min(860px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.rp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e6edf7;flex-shrink:0}
+.rp-modal-title{font-size:16px;font-weight:800;color:#111827}
+.rp-modal-close{border:0;background:transparent;font-size:18px;color:#94a3b8;cursor:pointer;padding:0 4px}
+.rp-modal-close:hover{color:#374151}
+.rp-modal-body{padding:20px 24px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1e293b}
+.rp-modal-body h1,.rp-modal-body h2,.rp-modal-body h3{color:#111827;margin:16px 0 8px}
+.rp-modal-body p{margin:6px 0}
 </style>
 

@@ -13,7 +13,7 @@
               <path d="M3 13h6v8H3zM10 3h6v18h-6zM17 8h4v13h-4z" />
             </svg>
           </span>
-          <span class="nav-label">运行看板</span>
+          <span class="nav-label">运营看板</span>
         </RouterLink>
 
         <RouterLink class="nav-item" to="/patient">
@@ -29,23 +29,12 @@
 
         <div v-if="showPatientSubnav" class="subnav" aria-label="患者管理二级标题">
           <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">患者队列</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">档案与报告</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">健康报告审核</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">AI助手随访</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">患者建档</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">健康报告</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访计划</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">AI随访</RouterLink>
           <RouterLink class="subnav-item" :class="{ active: activeTab === 'abnormal' }" :to="{ path: '/patient', query: { tab: 'abnormal' } }">异常与复查</RouterLink>
         </div>
-
-        <RouterLink class="nav-item" to="/stats">
-          <span class="nav-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19V5" />
-              <path d="M9 19V9" />
-              <path d="M14 19V12" />
-              <path d="M19 19V7" />
-            </svg>
-          </span>
-          <span class="nav-label">管理统计</span>
-        </RouterLink>
 
         <RouterLink class="nav-item" to="/rws">
           <span class="nav-ico" aria-hidden="true">
@@ -130,7 +119,7 @@ function logout() {
 </script>
 
 <style scoped>
-.shell{height:100%;display:grid;grid-template-columns:220px minmax(0,1fr);background:var(--bg,#f3f6fb);color:#0f172a;overflow:hidden}
+.shell{height:100%;display:grid;grid-template-columns:180px minmax(0,1fr);background:var(--bg,#f3f6fb);color:#0f172a;overflow:hidden}
 .sidebar{background:#fff;border-right:1px solid #e6edf7;display:flex;flex-direction:column;min-height:0}
 .brand{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid #eef2f7}
 .brand-mark{width:34px;height:34px;border-radius:10px;background:#155eef;color:#fff;display:grid;place-items:center;font-weight:950}
@@ -159,5 +148,5 @@ function logout() {
 .user-pill{height:34px;border:1px solid #d9e2ef;border-radius:12px;padding:0 12px;display:flex;align-items:center;gap:8px;color:#334155;background:#fff;font-weight:850;white-space:nowrap}
 .avatar{width:18px;height:18px;border-radius:50%;background:#155eef}
 .chev{color:#94a3b8}
-.content{flex:1;min-height:0;padding:16px 22px 22px;background:#f3f6fb;overflow:hidden;display:flex;flex-direction:column}
+.content{flex:1;min-height:0;padding:16px 20px;background:#fff;overflow-y:auto;overflow-x:hidden}
 </style>

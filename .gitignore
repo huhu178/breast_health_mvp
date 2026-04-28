@@ -21,6 +21,8 @@ ENV/
 # Cursor/Agent 本地配置（不要提交）
 .claude/settings.local.json
 .agents/
+demo/.claude/settings.local.json
+demo/.claude/
 
 # 数据库文件（根据需要调整）
 *.db
@@ -49,6 +51,9 @@ yarn-error.log*
 # Vue构建产物
 frontend/vue-app/dist/
 frontend/vue-app/.cache/
+
+# demo 后端上传文件（体积大/环境相关）
+demo/backend/uploads/
 
 # 临时文件
 *.tmp

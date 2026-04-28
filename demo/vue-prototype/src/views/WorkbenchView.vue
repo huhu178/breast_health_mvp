@@ -5,16 +5,17 @@
       <div class="crumb">首页 / <b>工作台</b></div>
     </div>
 
-    <section class="kpi-row" aria-label="关键指标">
-      <article v-for="m in metrics" :key="m.label" class="kpi" :data-tone="m.tone">
-        <div class="kpi-label">{{ m.label }}</div>
-        <div class="kpi-value">{{ m.value }}</div>
-        <div class="kpi-delta">{{ m.delta }}</div>
-        <svg class="spark" viewBox="0 0 70 26" aria-hidden="true">
-          <path d="M2 20 C10 18 12 16 18 17 C25 18 28 10 34 12 C40 14 42 6 48 7 C55 8 57 17 68 12"/>
-        </svg>
-      </article>
-    </section>
+    <div class="kpi-row" aria-label="统计概览">
+      <KpiCard
+        v-for="k in kpiList"
+        :key="k.label"
+        :label="k.label"
+        :value="k.value"
+        :delta="k.delta"
+        :tone="k.tone"
+        :icon="k.icon"
+      />
+    </div>
 
     <div class="tri">
       <!-- 左：患者队列 -->
@@ -177,15 +178,16 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import KpiCard from '../components/KpiCard.vue'
 import { kpis, patientQueue, messageThreads, aiWorkspace } from '../mocks/workbenchMock'
-
-const metrics = computed(() => kpis.analytics)
 
 const keyword = ref('')
 const risk = ref('all')
 const nodule = ref('all')
 const stage = ref('全部')
 const tabs = ['全部', '待处理报告', '待医生复核', '待推送患者', '异常']
+
+const kpiList = kpis.analytics
 
 const currentId = ref(patientQueue[0]?.id)
 

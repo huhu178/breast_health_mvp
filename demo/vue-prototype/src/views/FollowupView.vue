@@ -197,9 +197,43 @@
           <div class="seg">
             <div class="seg-title"><span class="idx">B</span>随访计划</div>
             <div class="plan-grid">
-              <div class="plan-row"><span class="k">随访方式</span><span class="v">企微 / 电话</span></div>
-              <div class="plan-row"><span class="k">提醒策略</span><span class="v">到期前 3 天自动提醒；逾期转人工</span></div>
-              <div class="plan-row"><span class="k">计划说明</span><span class="v">按风险分层触达，优先处理高风险随访任务</span></div>
+              <div class="plan-row">
+                <span class="k">计划来源</span>
+                <span class="v">
+                  {{ planState.title || '甲状腺结节合并肺结节健康管理方案（含心理）' }}
+                  <a class="plan-link" href="/plans/9 甲状腺结节合并肺结节健康管理方案加心理.xlsx" target="_blank" rel="noreferrer">下载原表</a>
+                </span>
+              </div>
+              <div class="plan-row">
+                <span class="k">计划天数</span>
+                <span class="v">
+                  <span v-if="planState.loading" class="muted">加载中…</span>
+                  <span v-else-if="planState.error" class="muted">{{ planState.error }}</span>
+                  <span v-else>Day {{ planDay.replace('day','') }} / {{ planDayList.length }}</span>
+                </span>
+              </div>
+              <div class="plan-row">
+                <span class="k">选择天数</span>
+                <span class="v">
+                  <select class="plan-select" v-model="planDay" :disabled="planState.loading || !!planState.error">
+                    <option v-for="d in planDayList" :key="d" :value="d">Day {{ d.replace('day','') }}</option>
+                  </select>
+                  <button class="btn" type="button" @click="loadPlan">刷新</button>
+                </span>
+              </div>
+              <div class="plan-row"><span class="k">随访方式</span><span class="v">企微 / 电话 / 小程序</span></div>
+              <div class="plan-row"><span class="k">提醒策略</span><span class="v">到期前 3 天自动提醒；逾期转人工；异常优先转医生</span></div>
+              <div class="plan-row"><span class="k">计划说明</span><span class="v">按风险分层触达，饮食+运动+心理协同；化痰不伤阴、理气不耗气</span></div>
+            </div>
+
+            <div v-if="!planState.loading && !planState.error" class="plan-items">
+              <div class="plan-item" v-for="(r, idx) in currentPlanRows" :key="idx">
+                <div class="plan-time">{{ r.time || '—' }}</div>
+                <div class="plan-main">
+                  <div class="plan-sum">{{ r.summary }}</div>
+                  <div v-if="r.remind" class="plan-remind">{{ r.remind }}</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -215,7 +249,18 @@
 
           <div class="seg">
             <div class="seg-title"><span class="idx">D</span>患者反馈</div>
-            <div class="ai-box">{{ current.ai }}</div>
+            <div class="ai-box">
+              <div class="ai-block">
+                <div class="ai-sub">患者反馈</div>
+                <div class="ai-text">{{ current.ai }}</div>
+              </div>
+              <div v-if="planQuick.psych || planQuick.sport" class="ai-split"></div>
+              <div v-if="planQuick.psych || planQuick.sport" class="ai-block">
+                <div class="ai-sub">AI随访建议（来自 Day {{ planDay.replace('day','') }}）</div>
+                <div v-if="planQuick.sport" class="ai-text"><b>运动：</b>{{ planQuick.sport }}</div>
+                <div v-if="planQuick.psych" class="ai-text" style="margin-top:8px"><b>心理：</b>{{ planQuick.psych }}</div>
+              </div>
+            </div>
           </div>
 
           <div class="seg">
@@ -254,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { store } from '../store/index.js'
 import { stageLabels, riskText, riskClass, stageClass } from '../mocks/patients.js'
 import TagBadge from '../components/TagBadge.vue'
@@ -268,6 +313,65 @@ const riskFilter = ref('all')
 const channelFilter = ref('all')
 const followStatus = ref('all')
 const ownerFilter = ref('all')
+
+const planState = ref({
+  loading: true,
+  error: '',
+  title: '',
+  sourceFile: '',
+  days: {}
+})
+const planDay = ref('day1')
+
+/**
+ * @description 加载随访计划（从 public/plans 读取 JSON）
+ */
+async function loadPlan() {
+  planState.value.loading = true
+  planState.value.error = ''
+  try {
+    const res = await fetch('/plans/thyroid-lung-psych.json', { cache: 'no-cache' })
+    if (!res.ok) throw new Error(`加载计划失败：${res.status}`)
+    const data = await res.json()
+    planState.value = {
+      loading: false,
+      error: '',
+      title: data?.title ?? '',
+      sourceFile: data?.sourceFile ?? '',
+      days: data?.days ?? {}
+    }
+    if (!planState.value.days?.[planDay.value]) {
+      const first = Object.keys(planState.value.days ?? {})[0]
+      if (first) planDay.value = first
+    }
+  } catch (e) {
+    planState.value.loading = false
+    planState.value.error = e?.message || '加载计划失败'
+  }
+}
+
+onMounted(() => {
+  loadPlan()
+})
+
+const planDayList = computed(() => {
+  const keys = Object.keys(planState.value.days ?? {})
+  // day1..day90 排序
+  return keys.sort((a, b) => Number(a.replace('day', '')) - Number(b.replace('day', '')))
+})
+
+const currentPlanRows = computed(() => planState.value.days?.[planDay.value] ?? [])
+
+function pickFirst(prefix) {
+  return currentPlanRows.value.find((r) => String(r?.summary ?? '').includes(prefix))?.summary || ''
+}
+
+const planQuick = computed(() => {
+  const sport = pickFirst('运动')
+  const psych = pickFirst('心理')
+  const knowledge = pickFirst('知识卡')
+  return { sport, psych, knowledge }
+})
 
 const metrics = computed(() => ([
   { label: '今日随访', value: '128', delta: '较昨日 +18', tone: 'blue', icon: 'today' },
@@ -401,6 +505,15 @@ function resetFilters() {
 .plan-row{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;align-items:start}
 .plan-row .k{color:#94a3b8;font-size:12px}
 .plan-row .v{color:#0f172a;font-weight:700;line-height:1.7;font-size:13px}
+.plan-select{height:34px;border:1px solid #d9e2ef;border-radius:8px;padding:0 10px;background:#fff;color:#111827;outline:none;margin-right:8px}
+.plan-select:disabled{background:#f5f7fa;color:#94a3b8}
+.plan-link{margin-left:10px;color:#155eef;text-decoration:none;font-weight:800}
+.plan-link:hover{text-decoration:underline}
+.plan-items{margin-top:12px;border-top:1px dashed #e6edf7;padding-top:10px;display:grid;gap:10px;max-height:320px;overflow:auto}
+.plan-item{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:flex-start}
+.plan-time{color:#64748b;font-weight:850;font-size:12px;white-space:nowrap}
+.plan-sum{color:#0f172a;font-weight:750;line-height:1.7;font-size:13px}
+.plan-remind{margin-top:6px;color:#64748b;line-height:1.7;font-size:12px}
 .checklist{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
 .ck{display:flex;gap:8px;align-items:center;font-size:13px;color:#334155}
 .ck input{accent-color:#155eef}
@@ -409,7 +522,11 @@ function resetFilters() {
 .event:last-child{border-bottom:0}
 .event-time{color:#94a3b8;font-size:12px}
 .event-text{line-height:1.6;font-size:13px}
-.ai-box{background:#f8fbff;border:1px solid #dce8f8;border-radius:7px;padding:11px 12px;line-height:1.7;color:#253247;font-size:13px}
+.ai-box{background:#f8fbff;border:1px solid #dce8f8;border-radius:7px;padding:11px 12px;color:#253247;font-size:13px}
+.ai-block{display:block}
+.ai-sub{font-weight:950;color:#0f172a;margin-bottom:6px}
+.ai-text{line-height:1.7;white-space:pre-wrap}
+.ai-split{height:1px;background:#dce8f8;margin:10px 0}
 
 .flow-line{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:4px 0 0;text-align:center;font-size:11px;color:#64748b}
 .flow-dot{width:18px;height:18px;border-radius:50%;background:#cbd5e1;margin:0 auto 6px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:900}

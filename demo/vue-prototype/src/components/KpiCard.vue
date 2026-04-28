@@ -1,6 +1,11 @@
 <template>
   <article class="kpi" :data-tone="tone">
-    <div class="kpi-icon" :class="tone !== 'blue' ? tone : ''">{{ icon }}</div>
+    <div class="kpi-icon" :class="tone !== 'blue' ? tone : ''" aria-hidden="true">
+      <svg v-if="iconPath" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <path :d="iconPath" />
+      </svg>
+      <span v-else>{{ icon }}</span>
+    </div>
     <div class="kpi-label">{{ label }}</div>
     <div class="kpi-value">{{ value }}</div>
     <div class="kpi-hint">{{ delta }}</div>
@@ -11,7 +16,20 @@
 </template>
 
 <script setup>
-defineProps({ label: String, value: String, delta: String, tone: String, icon: String })
+import { computed } from 'vue'
+
+const props = defineProps({ label: String, value: String, delta: String, tone: String, icon: String })
+
+const iconPath = computed(() => {
+  const key = props.icon
+  if (key === 'users') return 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87'
+  if (key === 'shield') return 'M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4'
+  if (key === 'file') return 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'
+  if (key === 'check') return 'M20 6L9 17l-5-5'
+  if (key === 'send') return 'M22 2L11 13 M22 2l-7 20-4-9-9-4 20-7z'
+  if (key === 'clock') return 'M12 8v5l3 2 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20'
+  return ''
+})
 </script>
 
 <style scoped>

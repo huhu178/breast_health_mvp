@@ -1,12 +1,29 @@
 <template>
   <div class="page">
 
+    <!-- KPI 概览 -->
+    <div class="kpi-row" aria-label="运营关键指标">
+      <article v-for="m in metrics" :key="m.label" class="kpi" :data-tone="m.tone">
+        <div class="kpi-ico" aria-hidden="true">
+          <svg v-if="iconPath(m.icon)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path :d="iconPath(m.icon)" />
+          </svg>
+          <span v-else>{{ m.icon }}</span>
+        </div>
+        <div class="kpi-label">{{ m.label }}</div>
+        <div class="kpi-value">{{ m.value }}</div>
+        <div class="kpi-delta">{{ m.delta }}</div>
+        <svg class="spark" :class="m.tone !== 'blue' ? m.tone : ''" viewBox="0 0 70 26" aria-hidden="true">
+          <path :d="sparkPath(m.delta)" />
+        </svg>
+      </article>
+    </div>
+
     <!-- 七类结节总览表（核心区，优先展示） -->
     <section class="card">
       <div class="card-head">
         <div class="head-left">
           <div class="card-title">七类结节运营总览</div>
-          <span class="muted-sm">点击"进入队列"进入工作台</span>
         </div>
         <div class="head-actions">
           <button class="btn">导出统计</button>
@@ -53,20 +70,18 @@
         <div class="chart-body donut-layout">
           <div class="donut-wrap">
             <svg class="donut-svg" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#f6bd16" stroke-width="16"
-                stroke-dasharray="163.4 282.7" stroke-dashoffset="0" />
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#5b8ff9" stroke-width="16"
-                stroke-dasharray="156.9 282.7" stroke-dashoffset="-163.4" />
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#5ad8a6" stroke-width="16"
-                stroke-dasharray="200.7 282.7" stroke-dashoffset="-320.3" />
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#6dc8ec" stroke-width="16"
-                stroke-dasharray="40.6 282.7" stroke-dashoffset="-521.0" />
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#c4b5fd" stroke-width="16"
-                stroke-dasharray="35.0 282.7" stroke-dashoffset="-561.6" />
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#fda4af" stroke-width="16"
-                stroke-dasharray="23.2 282.7" stroke-dashoffset="-596.6" />
-              <circle cx="60" cy="60" r="46" fill="none" stroke="#cbd5e1" stroke-width="16"
-                stroke-dasharray="6.3 282.7" stroke-dashoffset="-619.8" />
+              <circle
+                v-for="seg in donutSegments"
+                :key="seg.name"
+                cx="60"
+                cy="60"
+                r="46"
+                fill="none"
+                :stroke="seg.color"
+                stroke-width="16"
+                :stroke-dasharray="`${seg.len} ${donutCircumference}`"
+                :stroke-dashoffset="seg.offset"
+              />
             </svg>
             <div class="donut-center">
               <b>12,486</b>
@@ -134,6 +149,16 @@ import { kpis } from '../mocks/workbenchMock'
 const router = useRouter()
 const metrics = computed(() => kpis.analytics)
 
+function iconPath(key) {
+  if (key === 'users') return 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87'
+  if (key === 'shield') return 'M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4'
+  if (key === 'file') return 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'
+  if (key === 'check') return 'M20 6L9 17l-5-5'
+  if (key === 'send') return 'M22 2L11 13 M22 2l-7 20-4-9-9-4 20-7z'
+  if (key === 'clock') return 'M12 8v5l3 2 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20'
+  return ''
+}
+
 function sparkPath(delta) {
   const down = /-\s*\d/.test(String(delta ?? '')) || /↓/.test(String(delta ?? ''))
   return down
@@ -142,24 +167,47 @@ function sparkPath(delta) {
 }
 
 const donutLegend = [
-  { name: '乳腺结节', pct: '26.1%', color: '#f6bd16' },
-  { name: '甲状腺结节', pct: '25.1%', color: '#5b8ff9' },
-  { name: '肺部结节', pct: '32.1%', color: '#5ad8a6' },
-  { name: '肺部合并乳腺结节', pct: '6.5%', color: '#6dc8ec' },
-  { name: '肺部合并甲状腺结节', pct: '5.6%', color: '#c4b5fd' },
-  { name: '甲状腺合并乳腺结节', pct: '3.7%', color: '#fda4af' },
-  { name: '三合并结节', pct: '1.0%', color: '#cbd5e1' }
+  { name: '三合并结节', pct: '28%', color: '#5ad8a6' },
+  { name: '肺部合并乳腺结节', pct: '18%', color: '#5b8ff9' },
+  { name: '肺部合并甲状腺结节', pct: '16%', color: '#6dc8ec' },
+  { name: '甲状腺合并乳腺结节', pct: '14%', color: '#c4b5fd' },
+  { name: '肺部结节', pct: '9%', color: '#f6bd16' },
+  { name: '甲状腺结节', pct: '8%', color: '#fda4af' },
+  { name: '乳腺结节', pct: '7%', color: '#cbd5e1' }
 ]
 
 const rows = [
-  { type: '乳腺结节', total: '3,256', inc: 32, high: 356, mid: 812, low: '2,088', todoReport: 38, todoReview: 22, todoPush: 19, following: '2,456', abnormal: 26, doneRate: '81.2%' },
-  { type: '甲状腺结节', total: '3,128', inc: 28, high: 312, mid: 790, low: '2,026', todoReport: 29, todoReview: 18, todoPush: 15, following: '2,389', abnormal: 21, doneRate: '79.4%' },
-  { type: '肺部结节', total: '4,012', inc: 41, high: 428, mid: '1,102', low: '2,482', todoReport: 42, todoReview: 24, todoPush: 28, following: '2,976', abnormal: 34, doneRate: '77.8%' },
-  { type: '肺部合并乳腺结节', total: 812, inc: 9, high: 96, mid: 208, low: 508, todoReport: 10, todoReview: 6, todoPush: 8, following: 604, abnormal: 8, doneRate: '74.4%' },
-  { type: '肺部合并甲状腺结节', total: 702, inc: 7, high: 84, mid: 176, low: 442, todoReport: 8, todoReview: 4, todoPush: 6, following: 518, abnormal: 6, doneRate: '76.1%' },
-  { type: '甲状腺合并乳腺结节', total: 456, inc: 5, high: 52, mid: 120, low: 284, todoReport: 6, todoReview: 3, todoPush: 4, following: 332, abnormal: 5, doneRate: '77.2%' },
-  { type: '三合并结节', total: 120, inc: 2, high: 20, mid: 36, low: 64, todoReport: 3, todoReview: 2, todoPush: 2, following: 86, abnormal: 2, doneRate: '72.0%' }
+  { type: '三合并结节', total: '3,496', inc: 36, high: 468, mid: '1,120', low: '1,908', todoReport: 62, todoReview: 38, todoPush: 44, following: '2,482', abnormal: 41, doneRate: '80.4%' },
+  { type: '肺部合并乳腺结节', total: '2,247', inc: 21, high: 286, mid: 708, low: '1,253', todoReport: 34, todoReview: 22, todoPush: 26, following: '1,612', abnormal: 25, doneRate: '78.2%' },
+  { type: '肺部合并甲状腺结节', total: '1,998', inc: 19, high: 254, mid: 642, low: '1,102', todoReport: 28, todoReview: 18, todoPush: 22, following: '1,426', abnormal: 21, doneRate: '77.6%' },
+  { type: '甲状腺合并乳腺结节', total: '1,748', inc: 17, high: 218, mid: 566, low: 964, todoReport: 24, todoReview: 16, todoPush: 18, following: '1,238', abnormal: 18, doneRate: '76.9%' },
+  { type: '肺部结节', total: '1,124', inc: 12, high: 156, mid: 348, low: 620, todoReport: 18, todoReview: 11, todoPush: 12, following: 786, abnormal: 14, doneRate: '75.8%' },
+  { type: '甲状腺结节', total: 999, inc: 10, high: 128, mid: 312, low: 559, todoReport: 14, todoReview: 9, todoPush: 10, following: 694, abnormal: 11, doneRate: '74.6%' },
+  { type: '乳腺结节', total: 874, inc: 9, high: 112, mid: 268, low: 494, todoReport: 12, todoReview: 8, todoPush: 9, following: 606, abnormal: 9, doneRate: '73.9%' }
 ]
+
+const donutCircumference = 2 * Math.PI * 46
+
+function parsePct(p) {
+  const n = Number(String(p).replace('%', '').trim())
+  return Number.isFinite(n) ? n : 0
+}
+
+const donutSegments = computed(() => {
+  let acc = 0
+  return donutLegend.map((it) => {
+    const pct = parsePct(it.pct)
+    const len = (pct / 100) * donutCircumference
+    const seg = {
+      name: it.name,
+      color: it.color,
+      len: len.toFixed(1),
+      offset: (-acc).toFixed(1)
+    }
+    acc += len
+    return seg
+  })
+})
 
 function goWorkbench() { router.push('/patient?tab=queue') }
 </script>
