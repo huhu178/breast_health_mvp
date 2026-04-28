@@ -83,7 +83,7 @@
               <input v-model="form.note" placeholder="简短备注（不超过一行）">
             </div>
 
-            <!-- 第4行：身高、体重、糖尿病史、膏方地址 -->
+            <!-- 第4行：身高、体重、糖尿病史 -->
             <div class="field col-2">
               <div class="label">身高（cm）</div>
               <input v-model="form.height" type="number" placeholder="例如：165">
@@ -97,16 +97,6 @@
               <select v-model="form.diabetes_history">
                 <option>无</option><option>有</option>
               </select>
-            </div>
-            <div class="field col-6">
-              <div class="label">可接收膏方的收货地址</div>
-              <input v-model="form.gaofang_address" placeholder="如：XX省XX市XX区XX路XX号">
-            </div>
-
-            <!-- 第4行：膏方收货地址 -->
-            <div class="field col-12 addr">
-              <div class="label">可接收膏方的收货地址</div>
-              <input v-model="form.gaofangAddress" placeholder="例如：XX省XX市XX区XX路XX号">
             </div>
           </div>
         </section>

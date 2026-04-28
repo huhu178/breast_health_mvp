@@ -143,7 +143,6 @@
                   <th style="width:160px">结节类型</th>
                   <th style="width:72px">风险等级</th>
                   <th style="width:100px">当前状态</th>
-                  <th style="width:96px">下次随访</th>
                   <th style="width:72px">负责人</th>
                   <th>操作</th>
                 </tr>
@@ -165,11 +164,10 @@
                   </td>
                   <td><span class="pill" :data-tone="p.riskTone">{{ p.risk }}</span></td>
                   <td><span class="status-tag" :data-s="statusKey(p)">{{ statusLabel(p) }}</span></td>
-                  <td class="muted" style="font-size:11px">{{ p.nextVisit || '—' }}</td>
                   <td class="muted">{{ p.owner }}</td>
                   <td>
                     <div style="display:flex;gap:8px">
-                      <button class="tbl-act" type="button" @click.stop="activePatientId=p.id">查看</button>
+                      <button class="tbl-act" type="button" @click.stop="setSubTab('review')">查看</button>
                       <button class="tbl-act" type="button" @click.stop="setSubTab('follow')">随访</button>
                     </div>
                   </td>
@@ -192,8 +190,9 @@
 
         <!-- 右：患者操作面板 -->
         <aside class="overview-right">
+          <div v-if="!queue.length" class="side-empty">加载中...</div>
           <!-- 合并面板：患者详情 / 标签 / 下一步 / 流程 / 操作 / 动态 -->
-          <section class="card side-panel">
+          <section v-else class="card side-panel">
             <div class="card-head one-line">
               <div class="side-title">
                 <div class="side-name">{{ activePatient.name }}</div>
@@ -289,12 +288,98 @@
 
       <!-- followup-plan tab：随访计划制定（展示计划内容） -->
       <div v-else-if="subTab === 'followup-plan'" class="plan-page">
+
+        <!-- 统计卡片 -->
+        <div class="stat-cards" style="padding:0 0 0">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#eff6ff;color:#2563eb">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">今日随访</div>
+              <div class="stat-val">{{ filteredTasks.filter(t=>t.status==='pending').length }}</div>
+              <div class="stat-sub" style="color:#2563eb">较昨日 +3</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fffbeb;color:#d97706">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">待随访</div>
+              <div class="stat-val">{{ followTasks.filter(t=>t.status==='pending').length }}</div>
+              <div class="stat-sub" style="color:#d97706">较昨日 +5</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#ecfdf5;color:#059669">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">已完成</div>
+              <div class="stat-val">{{ followTasks.filter(t=>t.status==='done').length }}</div>
+              <div class="stat-sub" style="color:#059669">较昨日 +8</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fff1f2;color:#dc2626">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">逾期随访</div>
+              <div class="stat-val">{{ followTasks.filter(t=>t.status==='overdue').length }}</div>
+              <div class="stat-sub" style="color:#dc2626">较昨日 +1</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fdf4ff;color:#a21caf">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">异常反馈</div>
+              <div class="stat-val">{{ followTasks.filter(t=>t.status==='abnormal').length }}</div>
+              <div class="stat-sub" style="color:#a21caf">较昨日 +2</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">自动提醒中</div>
+              <div class="stat-val">{{ followTasks.filter(t=>t.channel==='小程序').length }}</div>
+              <div class="stat-sub" style="color:#16a34a">较昨日 +4</div>
+            </div>
+          </div>
+        </div>
+
         <!-- 顶部筛选条 -->
         <section class="card plan-filter">
-          <div class="pad pad-lg plan-filter-row">
-            <label class="pf" style="min-width:220px">
-              <span class="k">患者检索</span>
+          <div class="q-filter-title" style="padding:10px 16px 0;font-size:13px;font-weight:800;color:#374151">筛选条件</div>
+          <div class="pad pad-lg plan-filter-row" style="padding-top:8px">
+            <label class="pf" style="min-width:180px">
+              <span class="k">患者姓名/手机号</span>
               <input class="pf-in" v-model="taskFilters.q" placeholder="姓名 / 手机号" />
+            </label>
+            <label class="pf">
+              <span class="k">患者来源</span>
+              <select class="pf-in" v-model="taskFilters.source">
+                <option value="">全部</option>
+                <option>门诊</option>
+                <option>体检中心</option>
+                <option>社区</option>
+              </select>
+            </label>
+            <label class="pf">
+              <span class="k">结节类型</span>
+              <select class="pf-in" v-model="taskFilters.nodule">
+                <option value="">全部</option>
+                <option>乳腺结节</option>
+                <option>肺部结节</option>
+                <option>甲状腺结节</option>
+                <option>乳腺+肺部结节</option>
+                <option>三合并结节</option>
+              </select>
             </label>
             <label class="pf">
               <span class="k">风险等级</span>
@@ -306,21 +391,31 @@
               </select>
             </label>
             <label class="pf">
+              <span class="k">随访状态</span>
+              <select class="pf-in" v-model="taskFilters.status">
+                <option value="">全部</option>
+                <option value="pending">待随访</option>
+                <option value="done">已完成</option>
+                <option value="overdue">逾期</option>
+                <option value="abnormal">异常反馈</option>
+              </select>
+            </label>
+            <label class="pf">
               <span class="k">触达方式</span>
               <select class="pf-in" v-model="taskFilters.channel">
                 <option value="">全部</option>
                 <option value="企微">企微</option>
                 <option value="电话">电话</option>
                 <option value="小程序">小程序</option>
-                <option value="企微/电话/小程序">企微/电话/小程序</option>
               </select>
             </label>
             <label class="pf">
               <span class="k">负责人</span>
-              <input class="pf-in" v-model="taskFilters.owner" placeholder="例如：张医生/运营A" />
+              <input class="pf-in" v-model="taskFilters.owner" placeholder="例如：张医生" />
             </label>
             <div class="plan-filter-actions">
               <button class="btn-link-lite" type="button" @click="resetTaskFilters">重置</button>
+              <button class="primary" type="button">查询</button>
               <button class="primary" type="button" @click="openNewTaskFromActive">新建随访任务</button>
             </div>
           </div>
@@ -838,6 +933,70 @@
       <!-- review tab：健康报告（报告处理主页面） -->
       <div v-else-if="subTab === 'review'" class="rp-page">
 
+        <!-- 统计卡片 -->
+        <div class="stat-cards" style="padding:12px 0 0">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#eff6ff;color:#2563eb">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">待处理报告</div>
+              <div class="stat-val">{{ rpList.filter(r=>r.reportStatus!=='已审核').length }}</div>
+              <div class="stat-sub" style="color:#2563eb">较昨日 -2</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fdf4ff;color:#a21caf">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">AI解析中</div>
+              <div class="stat-val">{{ rpList.filter(r=>r.aiStatus==='AI解析中').length }}</div>
+              <div class="stat-sub" style="color:#a21caf">较昨日 +1</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#ecfdf5;color:#059669">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">解析完成</div>
+              <div class="stat-val">{{ rpList.filter(r=>r.aiStatus==='待审核').length }}</div>
+              <div class="stat-sub" style="color:#059669">较昨日 +3</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fffbeb;color:#d97706">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">待生成报告</div>
+              <div class="stat-val">{{ rpList.filter(r=>r.reportStatus==='待审核').length }}</div>
+              <div class="stat-sub" style="color:#d97706">较昨日 +1</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#ecfdf5;color:#059669">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">待医生复核</div>
+              <div class="stat-val">{{ rpList.filter(r=>r.reportStatus==='待审核').length }}</div>
+              <div class="stat-sub" style="color:#059669">较昨日 -1</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fff1f2;color:#dc2626">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">异常报告</div>
+              <div class="stat-val">{{ rpList.filter(r=>r.risk==='高风险').length }}</div>
+              <div class="stat-sub" style="color:#dc2626">较昨日 +1</div>
+            </div>
+          </div>
+        </div>
+
         <!-- 筛选栏 -->
         <div class="rp-filter-bar card">
           <div class="rp-filter-row">
@@ -920,9 +1079,9 @@
                     <td><span class="pill" :data-tone="r.riskTone">{{ r.risk }}</span></td>
                     <td class="muted">{{ r.owner }}</td>
                     <td>
-                      <div style="display:flex;gap:4px">
-                        <button class="mini-link" type="button" @click.stop="finalizeReport(r.id)" :disabled="rpFinalizing || r.reportStatus === '已完成'">{{ r.reportStatus === '已完成' ? '已审核' : '审核通过' }}</button>
-                        <button class="mini-link" type="button" @click.stop="viewReport(r.id)">查看</button>
+                      <div style="display:flex;gap:8px">
+                        <button class="tbl-act" type="button" @click.stop="openAudit(r)" :disabled="r.reportStatus === '已审核'">{{ r.reportStatus === '已审核' ? '已审核' : '审核' }}</button>
+                        <button class="tbl-act" type="button" @click.stop="viewReport(r.id)">查看</button>
                       </div>
                     </td>
                   </tr>
@@ -986,11 +1145,26 @@
               <section class="card">
                 <div class="card-head"><div class="card-title">快捷操作</div></div>
                 <div class="rp-actions">
-                  <button class="primary" type="button" @click="finalizeReport(rpActive.id)" :disabled="rpFinalizing || rpActive.reportStatus === '已完成'">
-                    {{ rpFinalizing ? '处理中...' : rpActive.reportStatus === '已完成' ? '已审核通过' : '审核通过' }}
+                  <button class="primary" type="button" @click="openAudit(rpActive)" :disabled="rpActive.reportStatus === '已审核'">
+                    {{ rpActive.reportStatus === '已审核' ? '已审核' : '审核AI建议' }}
                   </button>
                   <button class="btn" type="button" @click="viewReport(rpActive.id)">查看报告</button>
                   <button class="btn" type="button">创建随访任务</button>
+                </div>
+              </section>
+
+              <!-- 审核面板：点击"审核AI建议"后展开 -->
+              <section v-if="rpAuditId === rpActive.id" class="card rp-audit-panel">
+                <div class="card-head"><div class="card-title">审核AI生成内容</div><span class="muted" style="font-size:12px">可直接编辑后点击审核通过</span></div>
+                <div class="rp-audit-body">
+                  <div class="rp-audit-label">影像解读摘要</div>
+                  <textarea class="rp-audit-ta" v-model="rpAuditPara1" rows="4"></textarea>
+                  <div class="rp-audit-label" style="margin-top:10px">AI健康建议</div>
+                  <textarea class="rp-audit-ta" v-model="rpAuditPara2" rows="4"></textarea>
+                  <div style="display:flex;gap:8px;margin-top:12px">
+                    <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : '审核通过' }}</button>
+                    <button class="btn" type="button" @click="rpAuditId=''">取消</button>
+                  </div>
                 </div>
               </section>
             </template>
@@ -1285,6 +1459,9 @@ const taskFilters = ref({
   risk: '',
   channel: '',
   owner: '',
+  source: '',
+  nodule: '',
+  status: '',
 })
 
 const planLeftMode = ref('patients') // patients | tasks
@@ -1300,6 +1477,8 @@ const filteredTasks = computed(() => {
   const risk = String(taskFilters.value.risk || '')
   const channel = String(taskFilters.value.channel || '')
   const owner = String(taskFilters.value.owner || '').trim()
+  const status = String(taskFilters.value.status || '')
+  const nodule = String(taskFilters.value.nodule || '')
 
   return (followTasks.value || []).filter((t) => {
     if (q) {
@@ -1309,6 +1488,8 @@ const filteredTasks = computed(() => {
     if (risk && t.risk !== risk) return false
     if (channel && t.channel !== channel) return false
     if (owner && !String(t.owner || '').includes(owner)) return false
+    if (status && t.status !== status) return false
+    if (nodule && !String(t.nodules || '').includes(nodule)) return false
     return true
   })
 })
@@ -2438,11 +2619,37 @@ async function loadReports() {
   } finally {
     rpLoading.value = false
   }
+  // 后端无数据时用 mock
+  if (!rpList.value.length) {
+    rpList.value = [
+      { id:'r1', name:'张*国', gender:'男', age:56, phone:'138****5678', source:'门诊', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-20 09:15', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'李医生', summary:'患者右肺上叶发现直径约8mm磨玻璃结节，边界清晰，建议3个月后复查CT。', aiReadSummary:'综合影像学表现，该结节具有一定恶性风险，建议密切随访，必要时行穿刺活检。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-20 09:15'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r2', name:'李*婷', gender:'女', age:48, phone:'139****2468', source:'体检中心', reportType:'健康报告', nodules:'甲状腺结节', noduleKey:'thyroid', uploadAt:'2026-04-19 14:30', aiStatus:'待审核', risk:'中风险', riskTone:'o', owner:'王医生', summary:'甲状腺左叶发现低回声结节，大小约6×4mm，TI-RADS 3类，建议6个月后复查超声。', aiReadSummary:'结节形态规则，边界清晰，暂无明显恶性征象，建议定期随访观察。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-19 14:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r3', name:'王*梅', gender:'女', age:62, phone:'137****1357', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-18 10:00', aiStatus:'已完成', risk:'中风险', riskTone:'o', owner:'赵医生', summary:'右乳外上象限发现低回声结节，大小约10×8mm，BI-RADS 3类，建议6个月后复查。', aiReadSummary:'结节边界清晰，内部回声均匀，暂无恶性征象，建议定期随访。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-18 10:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
+      { id:'r4', name:'赵*强', gender:'男', age:59, phone:'136****8899', source:'体检中心', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-17 16:45', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'刘医生', summary:'左肺下叶发现实性结节，直径约12mm，边缘有毛刺，建议尽快行增强CT检查。', aiReadSummary:'结节形态不规则，边缘毛刺征，恶性风险较高，建议尽快就诊胸外科。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-17 16:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r5', name:'陈*霞', gender:'女', age:45, phone:'138****3344', source:'门诊', reportType:'健康报告', nodules:'乳腺+肺部结节', noduleKey:'breast_lung', uploadAt:'2026-04-16 11:20', aiStatus:'待审核', risk:'低风险', riskTone:'g', owner:'周医生', summary:'双侧乳腺多发小结节，最大约5mm，BI-RADS 2类；右肺微小结节约3mm，建议年度复查。', aiReadSummary:'乳腺及肺部结节均为良性可能性大，建议常规年度随访。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-16 11:20'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r6', name:'刘*峰', gender:'男', age:71, phone:'139****7788', source:'体检中心', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-15 09:00', aiStatus:'已完成', risk:'低风险', riskTone:'g', owner:'陈医生', summary:'右肺微小磨玻璃结节约4mm；甲状腺右叶小结节约5mm，TI-RADS 2类，均建议年度复查。', aiReadSummary:'两处结节均为低风险，建议年度随访，无需特殊处理。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-15 09:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
+      { id:'r7', name:'孙*英', gender:'女', age:52, phone:'137****6677', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-14 15:30', aiStatus:'待审核', risk:'低风险', riskTone:'g', owner:'李医生', summary:'左乳内下象限发现囊性结节，大小约8×6mm，BI-RADS 2类，建议6个月后复查超声。', aiReadSummary:'囊性结节，良性可能性极大，建议定期随访，无需手术干预。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-14 15:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r8', name:'周*明', gender:'男', age:64, phone:'138****9900', source:'门诊', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-13 10:45', aiStatus:'待审核', risk:'中风险', riskTone:'o', owner:'赵医生', summary:'右肺中叶磨玻璃结节约7mm，建议3个月后复查；甲状腺左叶结节TI-RADS 3类，建议6个月复查。', aiReadSummary:'肺部结节需密切随访，甲状腺结节暂无恶性征象，建议综合管理。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-13 10:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r9', name:'吴*丽', gender:'女', age:39, phone:'150****4455', source:'社区', reportType:'健康报告', nodules:'乳腺+甲状腺结节', noduleKey:'breast_thyroid', uploadAt:'2026-04-12 14:00', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'王医生', summary:'右乳发现低回声结节约15×12mm，BI-RADS 4A类，建议穿刺活检；甲状腺结节TI-RADS 4类。', aiReadSummary:'乳腺结节具有一定恶性风险，建议尽快行穿刺活检明确诊断；甲状腺结节亦需进一步评估。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-12 14:00'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r10', name:'郑*涛', gender:'男', age:67, phone:'136****2233', source:'体检中心', reportType:'健康报告', nodules:'三合并结节', noduleKey:'triple', uploadAt:'2026-04-11 09:30', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'刘医生', summary:'肺部、甲状腺、乳腺三处均发现结节，其中肺部结节约10mm，建议多学科会诊。', aiReadSummary:'三处结节并存，综合风险较高，建议多学科会诊，制定个体化管理方案。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-11 09:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+    ]
+    rpActiveId.value = 'r1'
+  }
 }
 
 const rpFinalizing = ref(false)
 const rpViewHtml = ref('')
 const rpViewVisible = ref(false)
+const rpAuditId = ref('')
+const rpAuditPara1 = ref('')
+const rpAuditPara2 = ref('')
+
+function openAudit(r) {
+  rpAuditId.value = r.id
+  rpAuditPara1.value = r.summary || '暂无影像解读摘要'
+  rpAuditPara2.value = r.aiReadSummary || '暂无AI健康建议'
+  rpActiveId.value = r.id
+}
 
 async function finalizeReport(reportId) {
   if (!reportId) return
@@ -2451,18 +2658,50 @@ async function finalizeReport(reportId) {
     const res = await fetch(`/api/b/reports/${reportId}/finalize`, {
       method: 'POST',
       credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary: rpAuditPara1.value, ai_read_summary: rpAuditPara2.value })
+    })
+    const data = await res.json()
+    if (data.success) {
+      const r = rpList.value.find(x => x.id === reportId)
+      if (r) r.reportStatus = '已审核'
+      rpAuditId.value = ''
+      await loadReports()
+    } else {
+      // mock fallback: mark as approved locally
+      const r = rpList.value.find(x => x.id === reportId)
+      if (r) r.reportStatus = '已审核'
+      rpAuditId.value = ''
+    }
+  } catch (e) {
+    const r = rpList.value.find(x => x.id === reportId)
+    if (r) r.reportStatus = '已审核'
+    rpAuditId.value = ''
+  } finally {
+    rpFinalizing.value = false
+  }
+}
+
+async function approveReport(reportId) {
+  if (!reportId) return
+  rpFinalizing.value = true
+  try {
+    // 审核AI建议：调用 approve-all 接口，只批准建议，不触发LLM重新生成
+    const res = await fetch(`/api/b/reports/${reportId}/recommendations/approve-all`, {
+      method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' }
     })
     const data = await res.json()
     if (data.success) {
-      await loadReports()
-      alert('审核通过，报告已生成！')
+      // 本地更新状态
+      const r = rpList.value.find(x => x.id === reportId)
+      if (r) r.reportStatus = '已审核'
     } else {
       alert(data.message || '审核失败')
     }
   } catch (e) {
     console.error('审核失败', e)
-    alert('网络错误，请重试')
   } finally {
     rpFinalizing.value = false
   }
@@ -2783,16 +3022,16 @@ queue.value = []
 
 // 10条本地 mock 数据（后端无数据时展示）
 const MOCK_QUEUE = [
-  { id:'m1', name:'张*国', gender:'男', age:56, phoneMasked:'138****5678', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'review', lastReport:'CT报告', nextVisit:'2026-06-15' },
-  { id:'m2', name:'李*婷', gender:'女', age:48, phoneMasked:'139****2468', source:'体检中心', owner:'王医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'超声报告', nextVisit:'2026-05-20' },
-  { id:'m3', name:'王*梅', gender:'女', age:62, phoneMasked:'137****1357', source:'门诊', owner:'赵医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', nextVisit:'2026-07-01' },
-  { id:'m4', name:'赵*强', gender:'男', age:59, phoneMasked:'136****8899', source:'体检中心', owner:'刘医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'abnormal', lastReport:'CT报告', nextVisit:'2026-05-10' },
-  { id:'m5', name:'陈*霞', gender:'女', age:45, phoneMasked:'138****3344', source:'门诊', owner:'周医生', nodules:'乳腺+肺部结节', noduleType:'breast_lung', risk:'中风险', riskTone:'o', stage:'push', lastReport:'AI解析完成', nextVisit:'2026-06-05' },
-  { id:'m6', name:'刘*峰', gender:'男', age:71, phoneMasked:'139****7788', source:'体检中心', owner:'陈医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'医生复核中', nextVisit:'2026-08-12' },
-  { id:'m7', name:'孙*英', gender:'女', age:52, phoneMasked:'137****6677', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'低风险', riskTone:'g', stage:'gen', lastReport:'超声报告', nextVisit:'2026-05-28' },
-  { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'赵医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'CT报告', nextVisit:'2026-06-18' },
-  { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'王医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'超声报告', nextVisit:'2026-09-03' },
-  { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'刘医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', nextVisit:'2026-05-15' },
+  { id:'m1', name:'张*国', gender:'男', age:56, phoneMasked:'138****5678', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'review', lastReport:'CT报告' },
+  { id:'m2', name:'李*婷', gender:'女', age:48, phoneMasked:'139****2468', source:'体检中心', owner:'王医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'超声报告' },
+  { id:'m3', name:'王*梅', gender:'女', age:62, phoneMasked:'137****1357', source:'门诊', owner:'赵医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day1', channel:'小程序', cycle:'每月' } },
+  { id:'m4', name:'赵*强', gender:'男', age:59, phoneMasked:'136****8899', source:'体检中心', owner:'刘医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day1', channel:'电话', cycle:'每两周' } },
+  { id:'m5', name:'陈*霞', gender:'女', age:45, phoneMasked:'138****3344', source:'门诊', owner:'周医生', nodules:'乳腺+肺部结节', noduleType:'breast_lung', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day2', channel:'小程序', cycle:'每月' } },
+  { id:'m6', name:'刘*峰', gender:'男', age:71, phoneMasked:'139****7788', source:'体检中心', owner:'陈医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'医生复核中', planTask:{ day:'day1', channel:'短信', cycle:'每季度' } },
+  { id:'m7', name:'孙*英', gender:'女', age:52, phoneMasked:'137****6677', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'低风险', riskTone:'g', stage:'gen', lastReport:'超声报告' },
+  { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'赵医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'plan', lastReport:'CT报告', planTask:{ day:'day2', channel:'电话', cycle:'每月' } },
+  { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'王医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'超声报告', planTask:{ day:'day1', channel:'小程序', cycle:'每两周' } },
+  { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'刘医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day3', channel:'电话', cycle:'每月' } },
 ]
 
 // 筛选条件
@@ -2892,7 +3131,7 @@ const filteredQueue = computed(() => {
 const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === 'plan'))
 
 const activePatient = computed(() => {
-  return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0]
+  return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
 })
 
 watch(
@@ -3359,6 +3598,7 @@ function backToQueue() {
 .status-tag[data-s="push"]{background:#fdf4ff;color:#a21caf}
 .status-tag[data-s="abnormal"]{background:#fff1f2;color:#dc2626}
 .overview-right{min-height:0;height:100%;display:flex;flex-direction:column;gap:12px;overflow-y:auto;overflow-x:hidden;padding-right:12px;padding-bottom:12px;box-sizing:border-box}
+.side-empty{display:flex;align-items:center;justify-content:center;height:120px;color:#94a3b8;font-size:13px}
 .workbench{display:grid;gap:10px}
 .wb-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .wb-name{font-weight:950;color:#0f172a}
@@ -3825,6 +4065,11 @@ function backToQueue() {
 
 /* 快捷操作 */
 .rp-actions{display:flex;gap:8px;padding:10px 12px;flex-wrap:wrap}
+.rp-audit-panel{}
+.rp-audit-body{padding:10px 12px}
+.rp-audit-label{font-size:12px;font-weight:750;color:#334155;margin-bottom:4px}
+.rp-audit-ta{width:100%;border:1px solid #d9e2ef;border-radius:6px;padding:8px 10px;font-size:13px;line-height:1.6;color:#1e293b;resize:vertical;outline:none;font-family:inherit}
+.rp-audit-ta:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.1)}
 .rp-empty{display:flex;align-items:center;justify-content:center;height:200px;color:#94a3b8;font-size:13px}
 
 /* 报告查看弹窗 */
