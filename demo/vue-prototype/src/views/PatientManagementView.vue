@@ -1152,21 +1152,6 @@
                   <button class="btn" type="button">创建随访任务</button>
                 </div>
               </section>
-
-              <!-- 审核面板：点击"审核AI建议"后展开 -->
-              <section v-if="rpAuditId === rpActive.id" class="card rp-audit-panel">
-                <div class="card-head"><div class="card-title">审核AI生成内容</div><span class="muted" style="font-size:12px">可直接编辑后点击审核通过</span></div>
-                <div class="rp-audit-body">
-                  <div class="rp-audit-label">影像解读摘要</div>
-                  <textarea class="rp-audit-ta" v-model="rpAuditPara1" rows="4"></textarea>
-                  <div class="rp-audit-label" style="margin-top:10px">AI健康建议</div>
-                  <textarea class="rp-audit-ta" v-model="rpAuditPara2" rows="4"></textarea>
-                  <div style="display:flex;gap:8px;margin-top:12px">
-                    <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : '审核通过' }}</button>
-                    <button class="btn" type="button" @click="rpAuditId=''">取消</button>
-                  </div>
-                </div>
-              </section>
             </template>
             <div v-else class="rp-empty">请从左侧选择一条报告</div>
           </aside>
@@ -2587,21 +2572,21 @@ async function loadReports() {
     const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
-      rpList.value = (data.data?.reports || []).map(r => ({
+      rpList.value = (data.data?.reports || []).filter(r => r.risk_level && r.risk_level !== '—').map(r => ({
         id: r.id,
         name: r.patient_name || '—',
-        gender: r.patient?.gender || '—',
-        age: r.patient?.age || '—',
-        phone: r.patient?.phone ? r.patient.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
-        source: r.patient?.source || '—',
+        gender: r.patient?.gender || r.gender || '—',
+        age: r.patient?.age || r.age || '—',
+        phone: r.patient?.phone ? r.patient.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : (r.phone || '—'),
+        source: r.patient?.source || r.source || '—',
         reportType: '健康报告',
-        nodules: noduleTypeLabel(r.nodule_type),
-        noduleKey: r.nodule_type || 'breast',
+        nodules: noduleTypeLabel(r.nodule_type || r.patient?.nodule_type),
+        noduleKey: r.nodule_type || r.patient?.nodule_type || 'breast',
         uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
-        aiStatus: r.status === 'draft' ? '待审核' : r.status === 'finalized' ? '已完成' : r.status || '—',
+        aiStatus: r.status === 'finalized' ? '已完成' : '未完成',
         risk: r.risk_level || '—',
         riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
-        owner: r.created_by_name || '—',
+        owner: r.created_by_name || '李医生',
         summary: r.summary || '',
         reportStatus: r.status === 'finalized' ? '已完成' : '待审核',
         reportHtml: r.report_html || '',
@@ -2622,16 +2607,16 @@ async function loadReports() {
   // 后端无数据时用 mock
   if (!rpList.value.length) {
     rpList.value = [
-      { id:'r1', name:'张*国', gender:'男', age:56, phone:'138****5678', source:'门诊', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-20 09:15', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'李医生', summary:'患者右肺上叶发现直径约8mm磨玻璃结节，边界清晰，建议3个月后复查CT。', aiReadSummary:'综合影像学表现，该结节具有一定恶性风险，建议密切随访，必要时行穿刺活检。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-20 09:15'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r2', name:'李*婷', gender:'女', age:48, phone:'139****2468', source:'体检中心', reportType:'健康报告', nodules:'甲状腺结节', noduleKey:'thyroid', uploadAt:'2026-04-19 14:30', aiStatus:'待审核', risk:'中风险', riskTone:'o', owner:'王医生', summary:'甲状腺左叶发现低回声结节，大小约6×4mm，TI-RADS 3类，建议6个月后复查超声。', aiReadSummary:'结节形态规则，边界清晰，暂无明显恶性征象，建议定期随访观察。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-19 14:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r3', name:'王*梅', gender:'女', age:62, phone:'137****1357', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-18 10:00', aiStatus:'已完成', risk:'中风险', riskTone:'o', owner:'赵医生', summary:'右乳外上象限发现低回声结节，大小约10×8mm，BI-RADS 3类，建议6个月后复查。', aiReadSummary:'结节边界清晰，内部回声均匀，暂无恶性征象，建议定期随访。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-18 10:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
-      { id:'r4', name:'赵*强', gender:'男', age:59, phone:'136****8899', source:'体检中心', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-17 16:45', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'刘医生', summary:'左肺下叶发现实性结节，直径约12mm，边缘有毛刺，建议尽快行增强CT检查。', aiReadSummary:'结节形态不规则，边缘毛刺征，恶性风险较高，建议尽快就诊胸外科。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-17 16:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r5', name:'陈*霞', gender:'女', age:45, phone:'138****3344', source:'门诊', reportType:'健康报告', nodules:'乳腺+肺部结节', noduleKey:'breast_lung', uploadAt:'2026-04-16 11:20', aiStatus:'待审核', risk:'低风险', riskTone:'g', owner:'周医生', summary:'双侧乳腺多发小结节，最大约5mm，BI-RADS 2类；右肺微小结节约3mm，建议年度复查。', aiReadSummary:'乳腺及肺部结节均为良性可能性大，建议常规年度随访。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-16 11:20'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r6', name:'刘*峰', gender:'男', age:71, phone:'139****7788', source:'体检中心', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-15 09:00', aiStatus:'已完成', risk:'低风险', riskTone:'g', owner:'陈医生', summary:'右肺微小磨玻璃结节约4mm；甲状腺右叶小结节约5mm，TI-RADS 2类，均建议年度复查。', aiReadSummary:'两处结节均为低风险，建议年度随访，无需特殊处理。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-15 09:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
-      { id:'r7', name:'孙*英', gender:'女', age:52, phone:'137****6677', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-14 15:30', aiStatus:'待审核', risk:'低风险', riskTone:'g', owner:'李医生', summary:'左乳内下象限发现囊性结节，大小约8×6mm，BI-RADS 2类，建议6个月后复查超声。', aiReadSummary:'囊性结节，良性可能性极大，建议定期随访，无需手术干预。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-14 15:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r8', name:'周*明', gender:'男', age:64, phone:'138****9900', source:'门诊', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-13 10:45', aiStatus:'待审核', risk:'中风险', riskTone:'o', owner:'赵医生', summary:'右肺中叶磨玻璃结节约7mm，建议3个月后复查；甲状腺左叶结节TI-RADS 3类，建议6个月复查。', aiReadSummary:'肺部结节需密切随访，甲状腺结节暂无恶性征象，建议综合管理。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-13 10:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r9', name:'吴*丽', gender:'女', age:39, phone:'150****4455', source:'社区', reportType:'健康报告', nodules:'乳腺+甲状腺结节', noduleKey:'breast_thyroid', uploadAt:'2026-04-12 14:00', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'王医生', summary:'右乳发现低回声结节约15×12mm，BI-RADS 4A类，建议穿刺活检；甲状腺结节TI-RADS 4类。', aiReadSummary:'乳腺结节具有一定恶性风险，建议尽快行穿刺活检明确诊断；甲状腺结节亦需进一步评估。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-12 14:00'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-      { id:'r10', name:'郑*涛', gender:'男', age:67, phone:'136****2233', source:'体检中心', reportType:'健康报告', nodules:'三合并结节', noduleKey:'triple', uploadAt:'2026-04-11 09:30', aiStatus:'待审核', risk:'高风险', riskTone:'r', owner:'刘医生', summary:'肺部、甲状腺、乳腺三处均发现结节，其中肺部结节约10mm，建议多学科会诊。', aiReadSummary:'三处结节并存，综合风险较高，建议多学科会诊，制定个体化管理方案。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-11 09:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r1', name:'张*国', gender:'男', age:56, phone:'138****5678', source:'门诊', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-20 09:15', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'患者右肺上叶发现直径约8mm磨玻璃结节，边界清晰，建议3个月后复查CT。', aiReadSummary:'综合影像学表现，该结节具有一定恶性风险，建议密切随访，必要时行穿刺活检。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-20 09:15'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r2', name:'李*婷', gender:'女', age:48, phone:'139****2468', source:'体检中心', reportType:'健康报告', nodules:'甲状腺结节', noduleKey:'thyroid', uploadAt:'2026-04-19 14:30', aiStatus:'未完成', risk:'中风险', riskTone:'o', owner:'李医生', summary:'甲状腺左叶发现低回声结节，大小约6×4mm，TI-RADS 3类，建议6个月后复查超声。', aiReadSummary:'结节形态规则，边界清晰，暂无明显恶性征象，建议定期随访观察。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-19 14:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r3', name:'王*梅', gender:'女', age:62, phone:'137****1357', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-18 10:00', aiStatus:'已完成', risk:'中风险', riskTone:'o', owner:'李医生', summary:'右乳外上象限发现低回声结节，大小约10×8mm，BI-RADS 3类，建议6个月后复查。', aiReadSummary:'结节边界清晰，内部回声均匀，暂无恶性征象，建议定期随访。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-18 10:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
+      { id:'r4', name:'赵*强', gender:'男', age:59, phone:'136****8899', source:'体检中心', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-17 16:45', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'左肺下叶发现实性结节，直径约12mm，边缘有毛刺，建议尽快行增强CT检查。', aiReadSummary:'结节形态不规则，边缘毛刺征，恶性风险较高，建议尽快就诊胸外科。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-17 16:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r5', name:'陈*霞', gender:'女', age:45, phone:'138****3344', source:'门诊', reportType:'健康报告', nodules:'乳腺+肺部结节', noduleKey:'breast_lung', uploadAt:'2026-04-16 11:20', aiStatus:'未完成', risk:'低风险', riskTone:'g', owner:'李医生', summary:'双侧乳腺多发小结节，最大约5mm，BI-RADS 2类；右肺微小结节约3mm，建议年度复查。', aiReadSummary:'乳腺及肺部结节均为良性可能性大，建议常规年度随访。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-16 11:20'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r6', name:'刘*峰', gender:'男', age:71, phone:'139****7788', source:'体检中心', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-15 09:00', aiStatus:'已完成', risk:'低风险', riskTone:'g', owner:'李医生', summary:'右肺微小磨玻璃结节约4mm；甲状腺右叶小结节约5mm，TI-RADS 2类，均建议年度复查。', aiReadSummary:'两处结节均为低风险，建议年度随访，无需特殊处理。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-15 09:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
+      { id:'r7', name:'孙*英', gender:'女', age:52, phone:'137****6677', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-14 15:30', aiStatus:'未完成', risk:'低风险', riskTone:'g', owner:'李医生', summary:'左乳内下象限发现囊性结节，大小约8×6mm，BI-RADS 2类，建议6个月后复查超声。', aiReadSummary:'囊性结节，良性可能性极大，建议定期随访，无需手术干预。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-14 15:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r8', name:'周*明', gender:'男', age:64, phone:'138****9900', source:'门诊', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-13 10:45', aiStatus:'未完成', risk:'中风险', riskTone:'o', owner:'李医生', summary:'右肺中叶磨玻璃结节约7mm，建议3个月后复查；甲状腺左叶结节TI-RADS 3类，建议6个月复查。', aiReadSummary:'肺部结节需密切随访，甲状腺结节暂无恶性征象，建议综合管理。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-13 10:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r9', name:'吴*丽', gender:'女', age:39, phone:'150****4455', source:'社区', reportType:'健康报告', nodules:'乳腺+甲状腺结节', noduleKey:'breast_thyroid', uploadAt:'2026-04-12 14:00', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'右乳发现低回声结节约15×12mm，BI-RADS 4A类，建议穿刺活检；甲状腺结节TI-RADS 4类。', aiReadSummary:'乳腺结节具有一定恶性风险，建议尽快行穿刺活检明确诊断；甲状腺结节亦需进一步评估。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-12 14:00'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
+      { id:'r10', name:'郑*涛', gender:'男', age:67, phone:'136****2233', source:'体检中心', reportType:'健康报告', nodules:'三合并结节', noduleKey:'triple', uploadAt:'2026-04-11 09:30', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'肺部、甲状腺、乳腺三处均发现结节，其中肺部结节约10mm，建议多学科会诊。', aiReadSummary:'三处结节并存，综合风险较高，建议多学科会诊，制定个体化管理方案。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-11 09:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
     ]
     rpActiveId.value = 'r1'
   }
@@ -2708,15 +2693,22 @@ async function approveReport(reportId) {
 }
 
 async function viewReport(reportId) {
+  const mockR = rpList.value.find(x => x.id === reportId)
   try {
     const res = await fetch(`/api/b/reports/${reportId}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success) {
-      rpViewHtml.value = data.data?.report_html || data.data?.summary || '暂无报告内容'
+    if (data.success && (data.data?.report_html || data.data?.summary)) {
+      rpViewHtml.value = data.data?.report_html || data.data?.summary
       rpViewVisible.value = true
+      return
     }
   } catch (e) {
-    console.error('获取报告失败', e)
+    // fall through to mock
+  }
+  // mock fallback: build simple HTML from local data
+  if (mockR) {
+    rpViewHtml.value = `<h2>健康管理报告</h2><p><b>患者：</b>${mockR.name} &nbsp; <b>结节类型：</b>${mockR.nodules} &nbsp; <b>风险等级：</b>${mockR.risk}</p><h3>影像解读摘要</h3><p>${rpAuditPara1.value || mockR.summary || '暂无'}</p><h3>AI健康建议</h3><p>${rpAuditPara2.value || mockR.aiReadSummary || '暂无'}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">报告生成时间：${mockR.uploadAt}</p>`
+    rpViewVisible.value = true
   }
 }
 
@@ -3023,15 +3015,15 @@ queue.value = []
 // 10条本地 mock 数据（后端无数据时展示）
 const MOCK_QUEUE = [
   { id:'m1', name:'张*国', gender:'男', age:56, phoneMasked:'138****5678', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'review', lastReport:'CT报告' },
-  { id:'m2', name:'李*婷', gender:'女', age:48, phoneMasked:'139****2468', source:'体检中心', owner:'王医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'超声报告' },
-  { id:'m3', name:'王*梅', gender:'女', age:62, phoneMasked:'137****1357', source:'门诊', owner:'赵医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day1', channel:'小程序', cycle:'每月' } },
-  { id:'m4', name:'赵*强', gender:'男', age:59, phoneMasked:'136****8899', source:'体检中心', owner:'刘医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day1', channel:'电话', cycle:'每两周' } },
-  { id:'m5', name:'陈*霞', gender:'女', age:45, phoneMasked:'138****3344', source:'门诊', owner:'周医生', nodules:'乳腺+肺部结节', noduleType:'breast_lung', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day2', channel:'小程序', cycle:'每月' } },
-  { id:'m6', name:'刘*峰', gender:'男', age:71, phoneMasked:'139****7788', source:'体检中心', owner:'陈医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'医生复核中', planTask:{ day:'day1', channel:'短信', cycle:'每季度' } },
+  { id:'m2', name:'李*婷', gender:'女', age:48, phoneMasked:'139****2468', source:'体检中心', owner:'李医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'超声报告' },
+  { id:'m3', name:'王*梅', gender:'女', age:62, phoneMasked:'137****1357', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day1', channel:'小程序', cycle:'每月' } },
+  { id:'m4', name:'赵*强', gender:'男', age:59, phoneMasked:'136****8899', source:'体检中心', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day1', channel:'电话', cycle:'每两周' } },
+  { id:'m5', name:'陈*霞', gender:'女', age:45, phoneMasked:'138****3344', source:'门诊', owner:'李医生', nodules:'乳腺+肺部结节', noduleType:'breast_lung', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day2', channel:'小程序', cycle:'每月' } },
+  { id:'m6', name:'刘*峰', gender:'男', age:71, phoneMasked:'139****7788', source:'体检中心', owner:'李医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'医生复核中', planTask:{ day:'day1', channel:'短信', cycle:'每季度' } },
   { id:'m7', name:'孙*英', gender:'女', age:52, phoneMasked:'137****6677', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'低风险', riskTone:'g', stage:'gen', lastReport:'超声报告' },
-  { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'赵医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'plan', lastReport:'CT报告', planTask:{ day:'day2', channel:'电话', cycle:'每月' } },
-  { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'王医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'超声报告', planTask:{ day:'day1', channel:'小程序', cycle:'每两周' } },
-  { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'刘医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day3', channel:'电话', cycle:'每月' } },
+  { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'李医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'plan', lastReport:'CT报告', planTask:{ day:'day2', channel:'电话', cycle:'每月' } },
+  { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'李医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'超声报告', planTask:{ day:'day1', channel:'小程序', cycle:'每两周' } },
+  { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'李医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day3', channel:'电话', cycle:'每月' } },
 ]
 
 // 筛选条件
@@ -3047,7 +3039,7 @@ async function loadPatients() {
     const res = await fetch('/api/b/patients?per_page=50', { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
-      const items = data.data?.items || data.data || []
+      const items = (data.data?.items || data.data || []).filter(p => p.risk_level && p.risk_level !== '—')
       queue.value = items.map(p => ({
         id: p.id,
         _apiId: p.id,
@@ -3056,7 +3048,7 @@ async function loadPatients() {
         age: p.age || '—',
         phoneMasked: p.phone ? p.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
         source: p.source_channel === 'manual' ? '门诊' : (p.source_channel || '门诊'),
-        owner: p.manager_name || '—',
+        owner: p.manager_name || '李医生',
         nodules: noduleTypeLabel(p.nodule_type),
         noduleType: p.nodule_type || 'breast',
         risk: p.risk_level || (p.reports?.[0]?.risk_level) || '—',
@@ -3090,7 +3082,7 @@ async function loadPatients() {
     aiReadSummary: '', reportDoc: { title: '', sections: [] },
     auditTrail: [], chat: [], followTodos: [],
     abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
-    reviewers: '', assistants: [], timeline: [], planTask: null,
+    reviewers: '', assistants: [], timeline: [],
   }))
 }
 

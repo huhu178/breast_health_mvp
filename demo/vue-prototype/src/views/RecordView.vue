@@ -113,11 +113,12 @@
               </select>
             </div>
             <div class="field col-2 required">
-              <div class="label">就诊医生</div>
+              <div class="label">负责人</div>
               <select v-model="form.doctor">
                 <option>李医生</option>
                 <option>王医生</option>
                 <option>张医生</option>
+                <option>赵医生</option>
               </select>
             </div>
             <div class="field col-3 required">
@@ -421,7 +422,7 @@
             <div class="pv-row"><span class="k">来源</span><span class="v">{{ previewSource }}</span></div>
             <div class="pv-row"><span class="k">结节类型</span><span class="v">{{ visibleNodules.join('、') || '—' }}</span></div>
             <div class="pv-row"><span class="k">风险等级</span><span class="v">{{ form.risk || '—' }}</span></div>
-            <div class="pv-row"><span class="k">负责人</span><span class="v">—</span></div>
+            <div class="pv-row"><span class="k">负责人</span><span class="v">{{ form.doctor || '—' }}</span></div>
           </div>
         </section>
 
@@ -532,7 +533,7 @@ const form = ref({
   gaofang_address: '',
   emergency: '配偶', emergencyName: '', emergencyPhone: '',
   note: '',
-  source: '门诊', dept: '', doctor: '',
+  source: '门诊', dept: '', doctor: '李医生',
   examDate: '',
   batchNo: '',
   risk: '中风险', needReview: true,
@@ -729,6 +730,7 @@ function buildPatientPayload() {
     phone: f.phone,
     nodule_type: tagToNoduleType[selectedTag.value] || 'breast',
     source_channel: f.source || 'manual',
+    manager_name: f.doctor || '李医生',
   }
 }
 
