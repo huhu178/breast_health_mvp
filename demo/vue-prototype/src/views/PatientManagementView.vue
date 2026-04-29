@@ -43,7 +43,7 @@
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
               <div class="stat-body">
-                <div class="stat-label">待审核报告</div>
+                <div class="stat-label">{{ reportTerms.toReview }}</div>
                 <div class="stat-val">{{ queue.filter(p=>p.stage==='review').length }}</div>
                 <div class="stat-sub" style="color:#059669">较昨日 -1</div>
               </div>
@@ -79,13 +79,10 @@
                 <input class="q-filter-input" v-model="qSearch" placeholder="请输入姓名或手机号" />
               </div>
               <div class="q-filter-item">
-                <label>患者来源</label>
+                <label>{{ scenario.personLabel }}来源</label>
                 <select class="q-filter-select" v-model="qSource">
                   <option value="">全部</option>
-                  <option>门诊</option>
-                  <option>体检中心</option>
-                  <option>社区</option>
-                  <option>药店</option>
+                  <option v-for="src in scenario.sourceOptions" :key="src">{{ src }}</option>
                 </select>
               </div>
               <div class="q-filter-item">
@@ -115,7 +112,7 @@
                 <select class="q-filter-select" v-model="qStatus">
                   <option value="">全部</option>
                   <option value="gen">建立档案</option>
-                  <option value="review">待医生复核</option>
+                  <option value="review">{{ reportTerms.toReview }}</option>
                   <option value="plan">随访计划制定</option>
                   <option value="follow">AI随访中</option>
                   <option value="push">待推送</option>
@@ -358,16 +355,14 @@
           <div class="q-filter-title" style="padding:10px 16px 0;font-size:13px;font-weight:800;color:#374151">筛选条件</div>
           <div class="pad pad-lg plan-filter-row" style="padding-top:8px">
             <label class="pf" style="min-width:180px">
-              <span class="k">患者姓名/手机号</span>
+              <span class="k">{{ scenario.personLabel }}姓名/手机号</span>
               <input class="pf-in" v-model="taskFilters.q" placeholder="姓名 / 手机号" />
             </label>
             <label class="pf">
-              <span class="k">患者来源</span>
+              <span class="k">{{ scenario.personLabel }}来源</span>
               <select class="pf-in" v-model="taskFilters.source">
                 <option value="">全部</option>
-                <option>门诊</option>
-                <option>体检中心</option>
-                <option>社区</option>
+                <option v-for="src in scenario.sourceOptions" :key="src">{{ src }}</option>
               </select>
             </label>
             <label class="pf">
@@ -426,32 +421,35 @@
             <div class="card-head one-line">
               <div class="card-title" style="display:flex;align-items:center;gap:10px;min-width:0">
                 <span>工作台列表</span>
-                <span class="muted" style="font-size:12px;font-weight:700">· 患者 {{ filteredPlanPatients.length }} · 任务 {{ filteredTasks.length }}</span>
+                <span class="muted" style="font-size:12px;font-weight:700">· {{ scenario.personLabel }} {{ filteredPlanPatients.length }} · 任务 {{ filteredTasks.length }}</span>
               </div>
               <div class="panel-tools">
               </div>
             </div>
             <div class="pad pad-lg" style="padding-bottom:0">
-              <div class="muted" style="font-size:12px">选择患者后在右侧制定/调整随访任务；任务分派与执行记录在右侧完成。</div>
+              <div class="left-search-row">
+                <input class="pf-in" v-model="taskFilters.q" placeholder="搜索患者姓名/手机号" />
+                <button class="kb-act" type="button">筛选</button>
+              </div>
+              <div class="muted" style="font-size:12px">选择患者后在右侧完成知识库推荐、方案组合与预览下发。</div>
             </div>
             <div class="pat-table">
-              <div class="pat-head">
-                <div>患者</div>
-                <div>结节类型</div>
-                <div>风险</div>
-                <div>负责人</div>
-                <div style="text-align:right">操作</div>
-              </div>
               <div class="pat-rows">
-                <div v-for="p in filteredPlanPatients" :key="p.id" class="pat-row" :data-active="p.id===activePatientId">
+                <div v-for="p in filteredPlanPatients" :key="p.id" class="pat-row plan-patient-card" :data-active="p.id===activePatientId">
                   <button type="button" class="pat-main" @click="activePatientId=p.id">
-                    <div class="pat-name"><b>{{ p.name }}</b></div>
-                    <div class="muted" style="font-size:12px">{{ p.gender }}·{{ p.age }}岁 · {{ p.phoneMasked }}</div>
+                    <div class="patient-card-top">
+                      <div>
+                        <div class="pat-name"><b>{{ p.name }}</b><span class="muted">（{{ p.gender }}·{{ p.age }}岁）</span></div>
+                        <div class="muted" style="font-size:12px;margin-top:4px">{{ p.nodules }}</div>
+                      </div>
+                      <span class="pill mini" :data-tone="p.riskTone">{{ p.risk }}</span>
+                    </div>
+                    <div class="patient-card-meta">
+                      <span>{{ p.phoneMasked }}</span>
+                      <span>{{ p.owner || '未分派' }}</span>
+                    </div>
                   </button>
-                  <div class="pat-cell">{{ p.nodules }}</div>
-                  <div class="pat-cell"><span class="pill mini" :data-tone="p.riskTone">{{ p.risk }}</span></div>
-                  <div class="pat-cell">{{ p.owner || '未分派' }}</div>
-                  <div class="pat-cell" style="text-align:right">
+                  <div class="patient-card-actions">
                     <button class="kb-act" type="button" @click="createTaskForPatient(p)">制定任务</button>
                   </div>
                 </div>
@@ -459,7 +457,7 @@
               </div>
             </div>
             <div class="pager" style="margin-top:10px">
-              <div class="muted" style="font-size:12px">分页（示意）</div>
+              <div class="muted" style="font-size:12px">分页</div>
               <div style="display:flex;gap:8px;align-items:center">
                 <button class="btn-link-lite" type="button">上一页</button>
                 <span class="muted" style="font-size:12px">1 / 1</span>
@@ -471,38 +469,53 @@
           <!-- 右：任务详情 -->
           <section class="card plan-task-detail">
             <div class="card-head one-line">
-              <div class="card-title">随访任务详情</div>
+              <div class="plan-detail-title">
+                <div class="plan-breadcrumb">{{ scenario.navPatient }} / 随访计划 / 知识库驱动任务制定</div>
+                <div class="card-title">知识库驱动随访任务制定</div>
+                <div class="muted" style="font-size:12px;margin-top:3px">随访方案不是手动填表，而是基于患者画像与风险分层，从结构化知识库中智能推荐、选择、组合、预览并下发。</div>
+              </div>
               <div class="panel-tools">
+                <button class="primary" type="button" @click="simulatePlanToFollowup">知识库方案推荐</button>
                 <select class="stage-select" v-model="planDay" :disabled="planState.loading || !!planState.error">
                   <option v-for="d in planDayList" :key="d" :value="d">Day {{ d.replace('day','') }}</option>
                 </select>
-                <button class="btn-link-lite" type="button" @click="loadPlan">刷新计划</button>
+                <button class="btn-link-lite" type="button" @click="kbUi.managerOpen = true">知识库管理</button>
               </div>
             </div>
 
             <div class="pad pad-lg">
               <div v-if="!activeTask" class="muted">请选择左侧一条随访任务。</div>
               <template v-else>
-                <div class="detail-grid">
-                  <section class="detail-card">
-                    <div class="detail-top">
-                      <div class="detail-top-main">
-                        <div class="detail-top-title">
-                          <b>{{ activeTask.patientName }}</b>
-                          <span class="muted">（{{ activeTask.gender }}·{{ activeTask.age }}岁）</span>
-                          <span class="pill mini" :data-tone="activeTask.riskTone" style="margin-left:8px">{{ activeTask.risk }}</span>
-                        </div>
-                        <div class="detail-top-sub muted">{{ activeTask.phoneMasked }} · {{ activeTask.owner || '未分派' }} · {{ activeTask.channel }}</div>
-                      </div>
-                      <div class="detail-top-actions">
-                        <button class="btn-link-lite" type="button" @click="bulkAssignSelected">分派</button>
-                      </div>
-                    </div>
-                  </section>
+                <section class="plan-patient-hero">
+                  <div class="patient-avatar-sm">患</div>
+                  <div class="hero-info">
+                    <b>{{ activeTask.patientName }}</b>
+                    <span class="muted">（{{ activeTask.gender }}·{{ activeTask.age }}岁）</span>
+                    <span>{{ activeTask.nodules }}</span>
+                    <span class="pill mini" :data-tone="activeTask.riskTone">{{ activeTask.risk }}</span>
+                    <span>Day {{ planDay.replace('day','') }}</span>
+                    <span>{{ activeTask.phoneMasked }}</span>
+                    <span>{{ activeTask.owner || '未分派' }}</span>
+                  </div>
+                </section>
 
+                <section class="plan-flow-card">
+                  <div v-for="s in planPipelineSteps" :key="s.key" class="flow-node" :data-state="s.state">
+                    <div class="flow-node-dot">{{ s.icon }}</div>
+                    <div class="flow-node-title">{{ s.title }}</div>
+                  </div>
+                </section>
+
+                <div class="detail-grid">
                   <section class="detail-card">
                     <div class="detail-title">随访任务制定</div>
                     <div class="detail-sub muted">{{ planState.title || '随访计划模板' }} · Day {{ planDay.replace('day','') }}</div>
+                    <div class="recommend-box">
+                      <div class="recommend-title">系统推荐：根据患者病种、年龄、风险等级、随访阶段，推荐以下知识内容。</div>
+                      <div class="recommend-tags">
+                        <span v-for="tag in planRecommendTags" :key="tag" class="kb-tag">{{ tag }}</span>
+                      </div>
+                    </div>
 
                     <div class="plan-form" style="margin-bottom:0">
                       <div class="plan-flow-title" style="margin-bottom:8px">表单 / 知识库</div>
@@ -571,6 +584,30 @@
                         <button class="primary" type="button" @click="applyDraftToPlan">生成并保存任务</button>
                         <button class="btn-link-lite" type="button" @click="savePlanForActive">保存计划</button>
                         <button class="btn-link-lite" type="button" @click="startAiFollowup">开启 AI 随访</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="detail-card plan-preview-grid">
+                    <div>
+                      <div class="detail-title">方案组合与预览</div>
+                      <div class="preview-list">
+                        <div v-for="(row, idx) in selectedContentPreview" :key="row.key" class="preview-row">
+                          <span class="preview-no">{{ idx + 1 }}</span>
+                          <div class="preview-main">
+                            <b>{{ row.label }}</b>
+                            <span>{{ row.text }}</span>
+                          </div>
+                          <span class="preview-status">已选</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="detail-title">下发配置</div>
+                      <div class="delivery-card">
+                        <div>触达方式：{{ draft.channel }}</div>
+                        <div>下发时间：今日 16:00</div>
+                        <div>内容包：图文 {{ selectedContentPreview.filter(x=>x.type==='article').length }}、问卷 {{ selectedContentPreview.filter(x=>x.type==='form').length }}、提醒 {{ selectedContentPreview.filter(x=>x.type==='reminder').length }}</div>
                       </div>
                     </div>
                   </section>
@@ -711,6 +748,58 @@
       <!-- follow tab：患者随访聊天记录查看（三栏：患者列表 | 手机聊天 | 助手面板） -->
       <div v-else-if="subTab === 'follow'" class="follow-workbench">
 
+        <!-- 顶部统计区 -->
+        <div class="follow-stats-bar">
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">AI随访中</div>
+            <div class="follow-stat-value" style="color:#2563eb">{{ queue.filter(p=>statusKey(p)==='follow').length }}</div>
+          </div>
+          <div class="follow-stat-div"></div>
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">高风险</div>
+            <div class="follow-stat-value" style="color:#dc2626">{{ queue.filter(p=>statusKey(p)==='follow'&&p.riskTone==='r').length }}</div>
+          </div>
+          <div class="follow-stat-div"></div>
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">中风险</div>
+            <div class="follow-stat-value" style="color:#d97706">{{ queue.filter(p=>statusKey(p)==='follow'&&p.riskTone==='o').length }}</div>
+          </div>
+          <div class="follow-stat-div"></div>
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">低风险</div>
+            <div class="follow-stat-value" style="color:#059669">{{ queue.filter(p=>statusKey(p)==='follow'&&p.riskTone==='g').length }}</div>
+          </div>
+          <div class="follow-stat-div"></div>
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">今日待配置</div>
+            <div class="follow-stat-value" style="color:#7c3aed">{{ queue.filter(p=>statusKey(p)==='follow'&&(!p.planTask||!p.planTask.day)).length }}</div>
+          </div>
+          <div class="follow-stat-div"></div>
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">已配置随访</div>
+            <div class="follow-stat-value" style="color:#0891b2">{{ queue.filter(p=>statusKey(p)==='follow'&&p.planTask&&p.planTask.day).length }}</div>
+          </div>
+          <div class="follow-stat-div"></div>
+          <div class="follow-stat-item">
+            <div class="follow-stat-label">当前筛选</div>
+            <div class="follow-stat-value" style="color:#475569">{{ followFilteredQueue.length }}</div>
+          </div>
+        </div>
+
+        <section class="follow-compose-head card">
+          <div>
+            <div class="chain-eyebrow">AI 随访内容生成与预览</div>
+            <div class="chain-title">随访内容由 AI 助手策略与知识库内容共同生成，支持可解释推荐、模块替换与预览下发。</div>
+          </div>
+          <div class="follow-flow">
+            <div v-for="s in aiFollowFlowSteps" :key="s.title" class="follow-flow-step">
+              <div class="follow-flow-ico">{{ s.icon }}</div>
+              <div class="follow-flow-title">{{ s.title }}</div>
+              <div class="follow-flow-sub">{{ s.sub }}</div>
+            </div>
+          </div>
+        </section>
+
         <!-- 左：患者选择列表 -->
         <div class="follow-patient-col">
           <!-- 搜索 + 筛选（固定顶部） -->
@@ -761,8 +850,8 @@
         <!-- 中：手机聊天记录预览 -->
         <div class="follow-phone-col">
           <div class="phone-preview-label">
-            <span>{{ followPatient?.name }} · 随访记录</span>
-            <span class="muted" style="font-size:11px">{{ currentAssistant?.name }}</span>
+            <span>Day {{ planDay.replace('day','') }} 随访内容预览</span>
+            <span class="muted" style="font-size:11px">发送节奏：上午 09:00 · 晚间提醒 20:00</span>
           </div>
           <div class="device-outer-lg">
             <div class="device-btn-l" style="top:100px"></div>
@@ -834,68 +923,80 @@
           <!-- 当前助手：状态 + 建议 + 一键动作（主焦点） -->
           <section class="assist-focus card">
             <div class="card-head">
-              <div class="card-title">当前助手</div>
+              <div class="card-title">A. AI助手策略中心</div>
               <span class="assist-state" :data-tone="assistantStatus(currentAssistant?.key)">
-                {{ assistantStatus(currentAssistant?.key) === 'g' ? '已启用' : '待启用' }}
+                {{ assistantStatus(currentAssistant?.key) === 'g' ? '当前策略已启用' : '待启用' }}
               </span>
             </div>
             <div class="assist-focus-body">
-              <div class="assist-img-wrap" v-if="currentAssistant?.image" :key="currentAssistant?.key">
-                <img
-                  class="assist-intro-img"
-                  :key="currentAssistant?.image"
-                  :src="currentAssistant.image"
-                  :alt="currentAssistant.name"
-                />
-              </div>
-
-              <!-- 九宫格：放在图片下面 -->
-              <div class="assist-selector">
-                <div class="assist-selector-title">切换助手 <span class="muted" style="font-weight:400">· 点击切换</span></div>
-                <div class="assist-grid">
+              <div class="strategy-box">
+                <div class="strategy-modules">
                   <button
-                    v-for="a in aiAssistants"
+                    v-for="a in followAssistants.slice(0, 6)"
                     :key="a.key"
                     type="button"
-                    class="assist-card"
+                    class="strategy-module"
                     :class="{ active: activeAssistant === a.key }"
                     @click="activeAssistant = a.key"
                   >
-                    <div class="assist-ico" :style="{ background: a.bg, color: a.color }">{{ a.ico }}</div>
-                    <div class="assist-name">{{ a.shortName }}</div>
-                    <span class="assist-dot" :data-tone="assistantStatus(a.key)"></span>
+                    <span class="assist-ico" :style="{ background: a.bg, color: a.color }">{{ a.ico }}</span>
+                    <b>{{ a.shortName }}</b>
+                    <em v-if="assistantStatus(a.key)==='g'">推荐</em>
                   </button>
+                </div>
+                <div class="strategy-current">当前生成策略：{{ currentAssistant?.shortName }} + {{ followPatient?.risk }} + Day {{ planDay.replace('day','') }} 随访阶段</div>
+              </div>
+
+              <div class="content-config">
+                <div class="assist-selector-title">B. 知识库来源与内容配置</div>
+                <div class="config-list">
+                  <div v-for="row in followContentConfigRows" :key="row.key" class="config-row">
+                    <span class="config-dot" :data-on="row.enabled"></span>
+                    <div class="config-main">
+                      <b>{{ row.label }}</b>
+                      <span>{{ row.reason }}</span>
+                    </div>
+                    <button class="kb-act" type="button" @click="setKbEnabled(row.key, true)">{{ row.enabled ? '已加入' : '加入模块' }}</button>
+                  </div>
                 </div>
               </div>
 
-              <div class="assist-plan-zone" ref="assistPlanZoneRef">
-                <div class="assist-selector-title" style="margin-top:12px">
-                  今日随访内容 <span class="muted" style="font-weight:400">· Day {{ planDay.replace('day','') }}</span>
+              <div class="generated-panel">
+                <div class="assist-selector-title">C. 今日随访内容明细 <span class="muted">（已生成 {{ followGeneratedRows.length }} 项）</span></div>
+                <div class="generated-table">
+                  <div class="generated-head">
+                    <span>序号</span>
+                    <span>模块名称</span>
+                    <span>内容类型</span>
+                    <span>来源</span>
+                    <span>关联助手</span>
+                    <span>状态</span>
+                    <span>操作</span>
+                  </div>
+                  <div v-for="(row, idx) in followGeneratedRows" :key="row.key" class="generated-row">
+                    <span>{{ idx + 1 }}</span>
+                    <b>{{ row.name }}</b>
+                    <span>{{ row.type }}</span>
+                    <span>{{ row.source }}</span>
+                    <span>{{ row.assistant }}</span>
+                    <span class="generated-state">已加入</span>
+                    <button class="tbl-act" type="button">预览</button>
+                  </div>
                 </div>
-                <div v-if="planState.loading" class="muted" style="padding:8px 0">计划加载中…</div>
-                <div v-else-if="planState.error" class="muted" style="padding:8px 0">{{ planState.error }}</div>
-                <div v-else class="assist-plan-list">
-                  <details v-for="p in orderedAssistantPlanPanels" :key="p.key" class="assist-plan" :open="p.key === activeAssistant">
-                    <summary class="assist-plan-sum">
-                      <span class="assist-plan-ico" :style="{ background: p.bg, color: p.color }">{{ p.ico }}</span>
-                      <span class="assist-plan-name">{{ p.name }}</span>
-                      <span class="assist-plan-mini muted">{{ p.summary || '点击展开查看' }}</span>
-                    </summary>
-                    <div class="assist-plan-body">
-                      <div v-for="(s, idx) in p.sections" :key="idx" class="assist-plan-sec">
-                        <div class="assist-plan-sec-h">{{ s.h }}</div>
-                        <div class="assist-plan-sec-p">{{ s.p }}</div>
-                      </div>
-                    </div>
-                  </details>
-                </div>
+              </div>
+
+              <div class="follow-bottom-actions">
+                <button class="btn" type="button">查看生成逻辑</button>
+                <button class="btn" type="button">重新推荐</button>
+                <button class="btn" type="button">保存配置</button>
+                <button class="primary" type="button">预览下发</button>
               </div>
             </div>
           </section>
         </div>
       </div>
 
-      <!-- review tab：健康报告（报告处理主页面） -->
+      <!-- review tab：报告处理主页面 -->
       <div v-else-if="subTab === 'review'" class="rp-page">
 
         <!-- 统计卡片 -->
@@ -905,7 +1006,7 @@
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             </div>
             <div class="stat-body">
-              <div class="stat-label">待处理报告</div>
+              <div class="stat-label">{{ reportTerms.pending }}</div>
               <div class="stat-val">{{ rpList.filter(r=>r.reportStatus!=='已审核').length }}</div>
               <div class="stat-sub" style="color:#2563eb">较昨日 -2</div>
             </div>
@@ -915,7 +1016,7 @@
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
             </div>
             <div class="stat-body">
-              <div class="stat-label">AI解析中</div>
+              <div class="stat-label">{{ reportTerms.parsing }}</div>
               <div class="stat-val">{{ rpList.filter(r=>r.aiStatus==='AI解析中').length }}</div>
               <div class="stat-sub" style="color:#a21caf">较昨日 +1</div>
             </div>
@@ -925,7 +1026,7 @@
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
             <div class="stat-body">
-              <div class="stat-label">解析完成</div>
+              <div class="stat-label">{{ reportTerms.parsed }}</div>
               <div class="stat-val">{{ rpList.filter(r=>r.aiStatus==='待审核').length }}</div>
               <div class="stat-sub" style="color:#059669">较昨日 +3</div>
             </div>
@@ -935,7 +1036,7 @@
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
             </div>
             <div class="stat-body">
-              <div class="stat-label">待生成报告</div>
+              <div class="stat-label">{{ reportTerms.toGenerate }}</div>
               <div class="stat-val">{{ rpList.filter(r=>r.reportStatus==='待审核').length }}</div>
               <div class="stat-sub" style="color:#d97706">较昨日 +1</div>
             </div>
@@ -945,7 +1046,7 @@
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <div class="stat-body">
-              <div class="stat-label">待医生复核</div>
+              <div class="stat-label">{{ reportTerms.toReview }}</div>
               <div class="stat-val">{{ rpList.filter(r=>r.reportStatus==='待审核').length }}</div>
               <div class="stat-sub" style="color:#059669">较昨日 -1</div>
             </div>
@@ -955,7 +1056,7 @@
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
             <div class="stat-body">
-              <div class="stat-label">异常报告</div>
+              <div class="stat-label">{{ reportTerms.abnormal }}</div>
               <div class="stat-val">{{ rpList.filter(r=>r.risk==='高风险').length }}</div>
               <div class="stat-sub" style="color:#dc2626">较昨日 +1</div>
             </div>
@@ -966,15 +1067,14 @@
         <div class="rp-filter-bar card">
           <div class="rp-filter-row">
             <div class="rp-filter-item">
-              <div class="rp-filter-label">患者姓名/手机号</div>
+              <div class="rp-filter-label">{{ scenario.personLabel }}姓名/手机号</div>
               <input class="rp-filter-input" v-model="rpSearch" placeholder="请输入姓名或手机号" />
             </div>
             <div class="rp-filter-item">
-              <div class="rp-filter-label">患者来源</div>
+              <div class="rp-filter-label">{{ scenario.personLabel }}来源</div>
               <select class="rp-filter-select" v-model="rpSource">
-                <option value="">门诊 / 体检中心</option>
-                <option>门诊</option>
-                <option>体检中心</option>
+                <option value="">{{ scenario.sourceOptions.join(' / ') }}</option>
+                <option v-for="src in scenario.sourceOptions" :key="src">{{ src }}</option>
               </select>
             </div>
             <div class="rp-filter-item">
@@ -1011,7 +1111,7 @@
           <!-- 左：报告列表 -->
           <section class="card rp-list-card">
             <div class="card-head">
-              <div class="card-title">报告列表 <span class="rp-count">共 268 条</span></div>
+              <div class="card-title">{{ reportTerms.listTitle }} <span class="rp-count">共 268 条</span></div>
               <div style="display:flex;gap:6px">
                 <button class="btn" type="button">
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出
@@ -1045,7 +1145,7 @@
                     <td class="muted">{{ r.owner }}</td>
                     <td>
                       <div style="display:flex;gap:8px">
-                        <button class="tbl-act" type="button" @click.stop="openAudit(r)" :disabled="r.reportStatus === '已审核'">{{ r.reportStatus === '已审核' ? '已审核' : '审核' }}</button>
+                        <button class="tbl-act" type="button" @click.stop="openAudit(r)" :disabled="r.reportStatus === '已审核'">{{ r.reportStatus === '已审核' ? reportTerms.reviewed : reportTerms.reviewAction }}</button>
                         <button class="tbl-act" type="button" @click.stop="viewReport(r.id)">查看</button>
                       </div>
                     </td>
@@ -1073,7 +1173,7 @@
             <template v-if="rpActive">
               <!-- 患者基本信息 -->
               <section class="card">
-                <div class="card-head"><div class="card-title">报告详情</div></div>
+                <div class="card-head"><div class="card-title">{{ reportTerms.detailTitle }}</div></div>
                 <div class="rp-detail-info">
                   <div class="rp-info-grid">
                     <div class="rp-info-row"><span class="rp-ik">患者姓名：</span><span class="rp-iv">{{ rpActive.name }}</span></div>
@@ -1093,7 +1193,7 @@
 
               <!-- 处理流程 -->
               <section class="card">
-                <div class="card-head"><div class="card-title">处理流程</div></div>
+                <div class="card-head"><div class="card-title">{{ reportTerms.flowTitle }}</div></div>
                 <div class="rp-flow">
                   <div v-for="(s, i) in rpActive.flow" :key="s.label" class="rp-flow-step" :data-done="s.done" :data-cur="s.cur">
                     <div class="rp-flow-dot">
@@ -1111,10 +1211,10 @@
                 <div class="card-head"><div class="card-title">快捷操作</div></div>
                 <div class="rp-actions">
                   <button class="primary" type="button" @click="openAudit(rpActive)" :disabled="rpActive.reportStatus === '已审核'">
-                    {{ rpActive.reportStatus === '已审核' ? '已审核' : '审核AI建议' }}
+                    {{ rpActive.reportStatus === '已审核' ? reportTerms.reviewed : reportTerms.auditAi }}
                   </button>
                   <button class="btn" type="button" @click="viewReport(rpActive.id)">查看报告</button>
-                  <button class="btn" type="button">创建随访任务</button>
+                  <button class="btn" type="button">{{ reportTerms.createTask }}</button>
                 </div>
               </section>
             </template>
@@ -1244,7 +1344,7 @@
                       </div>
                       <div class="file-right">
                         <span class="pill mini" :data-tone="f.stateTone === 'g' ? 'g' : 'o'">{{ f.state }}</span>
-                        <button class="icon-more" type="button" @click="toast?.show('文件操作（示意）')">⋯</button>
+                        <button class="icon-more" type="button" @click="toast?.show('文件操作')">⋯</button>
                       </div>
                     </div>
                   </div>
@@ -1252,10 +1352,10 @@
                 <template v-else>
                   <div class="empty">
                     <div class="empty-title">暂无原始报告</div>
-                    <div class="muted" style="font-size:12px;margin-top:4px">上传检查报告后，AI 将自动解析并生成健康管理报告</div>
+                    <div class="muted" style="font-size:12px;margin-top:4px">上传检查报告后，AI 将自动解析并生成{{ scenario.reportLabel }}</div>
                     <div class="empty-actions">
                       <button class="primary" type="button">上传报告</button>
-                      <button class="btn" type="button">从门诊系统导入</button>
+                      <button class="btn" type="button">{{ scenario.importLabel }}</button>
                     </div>
                   </div>
                 </template>
@@ -1325,7 +1425,7 @@
   <div v-if="rpViewVisible" class="rp-modal-mask" @click.self="rpViewVisible=false">
     <div class="rp-modal">
       <div class="rp-modal-head">
-        <div class="rp-modal-title">健康管理报告</div>
+        <div class="rp-modal-title">{{ scenario.reportLabel }}</div>
         <button class="rp-modal-close" type="button" @click="rpViewVisible=false">✕</button>
       </div>
       <div class="rp-modal-body" v-html="rpViewHtml"></div>
@@ -1336,17 +1436,17 @@
   <div v-if="rpAuditId" class="rp-modal-mask" @click.self="rpAuditId=''">
     <div class="rp-modal">
       <div class="rp-modal-head">
-        <div class="rp-modal-title">审核AI生成内容</div>
+        <div class="rp-modal-title">{{ reportTerms.auditModalTitle }}</div>
         <span class="muted" style="font-size:12px">可直接编辑后点击审核通过</span>
         <button class="rp-modal-close" type="button" @click="rpAuditId=''">✕</button>
       </div>
       <div class="rp-modal-body">
-        <div class="rp-audit-label">影像解读摘要</div>
+        <div class="rp-audit-label">{{ reportTerms.summaryLabel }}</div>
         <textarea class="rp-audit-ta" v-model="rpAuditPara1" rows="5"></textarea>
-        <div class="rp-audit-label" style="margin-top:14px">AI健康建议</div>
+        <div class="rp-audit-label" style="margin-top:14px">{{ reportTerms.adviceLabel }}</div>
         <textarea class="rp-audit-ta" v-model="rpAuditPara2" rows="5"></textarea>
         <div style="display:flex;gap:8px;margin-top:16px">
-          <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : '审核通过' }}</button>
+          <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : reportTerms.approveAction }}</button>
           <button class="btn" type="button" @click="rpAuditId=''">取消</button>
         </div>
       </div>
@@ -1358,9 +1458,62 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import RecordView from './RecordView.vue'
+import { getStoredScenario } from '../config/scenarios'
 
 const router = useRouter()
 const route = useRoute()
+const scenario = computed(() => getStoredScenario())
+const isCheckupScenario = computed(() => scenario.value.key === 'checkup')
+const reportTerms = computed(() => {
+  if (isCheckupScenario.value) {
+    return {
+      pending: '待处理体检报告',
+      parsing: 'AI结构化中',
+      parsed: '解读完成',
+      toGenerate: '待生成解读',
+      toReview: '待总检确认',
+      abnormal: '高风险提醒',
+      listTitle: '体检报告列表',
+      detailTitle: '体检报告详情',
+      flowTitle: '体检报告流程',
+      reviewed: '已确认',
+      reviewAction: '确认',
+      auditAi: '确认AI建议',
+      createTask: '创建复查任务',
+      auditModalTitle: '确认AI解读内容',
+      summaryLabel: '体检结果摘要',
+      adviceLabel: 'AI复查建议',
+      approveAction: '确认通过',
+      flowBuild: '建档',
+      flowGenerate: '生成解读',
+      flowReview: '总检确认',
+      flowPush: '推送患者',
+    }
+  }
+  return {
+    pending: '待处理报告',
+    parsing: 'AI解析中',
+    parsed: '解析完成',
+    toGenerate: '待生成报告',
+    toReview: '待医生复核',
+    abnormal: '异常报告',
+    listTitle: '报告列表',
+    detailTitle: '报告详情',
+    flowTitle: '处理流程',
+    reviewed: '已审核',
+    reviewAction: '审核',
+    auditAi: '审核AI建议',
+    createTask: '创建随访任务',
+    auditModalTitle: '审核AI生成内容',
+    summaryLabel: '影像解读摘要',
+    adviceLabel: 'AI健康建议',
+    approveAction: '审核通过',
+    flowBuild: '建档',
+    flowGenerate: '生成报告',
+    flowReview: '人工审核',
+    flowPush: '推送患者',
+  }
+})
 
 // 当前子页（必须在 watch 之前声明，避免 immediate 回调引用未初始化变量）
 const subTab = ref('queue')
@@ -1369,10 +1522,9 @@ const subTab = ref('queue')
 const subTabs = [
   { key: 'queue', label: '患者队列' },
   { key: 'record', label: '档案与报告' },
-  { key: 'review', label: '健康报告审核' },
+  { key: 'review', label: isCheckupScenario.value ? '体检报告确认' : '健康报告审核' },
   { key: 'followup-plan', label: '随访计划' },
-  { key: 'follow', label: 'AI助手随访' },
-  { key: 'abnormal', label: '异常与复查' }
+  { key: 'follow', label: 'AI助手随访' }
 ]
 const allowedSubTabs = new Set(subTabs.map((t) => t.key))
 
@@ -1611,7 +1763,7 @@ function toggleAllTaskSelection() {
  * @returns {void}
  */
 function bulkAssignSelected() {
-  const owner = window.prompt('输入负责人（示例：运营A/张医生）：', taskFilters.value.owner || '') || ''
+  const owner = window.prompt('输入负责人（例如：运营A/张医生）：', taskFilters.value.owner || '') || ''
   if (!owner.trim()) return
   const ids = Array.from(selectedTaskIds.value)
   followTasks.value = (followTasks.value || []).map((t) => {
@@ -1638,6 +1790,7 @@ function makeTaskFromPatient(p) {
     gender: p.gender,
     age: p.age,
     phoneMasked: p.phoneMasked,
+    nodules: p.nodules,
     risk: p.risk,
     riskTone: p.riskTone,
     owner: p.owner || '',
@@ -1845,7 +1998,7 @@ function applyDraftToPlan() {
       '如出现持续咳嗽、胸痛、咳血、明显吞咽困难等情况，请及时就医并联系医生。',
     ].join('\n')
     if (key === 'escalationRule') return [
-      '异常转人工/医生规则（示意）：',
+      '异常转人工/医生规则：',
       '- 出现咳血/胸痛/呼吸困难/持续发热 → 立即转医生',
       '- 出现声音嘶哑加重/吞咽困难 → 48小时内转医生评估',
       '- 连续 3 天未打卡或失联 → 转人工电话随访',
@@ -1889,6 +2042,18 @@ function applyDraftToPlan() {
   const newTask = makeTaskFromPatient(p)
   followTasks.value = [newTask, ...(followTasks.value || [])]
   selectTask(newTask.id)
+}
+
+/**
+ * @isdoc
+ * @description demo 一键闭环：生成随访任务并进入 AI 随访预览
+ * @returns {void}
+ */
+function simulatePlanToFollowup() {
+  const p = activePatient.value
+  if (!p?.id) return
+  if (!p.planTask) applyDraftToPlan()
+  startAiFollowup()
 }
 
 function pickRowLike(q) {
@@ -1976,7 +2141,7 @@ function getKbText(key) {
     '如出现持续咳嗽、胸痛、咳血、明显吞咽困难等情况，请及时就医并联系医生。',
   ].join('\n')
   if (key === 'escalationRule') return [
-    '异常转人工/医生规则（示意）：',
+    '异常转人工/医生规则：',
     '- 出现咳血/胸痛/呼吸困难/持续发热 → 立即转医生',
     '- 出现声音嘶哑加重/吞咽困难 → 48小时内转医生评估',
     '- 连续 3 天未打卡或失联 → 转人工电话随访',
@@ -2089,6 +2254,47 @@ const kbSelectedByGroup = computed(() => {
   })
   return map
 })
+
+const planRecommendTags = computed(() => {
+  const p = activePatient.value || {}
+  return [
+    p.nodules || '结节随访',
+    p.risk || '风险分层',
+    draft.value.cycle,
+    `Day ${planDay.value.replace('day', '')}`,
+    '电话+企微+小程序',
+  ].filter(Boolean)
+})
+
+const selectedContentPreview = computed(() => {
+  return kbSelected.value.slice(0, 5).map((it) => {
+    const text = String(it.text || getKbText(it.key) || '已加入随访内容包').split('\n').map(x => x.trim()).filter(Boolean)[0] || '已加入随访内容包'
+    const type = it.key === 'questionnaire' ? 'form' : ['reminderScript', 'escalationRule'].includes(it.key) ? 'reminder' : 'article'
+    return { key: it.key, label: it.label, text, type }
+  })
+})
+
+const planPipelineSteps = computed(() => {
+  const hasPatient = !!activePatient.value?.id
+  const hasKb = kbSelected.value.length > 0
+  const hasTask = !!activePatient.value?.planTask
+  const isFollow = statusKey(activePatient.value) === 'follow'
+  return [
+    { key: 'patient', icon: '1', title: '患者信息', sub: activePatient.value?.name || '待选择', state: hasPatient ? 'done' : 'todo' },
+    { key: 'risk', icon: '2', title: '风险分层', sub: activePatient.value?.risk || '待评估', state: hasPatient ? 'done' : 'todo' },
+    { key: 'kb', icon: '3', title: '知识推荐', sub: `${kbSelected.value.length} 项内容`, state: hasKb ? 'done' : 'todo' },
+    { key: 'task', icon: '4', title: '任务生成', sub: hasTask ? '已生成' : '待生成', state: hasTask ? 'done' : 'doing' },
+    { key: 'send', icon: '5', title: '预览下发', sub: isFollow ? '已进入AI随访' : '待下发', state: isFollow ? 'done' : 'todo' },
+  ]
+})
+
+const aiFollowFlowSteps = [
+  { icon: '患', title: '患者画像', sub: '病种/风险/阶段' },
+  { icon: '策', title: '助手策略', sub: '确定输出倾向' },
+  { icon: '库', title: '知识匹配', sub: '匹配内容库' },
+  { icon: '文', title: '生成内容', sub: '摘要/任务/提醒' },
+  { icon: '发', title: '患者预览', sub: '预览后下发' },
+]
 
 /**
  * @isdoc
@@ -2273,8 +2479,9 @@ function savePatientForm() {
 function startAiFollowup() {
   const p = activePatient.value
   if (!p) return
-  // 先保存一次，保证计划存在
-  savePlanForActive()
+  // 先保存一次，保证计划和内容包存在
+  if (!p.planTask) applyDraftToPlan()
+  else savePlanForActive()
 
   p.stage = 'follow'
   p.stageLabel = 'AI随访中'
@@ -2492,7 +2699,72 @@ const aiAssistants = [
   },
 ]
 
-const currentAssistant = computed(() => aiAssistants.find(a => a.key === activeAssistant.value))
+const followAssistants = computed(() => {
+  if (!isCheckupScenario.value) return aiAssistants
+  const overrides = {
+    hlp: {
+      name: 'AI总检医生助手', shortName: '总检解读', ico: '总',
+      tagline: '体检结论解读 · 风险分层 · 复查建议，为患者提供清晰的检后管理指引',
+      capabilities: ['体检结论解读', '风险分层说明', '复查建议生成', '转诊提醒判断', '专项筛查规划'],
+      scene: '体检后解读 · 高风险路径规划',
+      tpl: '您好，您的体检报告已完成解读，请查看重点异常项和复查安排。',
+      chat: [
+        { from: 'ai', text: '您好，我是AI总检医生助手，已根据您的体检结果整理重点异常项。' },
+        { from: 'ai', text: '本次重点关注肺部结节与甲状腺结节，建议按风险等级完成复查或报告解读。' },
+        { type: 'card', ico: '报', title: '查看体检解读报告', sub: '异常项汇总 · 复查建议 · 风险说明' },
+        { from: 'patient', text: '我需要马上去医院吗？' },
+        { from: 'ai', text: '当前建议先完成复查预约和总检确认，如出现持续咳嗽、胸痛等症状，请提前联系医生。' }
+      ]
+    },
+    health: {
+      name: 'AI健康管理师', shortName: '检后管理', ico: '管',
+      tagline: '报告解读提醒 · 复查预约 · 健康档案，全程衔接体检后管理',
+      capabilities: ['复查计划制定', '报告解读提醒', '健康档案管理', '症状自评问卷', '异常指标跟踪'],
+      scene: '检后管理 · 复查提醒',
+      tpl: '您好，您的体检后管理计划已更新，请按时完成报告解读和复查。',
+      chat: [
+        { from: 'ai', text: '您好，您的体检解读报告已生成，以下是今日需要完成的事项。' },
+        { type: 'card', ico: '复', title: '复查预约提醒', sub: '3个月胸部CT · 6个月甲状腺超声' },
+        { from: 'ai', text: '建议您先确认报告解读结果，并根据风险等级完成复查预约。' },
+        { from: 'patient', text: '好的，我今天看一下。' },
+        { from: 'ai', text: '已为您保留提醒入口，临近复查日期会再次通知。' }
+      ]
+    },
+    pharma: {
+      name: 'AI复查预约助手', shortName: '复查预约', ico: '约',
+      tagline: '复查项目匹配 · 预约提醒 · 转诊建议，提升体检后闭环效率',
+      capabilities: ['复查项目匹配', '预约时间提醒', '转诊科室建议', '检查注意事项', '到检状态跟踪'],
+      scene: '复查预约 · 转诊衔接',
+      tpl: '您好，您的复查项目已匹配，请选择合适时间完成预约。',
+    },
+    chronic: {
+      name: 'AI异常指标管理师', shortName: '指标管理', ico: '指',
+      tagline: '异常指标跟踪 · 慢病风险评估 · 干预建议，帮助患者理解体检异常',
+      capabilities: ['异常指标解释', '慢病风险评估', '指标复测提醒', '生活方式建议', '趋势跟踪'],
+      scene: '异常指标 · 趋势管理',
+      tpl: '您好，本次体检有部分指标需要关注，已为您整理复测和干预建议。',
+    },
+    psych: {
+      name: 'AI检后关怀助手', shortName: '检后关怀', ico: '关',
+      tagline: '检后焦虑评估 · 报告疑问收集 · 人工转接，降低患者等待期焦虑',
+      capabilities: ['焦虑情绪评估', '报告疑问收集', '解读预约提醒', '人工转接', '持续关怀'],
+      scene: '检后关怀 · 报告疑问',
+      tpl: '您好，如果您对体检结果有疑问，可以先告诉我，我会协助整理给健康管理师。',
+    },
+    rehab: {
+      name: 'AI生活方式干预师', shortName: '生活干预', ico: '活',
+      tagline: '饮食运动建议 · 体重管理 · 生活方式跟踪，承接体检后健康改善',
+      capabilities: ['饮食建议', '运动计划', '体重管理', '睡眠建议', '习惯跟踪'],
+      scene: '体检后改善 · 生活方式干预',
+      tpl: '您好，根据您的体检结果，为您推荐本周生活方式改善建议。',
+    },
+  }
+  return aiAssistants
+    .filter((a) => ['hlp', 'health', 'pharma', 'chronic', 'psych', 'rehab'].includes(a.key))
+    .map((a) => ({ ...a, ...(overrides[a.key] || {}) }))
+})
+
+const currentAssistant = computed(() => followAssistants.value.find(a => a.key === activeAssistant.value) || followAssistants.value[0])
 
 const followPatient = computed(() => queue.value.find(p => p.id === followPatientId.value) || queue.value[0])
 
@@ -2514,12 +2786,65 @@ const activeAssistantPlan = computed(() => {
   return (assistantPlanPanels.value || []).find((p) => p.key === key) || null
 })
 
+const followPatientPlanTask = computed(() => followPatient.value?.planTask || null)
+
+const followContentConfigRows = computed(() => {
+  const task = followPatientPlanTask.value
+  const kb = task?.kb || {}
+  if (isCheckupScenario.value) {
+    return [
+      { key: 'knowledgeCard', label: '体检报告解读卡', reason: kb.knowledgeCard ? '来自已保存随访任务' : '基于异常项与风险等级推荐', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
+      { key: 'sport', label: '生活方式干预建议', reason: kb.sport ? '来自方案组合' : '可作为检后改善模块加入', enabled: !!kb.sport || !!draft.value.kbEnabled?.sport },
+      { key: 'questionnaire', label: '复查前症状自评', reason: kb.questionnaire ? '来自问卷库' : '用于判断是否需要提前就医', enabled: !!kb.questionnaire || !!draft.value.kbEnabled?.questionnaire },
+      { key: 'reminderScript', label: '复查预约提醒', reason: kb.reminderScript ? '来自提醒话术模板' : '用于提升复查到检率', enabled: !!kb.reminderScript || !!draft.value.kbEnabled?.reminderScript },
+    ]
+  }
+  return [
+    { key: 'knowledgeCard', label: '低碘饮食指导', reason: kb.knowledgeCard ? '来自已保存随访任务' : '基于病种与阶段推荐', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
+    { key: 'sport', label: '术后/日常运动提醒', reason: kb.sport ? '来自方案组合' : '可作为生活方式模块加入', enabled: !!kb.sport || !!draft.value.kbEnabled?.sport },
+    { key: 'questionnaire', label: '症状自评问卷', reason: kb.questionnaire ? '来自问卷库' : 'Day1 建议加入基线症状评估', enabled: !!kb.questionnaire || !!draft.value.kbEnabled?.questionnaire },
+    { key: 'reminderScript', label: '晚间打卡提醒', reason: kb.reminderScript ? '来自提醒话术模板' : '用于提升依从性', enabled: !!kb.reminderScript || !!draft.value.kbEnabled?.reminderScript },
+  ]
+})
+
+const followGeneratedRows = computed(() => {
+  const task = followPatientPlanTask.value
+  const kb = task?.kb || {}
+  const rows = isCheckupScenario.value
+    ? [
+      { key: 'summary', name: '体检摘要消息', type: '摘要卡', source: '系统生成', assistant: currentAssistant.value?.shortName || '总检解读', enabled: true },
+      { key: 'knowledgeCard', name: 'Day1解读卡：体检异常项说明', type: '解读卡', source: kb.knowledgeCard ? '体检中心标准版 v2.1' : '体检知识库', assistant: '总检解读', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
+      { key: 'questionnaire', name: '复查前症状自评', type: '任务卡', source: '问卷库 v2.0', assistant: '检后管理', enabled: !!kb.questionnaire || !!draft.value.kbEnabled?.questionnaire },
+      { key: 'reminderScript', name: '复查预约提醒', type: '提醒卡', source: '体检中心模板', assistant: '复查预约', enabled: !!kb.reminderScript || !!draft.value.kbEnabled?.reminderScript },
+    ]
+    : [
+      { key: 'summary', name: '摘要消息', type: '摘要卡', source: '系统生成', assistant: currentAssistant.value?.shortName || '名医分身', enabled: true },
+      { key: 'knowledgeCard', name: 'Day1知识卡：低碘饮食指导', type: '知识卡', source: kb.knowledgeCard ? '院内标准版 v2.1' : '院内指南', assistant: '名医分身', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
+      { key: 'questionnaire', name: '症状自评问卷', type: '任务卡', source: '问卷库 v2.0', assistant: '健康管理师', enabled: !!kb.questionnaire || !!draft.value.kbEnabled?.questionnaire },
+      { key: 'reminderScript', name: '晚间打卡提醒', type: '提醒卡', source: '系统模板', assistant: '健康管理师', enabled: !!kb.reminderScript || !!draft.value.kbEnabled?.reminderScript },
+    ]
+  return rows.filter((x) => x.enabled)
+})
+
 const simulatedAssistantChat = computed(() => {
   const a = currentAssistant.value
   const plan = activeAssistantPlan.value
-  const dayNum = planDay.value.replace('day', '')
+  const task = followPatientPlanTask.value
+  const dayNum = String(task?.day || planDay.value).replace('day', '')
   const patientName = followPatient.value?.name || '您'
   const assistantName = a?.name || 'AI助手'
+
+  if (task?.kb) {
+    const kb = task.kb || {}
+    const firstText = String(kb.knowledgeCard || kb.reminderScript || kb.sport || kb.psych || '').split('\n').map((x) => x.trim()).filter(Boolean)[0]
+    return [
+      { from: 'ai', text: `您好，${patientName}。我是${assistantName}，已根据您的随访计划生成 Day ${dayNum} 内容。` },
+      ...(firstText ? [{ from: 'ai', text: `摘要：${firstText}` }] : []),
+      { type: 'card', ico: '随', title: `Day ${dayNum} 随访任务`, sub: `${task.channel || draft.value.channel} · ${task.cycle || draft.value.cycle} · 已配置内容包` },
+      { type: 'card', ico: '问', title: '症状自评与打卡', sub: kb.questionnaire ? '问卷已加入 · 点击填写' : '饮食/运动/心理打卡入口' },
+      { from: 'ai', text: kb.reminderScript ? String(kb.reminderScript).split('\n')[0] : '请按计划完成今日打卡，如有明显不适请及时联系医生。' },
+    ]
+  }
 
   if (!plan) {
     return [
@@ -2541,6 +2866,14 @@ const simulatedAssistantChat = computed(() => {
   ]
 })
 
+watch(
+  () => followPatientId.value,
+  () => {
+    const d = followPatient.value?.planTask?.day
+    if (typeof d === 'string' && d.startsWith('day')) planDay.value = d
+  }
+)
+
 const rpSearch = ref('')
 const rpSource = ref('')
 const rpNodule = ref('')
@@ -2549,8 +2882,36 @@ const rpActiveId = ref(1)
 
 const rpList = ref([])
 const rpLoading = ref(false)
+const rpLoaded = ref(false)
+
+function makeReportFlow(createdAt = '', finalized = false) {
+  return [
+    { label: reportTerms.value.flowBuild, done: true, cur: false, time: '' },
+    { label: reportTerms.value.flowGenerate, done: true, cur: false, time: createdAt || '' },
+    { label: reportTerms.value.flowReview, done: finalized, cur: !finalized, time: finalized ? '已完成' : '当前步骤' },
+    { label: reportTerms.value.flowPush, done: false, cur: false, time: '待处理' },
+  ]
+}
+
+function toScenarioReport(r, idx = 0) {
+  if (!isCheckupScenario.value) return { ...r, reportType: scenario.value.reportLabel }
+  const sources = scenario.value.sourceOptions
+  const owners = ['总检医生', '健康管理师', '体检医生', '复查专员']
+  return {
+    ...r,
+    source: sources[idx % sources.length],
+    owner: owners[idx % owners.length],
+    reportType: scenario.value.reportLabel,
+    aiStatus: r.aiStatus === '已完成' ? '已完成' : '待确认',
+    summary: r.summary || '体检报告已完成结构化解析，请结合异常指标和既往体检记录确认复查建议。',
+    aiReadSummary: r.aiReadSummary || '建议根据风险等级完成体检报告解读、复查预约和必要的专科转诊。',
+    flow: makeReportFlow(r.uploadAt, r.reportStatus === '已审核'),
+  }
+}
 
 async function loadReports() {
+  if (!rpList.value.length) useMockReports()
+  if (rpLoaded.value || rpLoading.value) return
   rpLoading.value = true
   try {
     const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
@@ -2577,35 +2938,34 @@ async function loadReports() {
             age,
             phone: phoneMasked,
             source: sourceLabel(sourceRaw) || sourceRaw,
-            reportType: '健康报告',
+            reportType: scenario.value.reportLabel,
             nodules: noduleTypeLabel(nType),
             noduleKey: nType,
             uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
             aiStatus: r.status === 'finalized' ? '已完成' : '未完成',
             risk: r.risk_level || '—',
             riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
-            owner: r.created_by_name || '李医生',
+            owner: r.created_by_name || scenario.value.defaultOwner,
             summary: r.summary || '',
             reportStatus: r.status === 'finalized' ? '已完成' : '待审核',
-            reportHtml: r.report_html || '',
-            flow: [
-              { label: '建档', done: true, cur: false, time: '' },
-              { label: '生成报告', done: true, cur: false, time: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '' },
-              { label: '人工审核', done: r.status === 'finalized', cur: r.status !== 'finalized', time: r.status === 'finalized' ? '已完成' : '当前步骤' },
-              { label: '推送患者', done: false, cur: false, time: '待处理' },
-            ]
+            reportHtml: '',
+            flow: makeReportFlow(r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '', r.status === 'finalized')
           })
         })
+        .map(toScenarioReport)
       if (rpList.value.length) rpActiveId.value = rpList.value[0].id
+      rpLoaded.value = true
     }
   } catch (e) {
     console.error('加载报告列表失败', e)
   } finally {
     rpLoading.value = false
   }
-  // 后端无数据时用 mock
-  if (!rpList.value.length) {
-    rpList.value = [
+}
+
+function useMockReports() {
+  if (rpList.value.length) return
+  rpList.value = [
       { id:'r1', name:'张*国', gender:'男', age:56, phone:'138****5678', source:'门诊', reportType:'健康报告', nodules:'肺部结节', noduleKey:'lung', uploadAt:'2026-04-20 09:15', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'患者右肺上叶发现直径约8mm磨玻璃结节，边界清晰，建议3个月后复查CT。', aiReadSummary:'综合影像学表现，该结节具有一定恶性风险，建议密切随访，必要时行穿刺活检。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-20 09:15'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
       { id:'r2', name:'李*婷', gender:'女', age:48, phone:'139****2468', source:'体检中心', reportType:'健康报告', nodules:'甲状腺结节', noduleKey:'thyroid', uploadAt:'2026-04-19 14:30', aiStatus:'未完成', risk:'中风险', riskTone:'o', owner:'李医生', summary:'甲状腺左叶发现低回声结节，大小约6×4mm，TI-RADS 3类，建议6个月后复查超声。', aiReadSummary:'结节形态规则，边界清晰，暂无明显恶性征象，建议定期随访观察。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-19 14:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
       { id:'r3', name:'王*梅', gender:'女', age:62, phone:'137****1357', source:'门诊', reportType:'健康报告', nodules:'乳腺结节', noduleKey:'breast', uploadAt:'2026-04-18 10:00', aiStatus:'已完成', risk:'中风险', riskTone:'o', owner:'李医生', summary:'右乳外上象限发现低回声结节，大小约10×8mm，BI-RADS 3类，建议6个月后复查。', aiReadSummary:'结节边界清晰，内部回声均匀，暂无恶性征象，建议定期随访。', reportStatus:'已审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-18 10:00'},{label:'人工审核',done:true,cur:false,time:'已完成'},{label:'推送患者',done:false,cur:true,time:'待处理'}] },
@@ -2616,9 +2976,8 @@ async function loadReports() {
       { id:'r8', name:'周*明', gender:'男', age:64, phone:'138****9900', source:'门诊', reportType:'健康报告', nodules:'肺部+甲状腺结节', noduleKey:'lung_thyroid', uploadAt:'2026-04-13 10:45', aiStatus:'未完成', risk:'中风险', riskTone:'o', owner:'李医生', summary:'右肺中叶磨玻璃结节约7mm，建议3个月后复查；甲状腺左叶结节TI-RADS 3类，建议6个月复查。', aiReadSummary:'肺部结节需密切随访，甲状腺结节暂无恶性征象，建议综合管理。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-13 10:45'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
       { id:'r9', name:'吴*丽', gender:'女', age:39, phone:'150****4455', source:'社区', reportType:'健康报告', nodules:'乳腺+甲状腺结节', noduleKey:'breast_thyroid', uploadAt:'2026-04-12 14:00', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'右乳发现低回声结节约15×12mm，BI-RADS 4A类，建议穿刺活检；甲状腺结节TI-RADS 4类。', aiReadSummary:'乳腺结节具有一定恶性风险，建议尽快行穿刺活检明确诊断；甲状腺结节亦需进一步评估。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-12 14:00'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
       { id:'r10', name:'郑*涛', gender:'男', age:67, phone:'136****2233', source:'体检中心', reportType:'健康报告', nodules:'三合并结节', noduleKey:'triple', uploadAt:'2026-04-11 09:30', aiStatus:'未完成', risk:'高风险', riskTone:'r', owner:'李医生', summary:'肺部、甲状腺、乳腺三处均发现结节，其中肺部结节约10mm，建议多学科会诊。', aiReadSummary:'三处结节并存，综合风险较高，建议多学科会诊，制定个体化管理方案。', reportStatus:'待审核', reportHtml:'', flow:[{label:'建档',done:true,cur:false,time:''},{label:'生成报告',done:true,cur:false,time:'2026-04-11 09:30'},{label:'人工审核',done:false,cur:true,time:'当前步骤'},{label:'推送患者',done:false,cur:false,time:'待处理'}] },
-    ]
-    rpActiveId.value = 'r1'
-  }
+  ].map(toScenarioReport)
+  rpActiveId.value = 'r1'
 }
 
 const rpFinalizing = ref(false)
@@ -2630,8 +2989,8 @@ const rpAuditPara2 = ref('')
 
 function openAudit(r) {
   rpAuditId.value = r.id
-  rpAuditPara1.value = r.summary || '暂无影像解读摘要'
-  rpAuditPara2.value = r.aiReadSummary || '暂无AI健康建议'
+  rpAuditPara1.value = r.summary || `暂无${reportTerms.value.summaryLabel}`
+  rpAuditPara2.value = r.aiReadSummary || `暂无${reportTerms.value.adviceLabel}`
   rpActiveId.value = r.id
 }
 
@@ -2706,7 +3065,7 @@ async function viewReport(reportId) {
   }
   // mock fallback: build simple HTML from local data
   if (mockR) {
-    rpViewHtml.value = `<h2>健康管理报告</h2><p><b>患者：</b>${mockR.name} &nbsp; <b>结节类型：</b>${mockR.nodules} &nbsp; <b>风险等级：</b>${mockR.risk}</p><h3>影像解读摘要</h3><p>${rpAuditPara1.value || mockR.summary || '暂无'}</p><h3>AI健康建议</h3><p>${rpAuditPara2.value || mockR.aiReadSummary || '暂无'}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">报告生成时间：${mockR.uploadAt}</p>`
+    rpViewHtml.value = `<h2>${scenario.value.reportLabel}</h2><p><b>患者：</b>${mockR.name} &nbsp; <b>结节类型：</b>${mockR.nodules} &nbsp; <b>风险等级：</b>${mockR.risk}</p><h3>${reportTerms.value.summaryLabel}</h3><p>${rpAuditPara1.value || mockR.summary || '暂无'}</p><h3>${reportTerms.value.adviceLabel}</h3><p>${rpAuditPara2.value || mockR.aiReadSummary || '暂无'}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">报告生成时间：${mockR.uploadAt}</p>`
     rpViewVisible.value = true
   }
 }
@@ -2730,8 +3089,9 @@ const rpActive = computed(() => rpList.value.find(r => r.id === rpActiveId.value
  */
 function sourceLabel(src) {
   const s = String(src || '').trim()
-  if (s.includes('门诊')) return '门诊'
-  return '体检中心'
+  const hit = scenario.value.sourceOptions.find((x) => s.includes(x) || x.includes(s))
+  if (hit) return hit
+  return scenario.value.sourceOptions[0] || s || '—'
 }
 
 function assistantStatus(key) {
@@ -2763,9 +3123,9 @@ function ownerLabel(owner) {
  */
 function nextHint(p) {
   const k = statusKey(p)
-  if (k === 'new') return '请先完成患者建档信息，后续才能上传检查报告并生成健康报告。'
-  if (k === 'gen') return '请上传/补全检查报告，系统将自动解析并生成健康报告草稿。'
-  if (k === 'review') return '健康报告已生成，等待人工审核后进入随访计划制定。'
+  if (k === 'new') return `请先完成患者建档信息，后续才能上传检查报告并生成${scenario.value.reportLabel}。`
+  if (k === 'gen') return `请上传/补全检查报告，系统将自动解析并生成${scenario.value.reportLabel}草稿。`
+  if (k === 'review') return `${scenario.value.reportLabel}已生成，等待人工确认后进入随访计划制定。`
   if (k === 'plan') return '请制定随访计划，明确复查周期与触达方式，随后进入 AI 随访执行。'
   return '当前处于 AI 随访中，可查看随访记录与最近触达情况。'
 }
@@ -2778,11 +3138,11 @@ function nextHint(p) {
  */
 function nextHintV2(p) {
   const k = statusKey(p)
-  if (k === 'gen') return '系统将根据档案资料生成健康报告草稿。'
-  if (k === 'review') return `健康报告已生成，建议优先完成审核。`
-  if (k === 'plan') return '健康报告已审核，等待制定随访计划。'
+  if (k === 'gen') return `系统将根据档案资料生成${scenario.value.reportLabel}草稿。`
+  if (k === 'review') return `${scenario.value.reportLabel}已生成，建议优先完成确认。`
+  if (k === 'plan') return `${scenario.value.reportLabel}已确认，等待制定随访计划。`
   if (k === 'follow') return '患者正在 AI随访中，可查看随访记录。'
-  return '请先完成患者档案建立，后续才能生成健康报告。'
+  return `请先完成患者档案建立，后续才能生成${scenario.value.reportLabel}。`
 }
 
 /**
@@ -2795,8 +3155,8 @@ function flowNodes(p) {
   const k = statusKey(p)
   const labels = [
     { k: 'a', label: '建立档案' },
-    { k: 'b', label: '健康报告生成' },
-    { k: 'c', label: '健康报告审核' },
+    { k: 'b', label: `${scenario.value.reportLabel}生成` },
+    { k: 'c', label: isCheckupScenario.value ? '总检确认' : '健康报告审核' },
     { k: 'd', label: '随访计划制定' },
     { k: 'e', label: 'AI随访' },
   ]
@@ -2824,14 +3184,14 @@ function stageActions(p) {
   const k = statusKey(p)
   if (k === 'gen') {
     return [
-      { label: '生成报告', primary: true, onClick: () => toast?.show('生成健康报告（示意）') },
+      { label: isCheckupScenario.value ? '生成解读' : '生成报告', primary: true, onClick: () => toast?.show(`生成${scenario.value.reportLabel}`) },
       { label: '编辑档案', primary: false, onClick: () => goRecord() },
     ]
   }
   if (k === 'review') {
     return [
-      { label: '审核报告', primary: true, onClick: () => setSubTab('review') },
-      { label: '退回修改', primary: false, onClick: () => toast?.show('退回修改（示意）') },
+      { label: isCheckupScenario.value ? '总检确认' : '审核报告', primary: true, onClick: () => setSubTab('review') },
+      { label: '退回修改', primary: false, onClick: () => toast?.show('退回修改') },
     ]
   }
   if (k === 'plan') {
@@ -2840,7 +3200,7 @@ function stageActions(p) {
   if (k === 'follow') {
     return [
       { label: '查看随访记录', primary: true, onClick: () => setSubTab('follow') },
-      { label: '人工接管', primary: false, onClick: () => toast?.show('人工接管（示意）') },
+      { label: '人工接管', primary: false, onClick: () => toast?.show('人工接管') },
     ]
   }
   return [{ label: '建立档案', primary: true, onClick: () => goRecord() }]
@@ -2856,7 +3216,7 @@ function primaryLabel(p) {
   const k = statusKey(p)
   if (k === 'new') return '新建档案'
   if (k === 'gen') return '上传报告'
-  if (k === 'review') return '审核报告'
+  if (k === 'review') return isCheckupScenario.value ? '总检确认' : '审核报告'
   if (k === 'plan') return '制定随访计划'
   return '查看随访详情'
 }
@@ -2888,19 +3248,19 @@ function stageTimeline(p) {
     return [
       { at: baseAt, tone: 'b', text: '档案资料已提交' },
       { at: '—', tone: 'b', text: '检查报告已归档' },
-      { at: '—', tone: 'o', text: '等待生成健康报告' },
+      { at: '—', tone: 'o', text: `等待生成${scenario.value.reportLabel}` },
     ]
   }
   if (k === 'review') {
     return [
-      { at: baseAt, tone: 'p', text: '健康报告已生成' },
-      { at: '—', tone: 'o', text: '进入待审核队列' },
-      { at: '—', tone: 'o', text: '等待人工审核' },
+      { at: baseAt, tone: 'p', text: `${scenario.value.reportLabel}已生成` },
+      { at: '—', tone: 'o', text: isCheckupScenario.value ? '进入总检确认队列' : '进入待审核队列' },
+      { at: '—', tone: 'o', text: isCheckupScenario.value ? '等待总检确认' : '等待人工审核' },
     ]
   }
   if (k === 'plan') {
     return [
-      { at: baseAt, tone: 'g', text: '健康报告已审核通过' },
+      { at: baseAt, tone: 'g', text: `${scenario.value.reportLabel}已确认` },
       { at: '—', tone: 'b', text: '患者报告已推送' },
       { at: '—', tone: 'o', text: '等待制定随访计划' },
     ]
@@ -2943,8 +3303,8 @@ function lastChatRole(p) {
 const steps = computed(() => ([
   { label: '建档', ic: '档', sub: '04-10', cls: 'done' },
   { label: '上传上报', ic: '云', sub: '待上传', cls: 'active' },
-  { label: 'AI健康报告', ic: 'AI', sub: '待生成', cls: '' },
-  { label: '人工审核', ic: '审', sub: '待审核', cls: '' },
+  { label: `AI${scenario.value.reportLabel}`, ic: 'AI', sub: '待生成', cls: '' },
+  { label: isCheckupScenario.value ? '总检确认' : '人工审核', ic: '审', sub: isCheckupScenario.value ? '待确认' : '待审核', cls: '' },
   { label: '推送患者', ic: '推', sub: '待推送', cls: '' },
   { label: '匹配AI助手', ic: '机', sub: '进行中', cls: '' },
   { label: '异常识别', ic: '警', sub: '监测', cls: '' },
@@ -2981,8 +3341,8 @@ function statusKey(p) {
  */
 function statusLabel(p) {
   const k = statusKey(p)
-  if (k === 'gen') return '健康报告待生成'
-  if (k === 'review') return '健康报告待审核'
+  if (k === 'gen') return `${scenario.value.reportLabel}待生成`
+  if (k === 'review') return isCheckupScenario.value ? '待总检确认' : '健康报告待审核'
   if (k === 'plan') return '随访计划待制定'
   return 'AI随访中'
 }
@@ -2991,8 +3351,8 @@ const stageTabs = computed(() => {
   const count = (k) => queue.value.filter((p) => statusKey(p) === k).length
   return [
     { key: 'all', label: '全部', count: queue.value.length },
-    { key: 'gen', label: '健康报告待生成', count: count('gen') },
-    { key: 'review', label: '健康报告待审核', count: count('review') },
+    { key: 'gen', label: `${scenario.value.reportLabel}待生成`, count: count('gen') },
+    { key: 'review', label: isCheckupScenario.value ? '待总检确认' : '健康报告待审核', count: count('review') },
     { key: 'plan', label: '随访计划待制定', count: count('plan') },
     { key: 'follow', label: 'AI随访中', count: count('follow') },
   ]
@@ -3000,7 +3360,7 @@ const stageTabs = computed(() => {
 
 const nextActions = [
   '上传复查报告',
-  '推送健康管理报告',
+  `推送${scenario.value.reportLabel}`,
   '开启AI随访',
   '发送饮食建议',
   '发送运动计划',
@@ -3023,7 +3383,23 @@ const MOCK_QUEUE = [
   { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'李医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'plan', lastReport:'CT报告', planTask:{ day:'day2', channel:'电话', cycle:'每月' } },
   { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'李医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'超声报告', planTask:{ day:'day1', channel:'小程序', cycle:'每两周' } },
   { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'李医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day3', channel:'电话', cycle:'每月' } },
+  { id:'m11', name:'黄*芳', gender:'女', age:44, phoneMasked:'135****1122', source:'门诊', owner:'王医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day3', channel:'小程序', cycle:'每月' } },
+  { id:'m12', name:'林*海', gender:'男', age:58, phoneMasked:'132****8866', source:'体检中心', owner:'王医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'CT报告', planTask:{ day:'day7', channel:'电话', cycle:'每两周' } },
+  { id:'m13', name:'何*秀', gender:'女', age:51, phoneMasked:'133****5544', source:'门诊', owner:'王医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'超声报告', planTask:{ day:'day14', channel:'小程序', cycle:'每季度' } },
+  { id:'m14', name:'马*军', gender:'男', age:63, phoneMasked:'139****3311', source:'体检中心', owner:'李医生', nodules:'肺部+乳腺结节', noduleType:'lung_breast', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day7', channel:'小程序', cycle:'每月' } },
+  { id:'m15', name:'谢*云', gender:'女', age:37, phoneMasked:'136****7700', source:'社区', owner:'王医生', nodules:'甲状腺+乳腺结节', noduleType:'thyroid_breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'超声报告', planTask:{ day:'day21', channel:'小程序', cycle:'每月' } },
+  { id:'m16', name:'徐*刚', gender:'男', age:55, phoneMasked:'138****4499', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'CT报告', planTask:{ day:'day30', channel:'电话', cycle:'每季度' } },
 ]
+
+function adaptMockQueueByScenario(list) {
+  const sources = scenario.value.sourceOptions || []
+  const owner = scenario.value.defaultOwner || '李医生'
+  return list.map((p, idx) => ({
+    ...p,
+    source: sources[idx % Math.max(sources.length, 1)] || p.source,
+    owner: idx % 3 === 0 ? owner : p.owner?.replace('医生', scenario.value.key === 'pharmacy' ? '药师' : scenario.value.key === 'community' ? '家医' : '医生'),
+  }))
+}
 
 // 筛选条件
 const qSearch = ref('')
@@ -3046,14 +3422,14 @@ async function loadPatients() {
         gender: p.gender || '—',
         age: p.age || '—',
         phoneMasked: p.phone ? p.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
-        source: p.source_channel === 'manual' ? '门诊' : (p.source_channel || '门诊'),
-        owner: p.manager_name || '李医生',
+        source: p.source_channel === 'manual' ? scenario.value.sourceOptions[0] : (p.source_channel || scenario.value.sourceOptions[0]),
+        owner: p.manager_name || scenario.value.defaultOwner,
         nodules: noduleTypeLabel(p.nodule_type),
         noduleType: p.nodule_type || 'breast',
         risk: p.risk_level || (p.reports?.[0]?.risk_level) || '—',
         riskTone: (p.risk_level || p.reports?.[0]?.risk_level) === '高风险' ? 'r' : (p.risk_level || p.reports?.[0]?.risk_level) === '中风险' ? 'o' : 'g',
         stage: p.reports?.length ? 'review' : 'gen',
-        stageLabel: p.reports?.length ? '健康报告待审核' : '健康报告待生成',
+        stageLabel: p.reports?.length ? statusLabel({ stage: 'review' }) : statusLabel({ stage: 'aiGen' }),
         nextStep: '',
         serviceStatus: '',
         report: { status: '—', summary: '' },
@@ -3074,7 +3450,7 @@ async function loadPatients() {
     console.error('加载患者列表失败', e)
   }
   // 后端无数据时用 mock
-  if (!queue.value.length) queue.value = MOCK_QUEUE.map(p => ({
+  if (!queue.value.length) queue.value = adaptMockQueueByScenario(MOCK_QUEUE).map(p => ({
     ...p,
     stageLabel: '', nextStep: '', serviceStatus: '',
     report: { status: '—', summary: '' }, rawReports: [],
@@ -3083,6 +3459,18 @@ async function loadPatients() {
     abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
     reviewers: '', assistants: [], timeline: [],
   }))
+  // 始终追加 follow 阶段的 mock 患者（确保 AI随访 tab 有演示数据）
+  const followMocks = adaptMockQueueByScenario(MOCK_QUEUE).filter(p => p.stage === 'follow').map(p => ({
+    ...p,
+    stageLabel: 'AI随访中', nextStep: '', serviceStatus: 'AI随访中',
+    report: { status: '—', summary: '' }, rawReports: [],
+    aiReadSummary: '', reportDoc: { title: '', sections: [] },
+    auditTrail: [], chat: [], followTodos: [],
+    abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
+    reviewers: '', assistants: [], timeline: [],
+  }))
+  const existingIds = new Set(queue.value.map(p => p.id))
+  followMocks.forEach(p => { if (!existingIds.has(p.id)) queue.value.push(p) })
 }
 
 function noduleTypeLabel(t) {
@@ -3124,6 +3512,22 @@ const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === '
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
 })
+
+watch(
+  () => [subTab.value, planPatients.value.length],
+  () => {
+    if (subTab.value !== 'followup-plan') return
+    const list = planPatients.value || []
+    if (!list.length) return
+    if (!list.some((p) => p.id === activePatientId.value)) activePatientId.value = list[0].id
+    if (!(followTasks.value || []).length) {
+      const seeded = list.filter((p) => p?.planTask).slice(0, 8).map((p) => makeTaskFromPatient(p))
+      followTasks.value = seeded
+      if (seeded[0]) selectTask(seeded[0].id)
+    }
+  },
+  { immediate: true }
+)
 
 watch(
   () => activePatientId.value,
@@ -3180,9 +3584,8 @@ const midTitle = computed(() => {
   const map = {
     queue: '闭环处置工作台',
     record: '患者建档',
-    review: '健康报告审核',
-    follow: 'AI助手随访',
-    abnormal: '异常与复查'
+    review: isCheckupScenario.value ? '体检报告确认' : '健康报告审核',
+    follow: 'AI助手随访'
   }
   return map[subTab.value] || '患者管理'
 })
@@ -3191,9 +3594,8 @@ const midSub = computed(() => {
   const map = {
     queue: '选中患者后联动闭环时间线与操作区',
     record: '原始报告 / 历史报告 / AI解读摘要',
-    review: 'AI健康管理报告审核通过后才能推送患者',
-    follow: '随访推送与聊天融合展示',
-    abnormal: '异常识别、人工介入、复查回收与档案更新'
+    review: isCheckupScenario.value ? 'AI体检解读内容经总检确认后推送患者' : 'AI健康管理报告审核通过后才能推送患者',
+    follow: '随访推送与聊天融合展示'
   }
   return map[subTab.value] || ''
 })
@@ -3203,8 +3605,7 @@ const rightTitle = computed(() => {
     queue: '下一步动作',
     record: '处置与动作',
     review: '审核与推送',
-    follow: 'AI健康服务团队',
-    abnormal: '处置与动作'
+    follow: 'AI健康服务团队'
   }
   return map[subTab.value] || '操作区'
 })
@@ -3214,8 +3615,7 @@ const rightSub = computed(() => {
     queue: '快速跳转各功能区',
     record: '围绕档案与原始报告',
     review: '面向患者推送前最后一道关',
-    follow: '9类助手矩阵',
-    abnormal: '异常/复查闭环动作'
+    follow: '9类助手矩阵'
   }
   return map[subTab.value] || ''
 })
@@ -3259,25 +3659,41 @@ function backToQueue() {
 
 /* 随访计划页 */
 .plan-page{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;background:#f3f6fb;padding:12px}
-.plan-filter{margin-bottom:12px}
+.plan-filter{display:none}
 .plan-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .plan-filter-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+.chain-strip{display:grid;grid-template-columns:260px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 14px;flex-shrink:0}
+.chain-eyebrow{font-size:12px;color:#155eef;font-weight:950;margin-bottom:4px}
+.chain-title{font-size:14px;color:#0f172a;font-weight:950;line-height:1.45}
+.chain-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.chain-step{display:flex;align-items:center;gap:8px;border:1px solid #e6edf7;background:#f8fafc;border-radius:10px;padding:8px 10px;min-width:0}
+.chain-step[data-state="done"]{border-color:#bbf7d0;background:#f0fdf4}
+.chain-step[data-state="doing"]{border-color:#bfdbfe;background:#eff6ff}
+.chain-dot{width:24px;height:24px;border-radius:999px;background:#e2e8f0;color:#334155;display:grid;place-items:center;font-weight:950;font-size:12px;flex-shrink:0}
+.chain-step[data-state="done"] .chain-dot{background:#16a34a;color:#fff}
+.chain-step[data-state="doing"] .chain-dot{background:#155eef;color:#fff}
+.chain-step-title{font-size:12px;color:#0f172a;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chain-step-sub{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.plan-workbench{flex:1;min-height:0;display:grid;grid-template-columns:520px minmax(0,1fr);gap:12px;overflow:hidden}
+.plan-workbench{flex:1;min-height:0;display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px;overflow:hidden}
 .plan-task-list{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.left-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:8px}
 .seg-tabs{display:flex;align-items:center;border:1px solid #e6edf7;border-radius:999px;overflow:hidden;background:#fff}
 .seg-tab{height:28px;padding:0 12px;border:none;background:transparent;font-weight:950;color:#334155;cursor:pointer}
 .seg-tab[data-on="true"]{background:#eef5ff;color:#155eef}
 .seg-tab + .seg-tab{border-left:1px solid #e6edf7}
 
 .pat-table{padding:10px 12px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
-.pat-head{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;padding:8px 10px;border:1px solid #eef2f7;background:#f8fafc;border-radius:12px;font-weight:950;color:#0f172a;font-size:12px}
 .pat-rows{display:grid;gap:10px;overflow:auto;min-height:0;flex:1;scrollbar-width:thin}
 .pat-row{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;align-items:center;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px}
 .pat-row[data-active="true"]{border-color:#155eef;background:#eef5ff}
+.plan-patient-card{grid-template-columns:1fr !important;gap:8px !important;align-items:stretch !important;padding:12px !important}
 .pat-main{border:none;background:transparent;text-align:left;cursor:pointer;min-width:0}
 .pat-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pat-cell{font-size:12px;color:#334155;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.patient-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.patient-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;color:#475569;font-size:12px}
+.patient-card-actions{display:flex;justify-content:flex-end}
 .task-rows{padding:10px 12px;display:grid;gap:10px;overflow:auto;min-height:0}
 .task-row{position:relative;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px;text-align:left;cursor:pointer}
 .task-row.active{border-color:#155eef;background:#eef5ff}
@@ -3287,10 +3703,35 @@ function backToQueue() {
 .tr-ck{position:absolute;right:10px;bottom:10px}
 .plan-task-detail{min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .plan-task-detail .pad{overflow:auto;flex:1;min-height:0}
-.detail-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.plan-detail-title{min-width:0;flex:1}
+.plan-breadcrumb{font-size:12px;color:#64748b;font-weight:850;margin-bottom:3px}
+.plan-patient-hero{border:1px solid #cfe0ff;background:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.patient-avatar-sm{width:34px;height:34px;border-radius:999px;background:#eef5ff;color:#155eef;display:grid;place-items:center;font-weight:950;flex-shrink:0}
+.hero-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#334155}
+.hero-info b{font-size:14px;color:#0f172a}
+.plan-flow-card{border:1px solid #e6edf7;background:#fbfdff;border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.flow-node{display:flex;align-items:center;justify-content:center;gap:8px;min-height:36px;border-radius:10px;background:#fff;border:1px solid #eef2f7;color:#64748b;font-weight:950;font-size:12px}
+.flow-node[data-state="done"]{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+.flow-node[data-state="doing"]{border-color:#bfdbfe;background:#eff6ff;color:#155eef}
+.flow-node-dot{width:20px;height:20px;border-radius:999px;background:currentColor;color:#fff;display:grid;place-items:center;font-size:11px}
+.flow-node-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:12px;align-items:start}
+.detail-grid .detail-card:nth-child(3){grid-column:1/-1}
 .detail-card{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px}
 .detail-title{font-weight:950;color:#0f172a;margin-bottom:6px}
 .detail-sub{font-size:12px;margin-bottom:10px}
+.recommend-box{border:1px solid #cfe0ff;background:#f8fbff;border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.recommend-title{font-size:12px;color:#334155;font-weight:850;line-height:1.5}
+.recommend-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.plan-preview-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.preview-list{display:grid;gap:8px}
+.preview-row{display:grid;grid-template-columns:22px minmax(0,1fr) 44px;gap:8px;align-items:center;border:1px solid #eef2f7;background:#fbfdff;border-radius:10px;padding:8px 10px}
+.preview-no{width:18px;height:18px;border-radius:999px;background:#16a34a;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:950}
+.preview-main{display:grid;gap:2px;min-width:0}
+.preview-main b{font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preview-main span{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preview-status{font-size:11px;color:#16a34a;font-weight:950;text-align:right}
+.delivery-card{border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 12px;display:grid;gap:8px;font-size:12px;color:#334155;font-weight:850}
 .detail-top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
 .detail-top-title{font-size:13px;color:#0f172a;font-weight:950;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .detail-top-sub{font-size:12px;margin-top:4px}
@@ -3726,8 +4167,19 @@ function backToQueue() {
 .reject-box{border:1px solid #fecaca;background:#fff5f5;border-radius:10px;padding:12px}
 
 /* ── AI助手随访工作台 ── */
-.follow-workbench{flex:1;min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr) 420px;gap:10px;padding:12px;overflow:hidden}
-.follow-patient-col{display:flex;flex-direction:column;min-height:0;background:#fff;border:1px solid #e6edf7;border-radius:10px;overflow:hidden}
+.follow-workbench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(260px,300px) minmax(360px,.9fr) minmax(420px,1.1fr);grid-template-rows:auto 1fr;gap:10px;padding:12px;overflow:hidden}
+.follow-stats-bar{display:none}
+.follow-stat-item{flex:1;text-align:center;min-width:0}
+.follow-stat-div{width:1px;height:32px;background:#e6edf7;flex-shrink:0;margin:0 4px}
+.follow-stat-label{font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
+.follow-stat-value{font-size:20px;font-weight:800;margin-top:2px;line-height:1}
+.follow-compose-head{grid-column:2;grid-row:1;display:grid;grid-template-columns:1fr;gap:12px;align-items:center;padding:12px 14px;min-height:0}
+.follow-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.follow-flow-step{border:1px solid #e6edf7;background:#f8fafc;border-radius:10px;padding:8px 8px;text-align:center;min-width:0}
+.follow-flow-ico{width:30px;height:30px;border-radius:10px;background:#eef5ff;color:#155eef;display:grid;place-items:center;margin:0 auto 6px;font-weight:950;font-size:12px}
+.follow-flow-title{font-size:12px;color:#0f172a;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.follow-flow-sub{font-size:11px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.follow-patient-col{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;min-height:0;background:#fff;border:1px solid #e6edf7;border-radius:10px;overflow:hidden}
 
 /* 搜索+筛选固定区 */
 .fp-filters{flex-shrink:0;padding:8px 8px 6px;border-bottom:1px solid #eef2f7;display:flex;flex-direction:column;gap:5px;background:#f8fafc}
@@ -3788,11 +4240,11 @@ function backToQueue() {
   text-overflow:ellipsis;
 }
 
-.follow-phone-col{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0;overflow-y:auto;padding:0 0 16px 0;scrollbar-width:thin}
-.follow-ctrl-col{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto;padding:0 2px 16px 0;scrollbar-width:thin}
+.follow-phone-col{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;min-height:0;overflow-y:auto;padding:0 0 16px 0;scrollbar-width:thin;background:#fff;border:1px solid #e6edf7;border-radius:10px;padding-top:12px}
+.follow-ctrl-col{grid-column:3;grid-row:1 / span 2;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow-y:auto;padding:0;scrollbar-width:thin}
 
 /* 手机外壳（中间列，保持真实比例） */
-.device-outer-lg{position:relative;width:290px;flex-shrink:0;align-self:center;margin-top:22px}
+.device-outer-lg{position:relative;width:330px;flex-shrink:0;align-self:center;margin-top:12px}
 .device-outer-lg .device-btn-l{position:absolute;left:-5px;width:4px;height:28px;background:#2d3748;border-radius:2px 0 0 2px}
 .device-outer-lg .device-btn-r{position:absolute;right:-5px;width:4px;height:42px;background:#2d3748;border-radius:0 2px 2px 0}
 .screen-chat-lg{background:#f3f6fb;padding:8px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;min-height:0;max-height:580px}
@@ -3860,6 +4312,43 @@ function backToQueue() {
   min-height:0;
   overflow:auto; /* 关键：避免“展示不完整”被直接裁掉 */
 }
+.strategy-box,.content-config,.generated-panel{background:#fff;border:1px solid #e6edf7;border-radius:10px;padding:10px 12px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+.strategy-title{font-size:12px;font-weight:950;color:#0f172a;margin-bottom:8px}
+.strategy-modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.strategy-module{position:relative;border:1px solid #e6edf7;border-radius:10px;background:#fff;min-height:72px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+.strategy-module.active{border-color:#155eef;background:#eef5ff;box-shadow:0 0 0 2px rgba(21,94,239,.10)}
+.strategy-module b{font-size:11px;color:#0f172a;line-height:1.2}
+.strategy-module em{position:absolute;top:5px;right:5px;font-style:normal;font-size:10px;color:#16a34a;font-weight:950}
+.strategy-current{margin-top:8px;border-top:1px solid #eef2f7;padding-top:8px;font-size:12px;color:#334155;line-height:1.5}
+.config-list{display:grid;gap:8px}
+.config-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #eef2f7;background:#fbfdff;border-radius:10px;padding:8px 8px}
+.config-dot{width:10px;height:10px;border-radius:999px;background:#cbd5e1}
+.config-dot[data-on="true"]{background:#16a34a}
+.config-main{display:grid;gap:2px;min-width:0}
+.config-main b{font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.config-main span{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.generated-table{border:1px solid #eef2f7;border-radius:10px;overflow:auto;background:#fff}
+.generated-head,.generated-row{display:grid;grid-template-columns:36px minmax(130px,1.4fr) 64px minmax(92px,1fr) 76px 52px 44px;gap:6px;align-items:center;padding:8px 10px;font-size:12px;min-width:520px}
+.generated-head{background:#f8fafc;color:#64748b;font-weight:950}
+.generated-row{border-top:1px solid #eef2f7;color:#334155}
+.generated-row b{font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.generated-state{color:#16a34a;font-weight:950}
+.follow-bottom-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+
+@media (max-width: 1500px){
+  .follow-workbench{grid-template-columns:minmax(240px,280px) minmax(320px,.85fr) minmax(380px,1fr)}
+  .device-outer-lg{width:300px}
+  .follow-flow-step{padding:7px 6px}
+  .follow-bottom-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (max-width: 1280px){
+  .follow-workbench{grid-template-columns:250px minmax(0,1fr);grid-template-rows:auto auto minmax(420px,1fr)}
+  .follow-patient-col{grid-column:1;grid-row:1 / span 3}
+  .follow-compose-head{grid-column:2;grid-row:1}
+  .follow-phone-col{grid-column:2;grid-row:2;min-height:430px}
+  .follow-ctrl-col{grid-column:2;grid-row:3;min-height:0}
+}
 .assist-state{font-size:11px;font-weight:950;border-radius:999px;padding:3px 10px;background:#f1f5f9;color:#64748b;white-space:nowrap}
 .assist-state[data-tone="g"]{background:#ecfff3;color:#14843b}
 .assist-state[data-tone="o"]{background:#fff7ed;color:#c2410c}
@@ -3867,7 +4356,7 @@ function backToQueue() {
 
 /* 手机预览区 */
 .phone-preview-wrap{display:flex;flex-direction:column;gap:8px;align-items:center;flex-shrink:0}
-.phone-preview-label{width:100%;display:flex;justify-content:space-between;align-items:center;padding:0 2px;font-size:12px;font-weight:600;color:#334155}
+.phone-preview-label{width:min(520px,100%);display:flex;justify-content:space-between;align-items:center;padding:0 12px;font-size:12px;font-weight:850;color:#334155}
 
 /* 手机设备外壳（窄版，真实手机比例） */
 .device-outer{position:relative;width:320px;flex-shrink:0;align-self:center}
@@ -4074,4 +4563,3 @@ function backToQueue() {
 .rp-modal-body h1,.rp-modal-body h2,.rp-modal-body h3{color:#111827;margin:16px 0 8px}
 .rp-modal-body p{margin:6px 0}
 </style>
-

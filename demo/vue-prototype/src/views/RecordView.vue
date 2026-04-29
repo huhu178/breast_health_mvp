@@ -2,15 +2,15 @@
   <div class="record-page">
     <div class="record-card">
       <div class="record-card-head">
-        <div class="record-page-title">患者建档</div>
-        <div class="record-page-sub">填写患者基础信息与结节数据，完成后可生成健康档案</div>
+        <div class="record-page-title">{{ scenario.recordLabel }}</div>
+        <div class="record-page-sub">{{ recordSubtitle }}</div>
       </div>
       <div class="record-layout">
       <div class="record-form">
 
-        <!-- 1. 患者基础信息 -->
+        <!-- 1. 基础信息 -->
         <section class="form-sec">
-          <div class="sec-h"><span class="no">一</span>患者基础信息</div>
+          <div class="sec-h"><span class="no">一</span>{{ scenario.personLabel }}基础信息</div>
           <div class="grid-12">
             <!-- 第1行：姓名、性别、出生日期/年龄、手机号 -->
             <div class="field col-3 required">
@@ -85,24 +85,20 @@
           </div>
         </section>
 
-        <!-- 2. 患者来源 -->
+        <!-- 2. 来源信息 -->
         <section class="form-sec">
-          <div class="sec-h"><span class="no">二</span>患者来源</div>
+          <div class="sec-h"><span class="no">二</span>{{ scenario.personLabel }}来源</div>
           <div class="grid-12">
             <div class="field col-2 required">
               <div class="label">来源类型</div>
               <select v-model="form.source">
-                <option>门诊</option>
-                <option>体检中心</option>
+                <option v-for="src in scenario.sourceOptions" :key="src">{{ src }}</option>
               </select>
             </div>
             <div class="field col-2 required">
               <div class="label">负责人</div>
               <select v-model="form.doctor">
-                <option>李医生</option>
-                <option>王医生</option>
-                <option>张医生</option>
-                <option>赵医生</option>
+                <option v-for="owner in ownerOptions" :key="owner">{{ owner }}</option>
               </select>
             </div>
             <div class="field col-3 required">
@@ -112,9 +108,24 @@
           </div>
         </section>
 
-        <!-- 3. 结节信息 -->
+        <!-- 3. 场景专项信息 -->
         <section class="form-sec">
-          <div class="sec-h"><span class="no">三</span>结节信息</div>
+          <div class="sec-h"><span class="no">三</span>{{ scenarioSectionTitle }}</div>
+          <div class="grid-12">
+            <div v-for="field in scenarioFields" :key="field.key" class="field" :class="field.col || 'col-3'">
+              <div class="label">{{ field.label }}</div>
+              <select v-if="field.type === 'select'" v-model="form[field.key]">
+                <option v-for="opt in field.options" :key="opt">{{ opt }}</option>
+              </select>
+              <input v-else-if="field.type === 'date'" v-model="form[field.key]" type="date">
+              <input v-else v-model="form[field.key]" :placeholder="field.placeholder || ''">
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. 结节信息 -->
+        <section class="form-sec">
+          <div class="sec-h"><span class="no">四</span>结节信息</div>
           <div class="field-row">
             <div class="field-label"><span class="req">结节类型（可多选）</span></div>
             <div class="tag-row">
@@ -389,6 +400,7 @@
             <div class="pv-row"><span class="k">来源</span><span class="v">{{ previewSource }}</span></div>
             <div class="pv-row"><span class="k">结节类型</span><span class="v">{{ visibleNodules.join('、') || '—' }}</span></div>
             <div class="pv-row"><span class="k">负责人</span><span class="v">{{ form.doctor || '—' }}</span></div>
+            <div class="pv-row"><span class="k">{{ scenarioPreviewLabel }}</span><span class="v">{{ scenarioPreviewValue }}</span></div>
           </div>
         </section>
 
@@ -399,7 +411,7 @@
             <div class="muted" style="font-size:12px;margin-top:8px">{{ completeness }}%</div>
           </div>
           <div class="muted" style="font-size:12px;line-height:1.6;margin-top:10px">
-            建议优先补全：手机号、出生日期、来源信息、至少选择一种结节类型。
+            建议优先补全：手机号、出生日期、来源信息、{{ scenarioRequiredTip }}。
           </div>
         </section>
 
@@ -408,7 +420,7 @@
           <div class="next-box">
             <div class="next-main">{{ nextTip }}</div>
             <div class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">
-              保存后可进入“上传报告 → AI结构化解析 → 生成健康管理报告”流程。
+              保存后可进入“上传资料 → AI结构化解析 → 生成{{ scenario.reportLabel }}”流程。
             </div>
           </div>
         </section>
@@ -437,9 +449,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ToastMsg from '../components/ToastMsg.vue'
+import { getStoredScenario } from '../config/scenarios'
 
 const props = defineProps({
   embedded: { type: Boolean, default: false }
@@ -449,6 +462,7 @@ const emit = defineEmits(['back'])
 const router = useRouter()
 const toastRef = ref(null)
 const user = computed(() => localStorage.getItem('proto_user') || '管理员')
+const scenario = computed(() => getStoredScenario())
 
 const moreOpen = ref(false)
 const saving = ref(false)
@@ -489,6 +503,92 @@ const tagToNoduleType = {
 
 const visibleNodules = computed(() => tagToOrgans[selectedTag.value] || [])
 
+const recordSubtitle = computed(() => {
+  const map = {
+    hospital: '填写诊疗信息、结节数据与报告资料，完成后可生成健康档案',
+    checkup: '填写体检来源、套餐批次、异常指标与筛查结论，完成后可生成体检解读报告',
+    pharmacy: '填写药店服务来源、用药情况、慢病标签与健康咨询记录，完成后可生成健康评估报告',
+    community: '填写签约信息、网格归属、慢病管理与家庭风险信息，完成后可生成健康管理报告',
+  }
+  return map[scenario.value.key] || map.hospital
+})
+
+const ownerOptions = computed(() => {
+  const map = {
+    hospital: ['李医生', '王医生', '张医生', '赵医生'],
+    checkup: ['体检医生', '总检医生', '健康管理师', '客服专员'],
+    pharmacy: ['执业药师', '店长', '慢病专员', '健康顾问'],
+    community: ['家庭医生', '公卫医生', '社区护士', '网格员'],
+  }
+  return map[scenario.value.key] || map.hospital
+})
+
+const scenarioSectionTitle = computed(() => {
+  const map = {
+    hospital: '诊疗与检查信息',
+    checkup: '体检筛查信息',
+    pharmacy: '药店健康服务信息',
+    community: '家庭医生签约信息',
+  }
+  return map[scenario.value.key] || map.hospital
+})
+
+const scenarioFields = computed(() => {
+  if (scenario.value.key === 'checkup') {
+    return [
+      { key: 'checkupPackage', label: '体检套餐', type: 'select', options: ['基础筛查套餐', '肺结节专项', '甲状腺专项', '乳腺专项', '女性健康专项'] },
+      { key: 'checkupBatch', label: '体检批次号', placeholder: '例如：TJ20260429' },
+      { key: 'companyName', label: '团检单位', placeholder: '单位团检可填写' },
+      { key: 'abnormalIndicators', label: '异常指标', col: 'col-3', placeholder: '例如：肺结节、甲状腺结节' },
+      { key: 'reportDate', label: '报告日期', type: 'date' },
+      { key: 'reviewAction', label: '后续安排', type: 'select', options: ['复查预约', '报告解读', '转诊建议', '常规随访'] },
+    ]
+  }
+  if (scenario.value.key === 'pharmacy') {
+    return [
+      { key: 'memberLevel', label: '服务等级', type: 'select', options: ['普通服务', '慢病服务', '重点随访', '企业服务'] },
+      { key: 'medicationUse', label: '近期用药', placeholder: '例如：降压药、降糖药' },
+      { key: 'chronicTags', label: '慢病标签', placeholder: '例如：高血压、糖尿病' },
+      { key: 'consultationType', label: '咨询类型', type: 'select', options: ['用药咨询', '报告解读', '慢病管理', '转诊建议'] },
+    ]
+  }
+  if (scenario.value.key === 'community') {
+    return [
+      { key: 'contractStatus', label: '签约状态', type: 'select', options: ['已签约', '待签约', '重点人群', '临时随访'] },
+      { key: 'familyDoctorTeam', label: '家医团队', placeholder: '例如：第一家庭医生团队' },
+      { key: 'gridName', label: '社区网格', placeholder: '例如：南城三网格' },
+      { key: 'chronicManagement', label: '慢病管理', type: 'select', options: ['无', '高血压', '糖尿病', '双病共管', '老年人管理'] },
+    ]
+  }
+  return [
+    { key: 'visitNo', label: '门诊/住院号', placeholder: '请输入就诊号' },
+    { key: 'dept', label: '科室', placeholder: '例如：甲乳外科' },
+    { key: 'chiefComplaint', label: '主诉', placeholder: '例如：体检发现结节' },
+    { key: 'examType', label: '检查类型', type: 'select', options: ['超声', 'CT', '钼靶', '病理', '综合检查'] },
+  ]
+})
+
+const scenarioPreviewLabel = computed(() => {
+  if (scenario.value.key === 'checkup') return '体检套餐'
+  if (scenario.value.key === 'pharmacy') return '服务类型'
+  if (scenario.value.key === 'community') return '签约状态'
+  return '检查类型'
+})
+
+const scenarioPreviewValue = computed(() => {
+  if (scenario.value.key === 'checkup') return form.value.checkupPackage || '—'
+  if (scenario.value.key === 'pharmacy') return form.value.consultationType || '—'
+  if (scenario.value.key === 'community') return form.value.contractStatus || '—'
+  return form.value.examType || '—'
+})
+
+const scenarioRequiredTip = computed(() => {
+  if (scenario.value.key === 'checkup') return '体检套餐和异常指标'
+  if (scenario.value.key === 'pharmacy') return '用药情况和慢病标签'
+  if (scenario.value.key === 'community') return '签约状态和家医团队'
+  return '至少选择一种结节类型'
+})
+
 const form = ref({
   // 基础信息
   age: '',
@@ -502,6 +602,11 @@ const form = ref({
   source: '门诊', dept: '', doctor: '李医生',
   examDate: '',
   batchNo: '',
+  visitNo: '', chiefComplaint: '', examType: '超声',
+  checkupPackage: '基础筛查套餐', checkupBatch: '', companyName: '', abnormalIndicators: '',
+  reportDate: '', reviewAction: '复查预约',
+  memberLevel: '普通服务', medicationUse: '', chronicTags: '', consultationType: '用药咨询',
+  contractStatus: '已签约', familyDoctorTeam: '', gridName: '', chronicManagement: '无',
   risk: '中风险', needReview: true,
 
   // 乳腺结节字段（对齐 breast-fields.js）
@@ -537,6 +642,15 @@ const form = ref({
   lung_nodule_size: '',
   lung_nodule_count: '',
 })
+
+watch(
+  () => scenario.value.key,
+  () => {
+    form.value.source = scenario.value.sourceOptions[0] || ''
+    form.value.doctor = ownerOptions.value[0] || ''
+  },
+  { immediate: true }
+)
 
 function toggleOrganType(t) {
   selectedTag.value = t
@@ -696,7 +810,7 @@ function buildPatientPayload() {
     phone: f.phone,
     nodule_type: tagToNoduleType[selectedTag.value] || 'breast',
     source_channel: f.source || 'manual',
-    manager_name: f.doctor || '李医生',
+    manager_name: f.doctor || scenario.value.defaultOwner,
   }
 }
 

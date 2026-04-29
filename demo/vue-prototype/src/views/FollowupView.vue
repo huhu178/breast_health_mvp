@@ -104,6 +104,120 @@
       </div>
     </section>
 
+    <!-- AI随访统计区（独立 section，始终显示） -->
+    <section class="card ai-stats-section">
+      <div class="ai-stats-bar">
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">随访中</div>
+          <div class="ai-stat-value blue">{{ aiStatCounts.followup }}</div>
+        </div>
+        <div class="ai-stat-divider"></div>
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">异常待处理</div>
+          <div class="ai-stat-value red">{{ aiStatCounts.alert }}</div>
+        </div>
+        <div class="ai-stat-divider"></div>
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">已闭环</div>
+          <div class="ai-stat-value green">{{ aiStatCounts.done }}</div>
+        </div>
+        <div class="ai-stat-divider"></div>
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">高风险患者</div>
+          <div class="ai-stat-value orange">{{ aiStatCounts.highRisk }}</div>
+        </div>
+        <div class="ai-stat-divider"></div>
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">今日需随访</div>
+          <div class="ai-stat-value purple">{{ aiStatCounts.todayDue }}</div>
+        </div>
+        <div class="ai-stat-divider"></div>
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">AI自动触达</div>
+          <div class="ai-stat-value cyan">{{ aiStatCounts.autoSent }}</div>
+        </div>
+        <div class="ai-stat-divider"></div>
+        <div class="ai-stat-item">
+          <div class="ai-stat-label">患者依从率</div>
+          <div class="ai-stat-value teal">{{ aiStatCounts.compliance }}%</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card ai-followup-board" v-if="filtered.length">
+      <div class="board-grid">
+        <aside class="patient-side">
+          <div class="board-title">患者信息列表</div>
+          <div class="patient-count">共 {{ filtered.length }} 人</div>
+          <div class="patient-scroll">
+            <button
+              v-for="p in filtered"
+              :key="p.id"
+              class="patient-item"
+              :class="{ active: p.id === store.currentPatientId }"
+              @click="store.currentPatientId = p.id"
+            >
+              <div class="patient-top">
+                <b>{{ p.name }}</b>
+                <TagBadge :text="riskText(p.risk)" :tone="riskClass(p.risk)" />
+              </div>
+              <div class="patient-meta">{{ p.gender }} · {{ p.age }}岁 · {{ p.phone }}</div>
+              <div class="patient-tags">
+                <TagBadge :text="p.nodule" tone="blue" />
+                <TagBadge :text="stageLabels[p.stage]" :tone="stageClass(p.stage)" />
+              </div>
+              <div class="patient-next">下次随访：{{ p.next }}</div>
+            </button>
+          </div>
+        </aside>
+
+        <section class="ai-main" v-if="current">
+          <div class="board-title">AI随访数字分身</div>
+          <div class="ai-current">当前患者：{{ current.name }}（{{ current.nodule }}）</div>
+          <div class="ai-chat">
+            <div class="ai-msg ai">
+              您好，{{ current.name }}。已为您生成 Day {{ planDay.replace('day', '') }} 的随访建议。
+            </div>
+            <div class="ai-msg user">
+              我最近睡得不太好，复查前还需要注意什么？
+            </div>
+            <div class="ai-msg ai">
+              建议您保持规律作息，晚间减少咖啡因摄入；复查前避免剧烈运动，按时记录症状变化。
+            </div>
+            <div class="ai-msg ai" v-if="planQuick.knowledge">
+              知识卡重点：{{ planQuick.knowledge }}
+            </div>
+          </div>
+          <div class="assistant-actions">
+            <button class="primary" @click="toast.show('已发送AI随访消息')">发送AI随访</button>
+            <button class="btn" @click="toast.show('已切换人工随访')">切换人工随访</button>
+          </div>
+        </section>
+
+        <section class="ai-right" v-if="current">
+          <div class="board-title">今日随访内容（Day {{ planDay.replace('day', '') }}）</div>
+          <div class="today-card">
+            <div class="today-k">知识干预</div>
+            <div class="today-v">
+              {{ planQuick.knowledge || '围绕饮食、运动、心理和复查时机进行分层指导。' }}
+            </div>
+          </div>
+          <div class="today-card">
+            <div class="today-k">运动建议</div>
+            <div class="today-v">{{ planQuick.sport || '建议每日中等强度活动 30 分钟，避免过度疲劳。' }}</div>
+          </div>
+          <div class="today-card">
+            <div class="today-k">心理建议</div>
+            <div class="today-v">{{ planQuick.psych || '减少焦虑触发因素，保持可执行的小目标。' }}</div>
+          </div>
+          <div class="today-card subtle">
+            <div class="today-k">执行提醒</div>
+            <div class="today-v">复查前 3 天自动提醒，异常反馈将优先转医生。</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
     <div class="layout">
       <section class="card">
         <div class="card-head">
@@ -362,6 +476,19 @@ const planDayList = computed(() => {
 
 const currentPlanRows = computed(() => planState.value.days?.[planDay.value] ?? [])
 
+const aiStatCounts = computed(() => {
+  const all = store.patients.filter(p => ['followup', 'alert', 'done'].includes(p.stage))
+  return {
+    followup: all.filter(p => p.stage === 'followup').length,
+    alert: all.filter(p => p.stage === 'alert').length,
+    done: all.filter(p => p.stage === 'done').length,
+    highRisk: all.filter(p => p.risk === 'high').length,
+    todayDue: all.filter(p => p.next && (p.next.includes('今天') || p.next.includes('立即'))).length,
+    autoSent: all.filter(p => p.stage === 'followup').length + all.filter(p => p.stage === 'alert').length,
+    compliance: Math.round(all.filter(p => p.stage !== 'alert').length / Math.max(all.length, 1) * 100)
+  }
+})
+
 function pickFirst(prefix) {
   return currentPlanRows.value.find((r) => String(r?.summary ?? '').includes(prefix))?.summary || ''
 }
@@ -390,14 +517,14 @@ function sparkPath(delta) {
 }
 
 const filtered = computed(() => store.patients.filter(p => {
-  if (!['followup','alert','done'].includes(p.stage) && followStatus.value === 'all') return ['followup','alert','done'].includes(p.stage)
+  if (!['followup', 'alert', 'done'].includes(p.stage)) return false
   if (keyword.value && !`${p.name}${p.phone}${p.nodule}`.includes(keyword.value)) return false
   if (sourceFilter.value !== 'all' && p.source !== sourceFilter.value) return false
   if (noduleFilter.value !== 'all' && !p.noduleType.includes(noduleFilter.value)) return false
   if (riskFilter.value !== 'all' && p.risk !== riskFilter.value) return false
   if (followStatus.value !== 'all' && p.stage !== followStatus.value) return false
   if (ownerFilter.value !== 'all' && p.owner !== ownerFilter.value) return false
-  return ['followup','alert','done'].includes(p.stage)
+  return true
 }))
 
 const current = computed(() => store.patients.find(p => p.id === store.currentPatientId))
@@ -475,6 +602,43 @@ function resetFilters() {
 .date-pair{display:grid;grid-template-columns:1fr 16px 1fr;gap:4px;align-items:center}
 .fi-btns{display:flex;gap:8px;align-items:flex-end}
 .layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(460px,.95fr);gap:12px;align-items:start}
+.ai-followup-board{padding:14px}
+.ai-stats-section{padding:0}
+.ai-stats-bar{display:flex;align-items:center;background:#fff;border-radius:10px;padding:14px 20px;gap:0}
+.ai-stat-item{flex:1;text-align:center;min-width:0}
+.ai-stat-divider{width:1px;height:36px;background:#e6edf7;flex-shrink:0;margin:0 4px}
+.ai-stat-label{font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
+.ai-stat-value{font-size:22px;font-weight:800;margin-top:2px;line-height:1}
+.ai-stat-value.blue{color:#155eef}
+.ai-stat-value.red{color:#dc2626}
+.ai-stat-value.green{color:#16a34a}
+.ai-stat-value.orange{color:#f97316}
+.ai-stat-value.purple{color:#8b5cf6}
+.ai-stat-value.cyan{color:#0ea5b7}
+.ai-stat-value.teal{color:#0d9488}
+.board-grid{display:grid;grid-template-columns:300px minmax(0,1fr) 320px;gap:12px;align-items:start}
+.board-title{font-weight:900;color:#0f172a;font-size:15px}
+.patient-side{border:1px solid #e6edf7;border-radius:10px;padding:10px;background:#f8fbff}
+.patient-count{margin-top:4px;color:#64748b;font-size:12px}
+.patient-scroll{margin-top:10px;display:grid;gap:8px;max-height:420px;overflow:auto;padding-right:2px}
+.patient-item{text-align:left;border:1px solid #d9e2ef;border-radius:10px;background:#fff;padding:10px;display:grid;gap:6px}
+.patient-item:hover{border-color:#bfd4ff}
+.patient-item.active{border-color:#155eef;box-shadow:0 0 0 2px rgba(21,94,239,.12)}
+.patient-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.patient-meta{font-size:12px;color:#64748b}
+.patient-tags{display:flex;gap:6px;flex-wrap:wrap}
+.patient-next{font-size:12px;color:#334155;font-weight:700}
+.ai-main,.ai-right{border:1px solid #e6edf7;border-radius:10px;padding:12px;background:#fff}
+.ai-current{margin-top:4px;color:#64748b;font-size:12px}
+.ai-chat{margin-top:10px;border:1px solid #e6edf7;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:8px;min-height:260px}
+.ai-msg{max-width:92%;font-size:13px;line-height:1.65;padding:8px 10px;border-radius:9px}
+.ai-msg.ai{justify-self:start;background:#fff;border:1px solid #d9e2ef;color:#334155}
+.ai-msg.user{justify-self:end;background:#155eef;color:#fff}
+.assistant-actions{display:flex;gap:8px;margin-top:10px}
+.today-card{margin-top:10px;border:1px solid #e6edf7;border-radius:10px;padding:10px;background:#fff}
+.today-card.subtle{background:#f8fbff}
+.today-k{font-size:12px;color:#64748b;font-weight:800}
+.today-v{margin-top:6px;font-size:13px;line-height:1.65;color:#1e293b}
 .table-wrap{overflow:auto}
 .table{width:100%;border-collapse:collapse;min-width:900px}
 .table th{background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 9px;border-bottom:1px solid #e5edf7;white-space:nowrap}

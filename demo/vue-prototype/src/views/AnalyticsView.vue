@@ -23,7 +23,7 @@
     <section class="card">
       <div class="card-head">
         <div class="head-left">
-          <div class="card-title">七类结节运营总览</div>
+          <div class="card-title">七类结节运营总览 · {{ scenario.loginLabel }}</div>
         </div>
         <div class="head-actions">
           <button class="btn">导出统计</button>
@@ -34,7 +34,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>结节类型</th><th>患者数</th><th>门诊</th><th>体检</th><th>今日新增</th>
+              <th>结节类型</th><th>{{ scenario.personLabel }}数</th><th>{{ scenario.sourceOptions[0] }}</th><th>{{ scenario.sourceOptions[1] || '来源二' }}</th><th>今日新增</th>
               <th class="r">高风险</th><th class="o">中风险</th><th class="g">低风险</th>
               <th>待处理报告</th><th>待复核</th><th>待推送</th><th>随访中</th>
               <th class="r">异常处理</th><th>随访完成率</th><th>操作</th>
@@ -85,7 +85,7 @@
             </svg>
             <div class="donut-center">
               <b>12,486</b>
-              <span>总患者数</span>
+              <span>总{{ scenario.personLabel }}数</span>
             </div>
           </div>
           <div class="legend">
@@ -132,7 +132,7 @@
           <div class="todo"><b>待推送</b><span class="pill b">95</span><span class="todo-sub">报告待推送</span></div>
           <div class="todo"><b>异常预警</b><span class="pill r">102</span><span class="todo-sub">异常结果待处理</span></div>
           <div class="split"></div>
-          <div class="remind"><span>高风险患者张*国已逾期 7 天</span><span class="todo-sub">08:45</span></div>
+          <div class="remind"><span>高风险{{ scenario.personLabel }}张*国已逾期 7 天</span><span class="todo-sub">08:45</span></div>
           <div class="remind"><span>有 18 份报告超 24 小时未处理</span><span class="todo-sub">08:30</span></div>
         </div>
       </section>
@@ -145,8 +145,10 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { kpis } from '../mocks/workbenchMock'
+import { getStoredScenario } from '../config/scenarios'
 
 const router = useRouter()
+const scenario = computed(() => getStoredScenario())
 const metrics = computed(() => kpis.analytics)
 
 function iconPath(key) {

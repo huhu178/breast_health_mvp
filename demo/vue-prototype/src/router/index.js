@@ -9,6 +9,7 @@ import FollowupView from '../views/FollowupView.vue'
 import PatientManagementView from '../views/PatientManagementView.vue'
 import RecordView from '../views/RecordView.vue'
 import RwsView from '../views/RwsView.vue'
+import ScenarioWorkspaceView from '../views/ScenarioWorkspaceView.vue'
 
 const auth = { requiresAuth: true }
 
@@ -27,7 +28,8 @@ const router = createRouter({
     { path: '/stats', redirect: '/analytics' },      // 已合并到运营看板
     { path: '/patient', name: 'patient', component: PatientManagementView, meta: auth },
     { path: '/record', name: 'record', component: RecordView, meta: auth },
-    { path: '/rws', name: 'rws', component: RwsView, meta: auth }
+    { path: '/rws', name: 'rws', component: RwsView, meta: auth },
+    { path: '/scenario-workspace', name: 'scenario-workspace', component: ScenarioWorkspaceView, meta: auth }
   ]
 })
 
