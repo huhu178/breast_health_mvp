@@ -58,7 +58,7 @@ def check_required_env_vars():
     required_vars = {
         'DATABASE_URL': '数据库连接字符串',
         'SECRET_KEY': 'Flask 密钥',
-        'OPENROUTER_API_KEY': 'OpenRouter API Key'
+        'OPENROUTER_API_KEY': 'OpenRouter API Key（使用DashScope时可不配）'
     }
     
     missing_vars = []
@@ -66,6 +66,9 @@ def check_required_env_vars():
         if not os.getenv(var):
             missing_vars.append(f"  - {var}: {description}")
     
+    if 'OPENROUTER_API_KEY' in [item.split(':', 1)[0].strip('  -') for item in missing_vars] and os.getenv('DASHSCOPE_API_KEY'):
+        missing_vars = [item for item in missing_vars if not item.strip().startswith('- OPENROUTER_API_KEY:')]
+
     if missing_vars:
         print("\nERROR: Missing required environment variables:")
         for var in missing_vars:
@@ -84,6 +87,8 @@ if __name__ == '__main__':
     print("\nCurrent Configuration:")
     print(f"  DATABASE_URL: {os.getenv('DATABASE_URL', 'Not configured')[:30]}...")
     print(f"  SECRET_KEY: {'Configured' if os.getenv('SECRET_KEY') else 'Not configured'}")
+    print(f"  LLM_PROVIDER: {os.getenv('LLM_PROVIDER', 'openrouter')}")
     print(f"  OPENROUTER_API_KEY: {'Configured (sk-or-v1-...)' if os.getenv('OPENROUTER_API_KEY') else 'Not configured'}")
+    print(f"  DASHSCOPE_API_KEY: {'Configured (sk-...)' if os.getenv('DASHSCOPE_API_KEY') else 'Not configured'}")
     print(f"  OPENROUTER_MODEL: {os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-pro')}")
-
+    print(f"  DASHSCOPE_MODEL: {os.getenv('DASHSCOPE_MODEL', 'qwen-plus')}")

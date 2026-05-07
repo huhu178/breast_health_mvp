@@ -979,29 +979,45 @@ def wechat_auth():
         return Response.error('缺少微信授权码', 400)
     
     try:
-        # TODO: 调用微信API获取openid和session_key
-        # 这里需要配置微信小程序的 AppID 和 AppSecret
-        # import requests
-        # wechat_appid = os.getenv('WECHAT_APPID')
-        # wechat_secret = os.getenv('WECHAT_SECRET')
-        # response = requests.get(
-        #     f'https://api.weixin.qq.com/sns/jscode2session',
-        #     params={
-        #         'appid': wechat_appid,
-        #         'secret': wechat_secret,
-        #         'js_code': code,
-        #         'grant_type': 'authorization_code'
-        #     }
-        # )
-        # result = response.json()
-        # openid = result.get('openid')
-        # session_key = result.get('session_key')
-        
-        # 临时实现：返回模拟数据（实际使用时需要接入微信API）
-        openid = data.get('openid') or f"OPENID_{uuid.uuid4().hex[:16]}"
-        
+        wechat_appid = getattr(Config, 'WECHAT_APPID', '') or os.getenv('WECHAT_APPID', '')
+        wechat_secret = getattr(Config, 'WECHAT_SECRET', '') or os.getenv('WECHAT_SECRET', '')
+
+        # 开发调试兼容：未配置微信密钥时，可显式传 openid 走本地联调。
+        if not wechat_appid or not wechat_secret:
+            debug_openid = (data.get('openid') or '').strip()
+            if debug_openid and os.getenv('FLASK_ENV') != 'production':
+                return Response.success({
+                    'openid': debug_openid,
+                    'token': f"TOKEN_{uuid.uuid4().hex[:16]}",
+                    'debug': True
+                }, '授权成功（开发调试模式）')
+            return Response.error('微信小程序配置缺失，请配置 WECHAT_APPID 和 WECHAT_SECRET', 500)
+
+        import requests
+        response = requests.get(
+            'https://api.weixin.qq.com/sns/jscode2session',
+            params={
+                'appid': wechat_appid,
+                'secret': wechat_secret,
+                'js_code': code,
+                'grant_type': 'authorization_code'
+            },
+            timeout=8
+        )
+        result = response.json()
+        if result.get('errcode'):
+            return Response.error(
+                f"微信授权失败: {result.get('errmsg', '未知错误')} ({result.get('errcode')})",
+                400
+            )
+
+        openid = result.get('openid')
+        if not openid:
+            return Response.error('微信授权失败: 未返回 openid', 400)
+
         return Response.success({
             'openid': openid,
+            'unionid': result.get('unionid'),
             'token': f"TOKEN_{uuid.uuid4().hex[:16]}"
         }, '授权成功')
         
@@ -1799,4 +1815,3 @@ def list_reports():
         import traceback
         traceback.print_exc()
         return Response.error(f'查询失败: {str(e)}', 500)
-

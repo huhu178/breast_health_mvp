@@ -134,13 +134,13 @@ class PDFService:
                     page-break-inside: avoid !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                    color: white !important;
+                    background: linear-gradient(135deg, #e9f5e9 0%, #cfe8d6 100%) !important;
+                    color: #2c3e50 !important;
                     padding: 15px 12px !important;
                     margin-top: 10px !important;
                 }
                 footer h3, footer strong, footer p {
-                    color: white !important;
+                    color: #2c3e50 !important;
                 }
             }
         </style>

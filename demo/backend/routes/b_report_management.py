@@ -3,7 +3,7 @@
 B端报告管理路由
 处理专业报告的生成、查看、管理
 """
-from flask import Blueprint, request, jsonify, render_template, send_file
+from flask import Blueprint, request, jsonify, render_template, send_file, current_app
 from models import db, BPatient, BHealthRecord, BReport, KnowledgeItem, CPatient, CHealthRecord, CReport
 from utils.decorators import login_required
 from utils.response import Response
@@ -13,13 +13,232 @@ from datetime import datetime
 import random
 import string
 import io
+import threading
+import time
+import uuid
+import traceback
 
 b_report_bp = Blueprint('b_report', __name__, url_prefix='/api/b/reports')
+
+_report_jobs = {}
+_report_jobs_lock = threading.Lock()
+_REPORT_JOB_TTL_SECONDS = 60 * 60
 
 # LLM服务已在 llm_service.py 模块加载时自动配置，无需重复设置
 
 # 导入统一的ID生成工具
 from utils.id_generator import generate_report_code
+
+
+def _cleanup_report_jobs():
+    cutoff = time.time() - _REPORT_JOB_TTL_SECONDS
+    with _report_jobs_lock:
+        stale_ids = [
+            job_id for job_id, job in _report_jobs.items()
+            if job.get('updated_at', job.get('created_at', 0)) < cutoff
+        ]
+        for job_id in stale_ids:
+            _report_jobs.pop(job_id, None)
+
+
+def _set_report_job(job_id, **updates):
+    updates['updated_at'] = time.time()
+    with _report_jobs_lock:
+        if job_id in _report_jobs:
+            _report_jobs[job_id].update(updates)
+
+
+def _get_report_job(job_id):
+    with _report_jobs_lock:
+        job = _report_jobs.get(job_id)
+        return dict(job) if job else None
+
+
+def _generate_report_for_record(record_id, generated_by_user_id):
+    """执行实际报告生成。同步接口和后台任务共用同一套逻辑。"""
+    # 1. 获取健康档案
+    record = BHealthRecord.query.get(record_id)
+    if not record:
+        raise ValueError('健康档案不存在')
+
+    patient = BPatient.query.get(record.patient_id)
+    if not patient:
+        raise ValueError('患者不存在')
+
+    # 2. 获取患者的结节类型，默认为breast
+    nodule_type = patient.nodule_type if hasattr(patient, 'nodule_type') and patient.nodule_type else 'breast'
+
+    # 3. 构建患者数据（使用report_manager的函数，根据nodule_type自动提取正确字段）
+    from utils.report_manager import prepare_llm_patient_data
+    patient_data = prepare_llm_patient_data(record, nodule_type, patient)
+
+    print(f"\n[报告生成] 患者ID: {patient.id}, 结节类型: {nodule_type}")
+    print(f"[报告生成] 提取的字段数量: {len([k for k,v in patient_data.items() if v is not None and v != ''])}")
+
+    # 添加一些旧逻辑需要的字段格式（兼容处理）
+    if record.symptoms:
+        patient_data['symptoms'] = record.symptoms.split(',') if isinstance(record.symptoms, str) else record.symptoms
+
+    # 知识库匹配和决策树处理（已移除，直接使用空值）
+    matched_knowledge = []
+    tree_result = {}
+
+    # 5. 生成LLM报告内容
+    from routes.llm_helpers import (
+        generate_imaging_conclusion_with_llm,
+        generate_recommendations_by_category
+    )
+
+    # 5.1 生成按类别分组的建议草稿
+    print("\n" + "="*60)
+    print("📝 生成分类建议草稿...")
+    print("="*60)
+    recommendations_draft = generate_recommendations_by_category(
+        patient_data, matched_knowledge
+    )
+    print(f"✅ 已生成 {len(recommendations_draft.get('recommendations', []))} 条分类建议")
+
+    # 5.2 生成影像学综合结论（包含影像学评估、综合分析和随访建议）
+    imaging_conclusion_dict = generate_imaging_conclusion_with_llm(
+        patient_data, tree_result, matched_knowledge, nodule_type=nodule_type
+    )
+
+    # 格式化换行，确保"首先"、"其次"、"最后"前面有换行
+    from routes.llm_helpers import clean_markdown_formatting, format_text_with_line_breaks
+    conclusion = clean_markdown_formatting(imaging_conclusion_dict.get('conclusion', ''))
+    risk_warning = clean_markdown_formatting(imaging_conclusion_dict.get('risk_warning', ''))
+    conclusion = format_text_with_line_breaks(conclusion)
+    risk_warning = format_text_with_line_breaks(risk_warning)
+    imaging_conclusion_dict['conclusion'] = conclusion
+    imaging_conclusion_dict['risk_warning'] = risk_warning
+
+    # 6. 生成报告编号（提前生成，用于HTML）
+    report_code_generated = generate_report_code()
+    current_date = datetime.now().strftime('%Y-%m-%d')
+
+    # 7. 渲染HTML报告（使用报告管理器根据结节类型选择正确模板）
+    from utils.report_manager import get_template_path, extract_template_fields
+    template_path = get_template_path(nodule_type)
+    template_fields = extract_template_fields(patient, record, nodule_type)
+    template_fields.update({
+        'report_code': report_code_generated,
+        'current_date': current_date,
+        'imaging_conclusion': imaging_conclusion_dict.get('conclusion', ''),
+        'imaging_risk_warning': imaging_conclusion_dict.get('risk_warning', ''),
+    })
+
+    report_html = render_template(template_path, **template_fields)
+    print(f"✅ 使用模板: {template_path} 生成 {patient.nodule_type} 报告")
+
+    risk_level, risk_score, risk_basis = _derive_report_risk_level(record, nodule_type, patient_data)
+    report_summary = f"{risk_level} · {risk_basis}"
+
+    report = BReport(
+        patient_id=patient.id,
+        record_id=record.id,
+        report_code=report_code_generated,
+        recommendations_draft=recommendations_draft,
+        report_html=report_html,
+        report_summary=report_summary,
+        risk_level=risk_level,
+        risk_score=risk_score,
+        generated_by=generated_by_user_id,
+        imaging_conclusion=imaging_conclusion_dict.get('conclusion', ''),
+        imaging_risk_warning=imaging_conclusion_dict.get('risk_warning', ''),
+        medical_conclusion=None,
+        medical_risk_warning=None
+    )
+
+    db.session.add(report)
+    db.session.commit()
+
+    return {
+        'id': report.id,
+        'report_id': report.id,
+        'report_code': report.report_code
+    }
+
+
+def _run_report_job(app, job_id, record_id, generated_by_user_id):
+    with app.app_context():
+        try:
+            _set_report_job(job_id, status='running', message='AI正在生成报告')
+            result = _generate_report_for_record(record_id, generated_by_user_id)
+            _set_report_job(
+                job_id,
+                status='completed',
+                message='报告生成成功',
+                result=result,
+                report_id=result.get('report_id'),
+                report_code=result.get('report_code')
+            )
+        except Exception as e:
+            db.session.rollback()
+            traceback.print_exc()
+            _set_report_job(job_id, status='failed', message=str(e) or '生成报告失败')
+
+
+def _normalize_level(value):
+    text = str(value or '').strip().upper().replace('类', '').replace('级', '')
+    if not text or text in {'不清楚', '未知', '未填写', 'NONE'}:
+        return ''
+    return text
+
+
+def _risk_from_level(system_name, value):
+    level = _normalize_level(value)
+    if not level:
+        return None
+    if system_name == 'breast':
+        if level.startswith(('4', '5', '6')):
+            return '高风险'
+        if level.startswith('3'):
+            return '中风险'
+        if level.startswith(('1', '2', '0')):
+            return '低风险'
+    if system_name == 'lung':
+        if level.startswith('4'):
+            return '高风险'
+        if level.startswith('3'):
+            return '中风险'
+        if level.startswith(('1', '2')):
+            return '低风险'
+    if system_name == 'thyroid':
+        if level.startswith(('4', '5', '6')):
+            return '高风险'
+        if level.startswith('3'):
+            return '中风险'
+        if level.startswith(('1', '2')):
+            return '低风险'
+    return None
+
+
+def _derive_report_risk_level(record, nodule_type, patient_data):
+    """
+    基于已填结构化分级做初步低/中/高风险分层。
+    说明：这是报告工作台展示和流转用的初筛分层，不替代医生审核结论。
+    """
+    candidates = []
+    if nodule_type == 'triple' or 'breast' in nodule_type:
+        candidates.append(('乳腺BI-RADS', _risk_from_level('breast', getattr(record, 'birads_level', None))))
+    if nodule_type == 'triple' or 'lung' in nodule_type:
+        candidates.append(('肺部Lung-RADS', _risk_from_level('lung', getattr(record, 'lung_rads_level', None))))
+    if nodule_type == 'triple' or 'thyroid' in nodule_type:
+        candidates.append(('甲状腺TI-RADS', _risk_from_level('thyroid', getattr(record, 'tirads_level', None))))
+
+    rank = {'低风险': 1, '中风险': 2, '高风险': 3}
+    known = [(label, risk) for label, risk in candidates if risk]
+
+    if not known:
+        return '中风险', 50, '分级不清，按资料缺口进入中风险复核'
+
+    top_label, top_risk = max(known, key=lambda item: rank[item[1]])
+    score = {'低风险': 25, '中风险': 55, '高风险': 85}[top_risk]
+
+    if not patient_data.get('has_imaging_upload') and top_risk == '低风险':
+        # 缺原始报告时不把风险升档，但在摘要里明确提示资料缺口。
+        return top_risk, score, f'{top_label}提示{top_risk}，未上传原始影像报告'
+    return top_risk, score, f'{top_label}提示{top_risk}'
 
 
 @b_report_bp.route('', methods=['GET'])
@@ -157,136 +376,83 @@ def generate_report(current_user):
     5. 保存报告
     """
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         record_id = data.get('record_id')
-        
-        # 1. 获取健康档案
-        record = BHealthRecord.query.get(record_id)
-        if not record:
-            return Response.error('健康档案不存在', 404)
-        
-        patient = BPatient.query.get(record.patient_id)
-        if not patient:
-            return Response.error('患者不存在', 404)
-        
-        # 2. 获取患者的结节类型，默认为breast
-        nodule_type = patient.nodule_type if hasattr(patient, 'nodule_type') and patient.nodule_type else 'breast'
-
-        # 3. 构建患者数据（使用report_manager的函数，根据nodule_type自动提取正确字段）
-        from utils.report_manager import prepare_llm_patient_data
-        patient_data = prepare_llm_patient_data(record, nodule_type, patient)
-
-        print(f"\n[报告生成] 患者ID: {patient.id}, 结节类型: {nodule_type}")
-        print(f"[报告生成] 提取的字段数量: {len([k for k,v in patient_data.items() if v is not None and v != ''])}")
-
-        # 添加一些旧逻辑需要的字段格式（兼容处理）
-        if record.symptoms:
-            patient_data['symptoms'] = record.symptoms.split(',') if isinstance(record.symptoms, str) else record.symptoms
-        # 注意：以下字段前端表单中没有，不再添加：
-        # - nodule_discovery_time (已使用 breast_discovery_date)
-        # - course_stage (前端表单中没有)
-        # - tnm_stage (前端表单中没有)
-        
-        # 3. 知识库匹配和决策树处理（已移除，直接使用空值）
-        # 注：知识库只有乳腺数据，其他结节类型暂不支持，后续可添加
-        matched_knowledge = []  # 空列表，LLM会显示"无相关医学知识"
-        tree_result = {}  # 空字典，LLM会使用默认值
-
-        # 5. 生成LLM报告内容
-        from routes.llm_helpers import (
-            generate_comprehensive_conclusion_with_llm, 
-            generate_imaging_conclusion_with_llm,
-            generate_recommendations_by_category
-        )
-        
-        # 5.1 生成按类别分组的建议草稿（新增）
-        print("\n" + "="*60)
-        print("📝 生成分类建议草稿...")
-        print("="*60)
-        recommendations_draft = generate_recommendations_by_category(
-            patient_data, matched_knowledge
-        )
-        print(f"✅ 已生成 {len(recommendations_draft.get('recommendations', []))} 条分类建议")
-        
-        # 5.2 生成影像学综合结论（包含影像学评估、综合分析和随访建议）
-        # 注意：不再单独生成疾病史评估，因为已经包含在影像学评估的"其次"部分
-        imaging_conclusion_dict = generate_imaging_conclusion_with_llm(
-            patient_data, tree_result, matched_knowledge, nodule_type=nodule_type
-        )
-        
-        # 格式化换行，确保"首先"、"其次"、"最后"前面有换行
-        from routes.llm_helpers import clean_markdown_formatting, format_text_with_line_breaks
-        conclusion = clean_markdown_formatting(imaging_conclusion_dict.get('conclusion', ''))
-        risk_warning = clean_markdown_formatting(imaging_conclusion_dict.get('risk_warning', ''))
-        # 将换行符转换为HTML的<br/>标签
-        conclusion = format_text_with_line_breaks(conclusion)
-        risk_warning = format_text_with_line_breaks(risk_warning)
-        imaging_conclusion_dict['conclusion'] = conclusion
-        imaging_conclusion_dict['risk_warning'] = risk_warning
-
-        # 6. 生成报告编号（提前生成，用于HTML）
-        report_code_generated = generate_report_code()
-        current_date = datetime.now().strftime('%Y-%m-%d')
-
-        # 7. 渲染HTML报告（使用报告管理器根据结节类型选择正确模板）
-        from utils.report_manager import get_template_path, extract_template_fields
-
-        # 7.1 获取正确的模板路径（根据nodule_type: breast/lung/thyroid/breast_lung/breast_thyroid/lung_thyroid/triple）
-        template_path = get_template_path(nodule_type)
-
-        # 7.2 提取模板所需字段（根据nodule_type自动提取相应字段）
-        template_fields = extract_template_fields(patient, record, nodule_type)
-
-        # 7.3 添加LLM生成的内容和其他动态字段
-        # 正确解包imaging_conclusion字典（包含影像学评估、综合分析和随访建议）
-        template_fields.update({
-            'report_code': report_code_generated,
-            'current_date': current_date,
-            'imaging_conclusion': imaging_conclusion_dict.get('conclusion', ''),  # 总体评估与随访建议
-            'imaging_risk_warning': imaging_conclusion_dict.get('risk_warning', ''),  # 风险提示
-        })
-
-        # 7.4 渲染报告
-        report_html = render_template(template_path, **template_fields)
-
-        print(f"✅ 使用模板: {template_path} 生成 {patient.nodule_type} 报告")
-        
-        # 8. 生成报告摘要
-        report_summary = f"BI-RADS {record.birads_level}级"
-        
-        # 10. 保存报告（使用之前生成的report_code）
-        report = BReport(
-            patient_id=patient.id,
-            record_id=record.id,
-            report_code=report_code_generated,
-            recommendations_draft=recommendations_draft,  # 保存分类建议草稿（JSON格式）
-            report_html=report_html,  # 临时保存预览版报告
-            report_summary=report_summary,
-            risk_level=None,  # 不再使用风险评估
-            risk_score=None,  # 不再使用风险评估
-            generated_by=current_user.id,
-            # 保存影像学评估结论（包含影像学评估、综合分析和随访建议）
-            imaging_conclusion=imaging_conclusion_dict.get('conclusion', ''),
-            imaging_risk_warning=imaging_conclusion_dict.get('risk_warning', ''),
-            # 不再单独保存疾病史评估，因为已包含在imaging_conclusion中
-            medical_conclusion=None,  # 清空旧数据
-            medical_risk_warning=None  # 清空旧数据
-        )
-        
-        db.session.add(report)
-        db.session.commit()
-        
-        return Response.success({
-            'id': report.id,  # 前端需要id字段
-            'report_id': report.id,
-            'report_code': report.report_code
-        }, '报告生成成功', 201)
+        result = _generate_report_for_record(record_id, current_user.id)
+        return Response.success(result, '报告生成成功', 201)
         
     except Exception as e:
         db.session.rollback()
-        import traceback
         traceback.print_exc()
         return Response.error(f'生成报告失败: {str(e)}')
+
+
+@b_report_bp.route('/generate-jobs', methods=['POST'])
+@login_required
+def create_generate_report_job(current_user):
+    """提交报告生成任务，立即返回job_id，避免前端长时间等待大模型。"""
+    try:
+        _cleanup_report_jobs()
+        data = request.get_json(silent=True) or {}
+        record_id = data.get('record_id')
+        if not record_id:
+            return Response.error('record_id不能为空', 400)
+
+        record = BHealthRecord.query.get(record_id)
+        if not record:
+            return Response.error('健康档案不存在', 404)
+
+        job_id = uuid.uuid4().hex
+        now = time.time()
+        with _report_jobs_lock:
+            _report_jobs[job_id] = {
+                'job_id': job_id,
+                'record_id': record_id,
+                'status': 'queued',
+                'message': '报告生成任务已提交',
+                'result': None,
+                'created_at': now,
+                'updated_at': now,
+            }
+
+        app = current_app._get_current_object()
+        worker = threading.Thread(
+            target=_run_report_job,
+            args=(app, job_id, record_id, current_user.id),
+            daemon=True
+        )
+        worker.start()
+
+        return Response.success({
+            'job_id': job_id,
+            'status': 'queued',
+            'message': '报告生成任务已提交'
+        }, '报告生成任务已提交', 202)
+
+    except Exception as e:
+        traceback.print_exc()
+        return Response.error(f'提交报告生成任务失败: {str(e)}')
+
+
+@b_report_bp.route('/generate-jobs/<job_id>', methods=['GET'])
+@login_required
+def get_generate_report_job(current_user, job_id):
+    """查询报告生成任务状态。"""
+    _cleanup_report_jobs()
+    job = _get_report_job(job_id)
+    if not job:
+        return Response.error('报告生成任务不存在或已过期', 404)
+
+    data = {
+        'job_id': job['job_id'],
+        'record_id': job.get('record_id'),
+        'status': job.get('status'),
+        'message': job.get('message'),
+        'result': job.get('result'),
+        'report_id': job.get('report_id'),
+        'report_code': job.get('report_code'),
+    }
+    return Response.success(data, '获取任务状态成功')
 
 
 @b_report_bp.route('/<int:report_id>', methods=['DELETE'])
@@ -343,6 +509,126 @@ def get_recommendations(current_user, report_id):
         
     except Exception as e:
         return Response.error(f'获取建议失败: {str(e)}')
+
+
+def _default_advice_payload(report):
+    content = report.imaging_conclusion or report.report_summary or ''
+    draft = report.recommendations_draft or {}
+    advice = draft.get('advice') or {}
+    return {
+        'version': advice.get('version') or 1,
+        'status': advice.get('status') or ('archived' if report.status in ('finalized', 'published') else 'draft'),
+        'content': advice.get('content') or content,
+        'updated_at': advice.get('updated_at') or (report.updated_at.strftime('%Y-%m-%d %H:%M:%S') if report.updated_at else None),
+        'history': advice.get('history') or []
+    }
+
+
+def _save_advice_payload(report, advice):
+    from sqlalchemy.orm.attributes import flag_modified
+    draft = report.recommendations_draft or {}
+    draft['advice'] = advice
+    report.recommendations_draft = draft
+    flag_modified(report, 'recommendations_draft')
+
+
+@b_report_bp.route('/<int:report_id>/advice', methods=['GET'])
+@login_required
+def get_report_advice(current_user, report_id):
+    """获取报告建议草稿和版本历史。"""
+    report = BReport.query.get(report_id)
+    if not report:
+        return Response.error('报告不存在', 404)
+    return Response.success({
+        'report_id': report.id,
+        'report_code': report.report_code,
+        'report_status': report.status,
+        'advice': _default_advice_payload(report)
+    })
+
+
+@b_report_bp.route('/<int:report_id>/advice', methods=['PUT'])
+@login_required
+def save_report_advice(current_user, report_id):
+    """保存人工编辑后的建议草稿。"""
+    report = BReport.query.get(report_id)
+    if not report:
+        return Response.error('报告不存在', 404)
+    data = request.get_json(silent=True) or {}
+    content = str(data.get('content') or '').strip()
+    if not content:
+        return Response.error('建议内容不能为空', 400)
+
+    advice = _default_advice_payload(report)
+    if data.get('preserve_history', True) and advice.get('content') and advice.get('content') != content:
+        history = advice.get('history') or []
+        history.insert(0, {
+            'version': advice.get('version') or 1,
+            'status': advice.get('status') or 'draft',
+            'content': advice.get('content'),
+            'saved_at': advice.get('updated_at') or datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+            'by': current_user.id
+        })
+        advice['history'] = history[:20]
+        advice['version'] = (advice.get('version') or 1) + 1
+
+    advice['content'] = content
+    advice['status'] = 'draft'
+    advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    _save_advice_payload(report, advice)
+    report.imaging_conclusion = content
+    db.session.commit()
+    return Response.success({'advice': advice}, '建议草稿已保存')
+
+
+@b_report_bp.route('/<int:report_id>/advice/submit-review', methods=['POST'])
+@login_required
+def submit_report_advice_review(current_user, report_id):
+    """提交建议进入审核状态。"""
+    report = BReport.query.get(report_id)
+    if not report:
+        return Response.error('报告不存在', 404)
+    advice = _default_advice_payload(report)
+    if not str(advice.get('content') or '').strip():
+        return Response.error('建议内容不能为空', 400)
+    advice['status'] = 'reviewing'
+    advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    _save_advice_payload(report, advice)
+    report.status = 'draft'
+    db.session.commit()
+    return Response.success({'advice': advice}, '建议已提交审核')
+
+
+@b_report_bp.route('/<int:report_id>/advice/approve', methods=['POST'])
+@login_required
+def approve_report_advice(current_user, report_id):
+    """审核通过建议，并写入最终报告状态。"""
+    report = BReport.query.get(report_id)
+    if not report:
+        return Response.error('报告不存在', 404)
+    data = request.get_json(silent=True) or {}
+    advice = _default_advice_payload(report)
+    if data.get('content'):
+        advice['content'] = str(data.get('content')).strip()
+    if not advice.get('content'):
+        return Response.error('建议内容不能为空', 400)
+
+    advice['status'] = 'archived'
+    advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    _save_advice_payload(report, advice)
+    report.imaging_conclusion = advice['content']
+    report.report_summary = data.get('summary') or report.report_summary
+    report.status = 'finalized'
+    report.reviewed_by = current_user.id
+    report.reviewed_at = datetime.utcnow()
+    db.session.commit()
+
+    return Response.success({
+        'report_id': report.id,
+        'report_code': report.report_code,
+        'status': report.status,
+        'advice': advice
+    }, '审核通过，已写入最终报告')
 
 
 @b_report_bp.route('/<int:report_id>/recommendations/<int:index>', methods=['PUT'])
@@ -483,6 +769,30 @@ def finalize_report(current_user, report_id):
             report.recommendations_draft = {**report.recommendations_draft, 'recommendations': recommendations}
             db.session.flush()
             approved_recs = recommendations
+
+        data = request.get_json(silent=True) or {}
+        summary = data.get('summary')
+        ai_read_summary = data.get('ai_read_summary') or data.get('advice')
+
+        if summary:
+            report.report_summary = summary
+        if ai_read_summary:
+            report.imaging_conclusion = ai_read_summary
+
+        from sqlalchemy.orm.attributes import flag_modified
+        report.recommendations_draft = {**(report.recommendations_draft or {}), 'recommendations': recommendations}
+        flag_modified(report, 'recommendations_draft')
+        report.status = 'finalized'
+        report.reviewed_by = current_user.id
+        report.reviewed_at = datetime.utcnow()
+        db.session.commit()
+
+        return Response.success({
+            'report_id': report.id,
+            'report_code': report.report_code,
+            'report_html': report.report_html or '',
+            'approved_recommendations_count': len(approved_recs)
+        }, '审核通过，已写入最终报告')
 
         # 使用LLM整合所有已批准的建议为流畅的报告
         from routes.llm_helpers import llm_generator, clean_markdown_formatting
@@ -754,7 +1064,7 @@ def export_report_pdf(current_user, report_id):
                         box-sizing: border-box !important;
                         margin: 0 !important;
                         padding: 40px !important;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                        background: linear-gradient(135deg, #e9f5e9 0%, #cfe8d6 100%) !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                         display: flex !important;
@@ -816,8 +1126,8 @@ def export_report_pdf(current_user, report_id):
                         page-break-after: avoid !important;  /* 防止footer后分页导致重复 */
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                        color: white !important;
+                        background: linear-gradient(135deg, #e9f5e9 0%, #cfe8d6 100%) !important;
+                        color: #2c3e50 !important;
                         padding: 15px 12px !important;
                         margin-top: 10px !important;
                         margin-bottom: 0 !important;  /* 移除底部边距，避免空白 */
@@ -827,7 +1137,7 @@ def export_report_pdf(current_user, report_id):
                         display: none !important;  /* 隐藏多余的footer */
                     }
                     footer h3, footer strong, footer p {
-                        color: white !important;
+                        color: #2c3e50 !important;
                     }
                 }
             </style>
@@ -1031,4 +1341,3 @@ def generate_comprehensive_report(current_user, report_id):
         import traceback
         traceback.print_exc()
         return Response.error(f'生成综合报告失败: {str(e)}')
-

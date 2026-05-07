@@ -468,6 +468,7 @@ def prepare_llm_patient_data(record, nodule_type: str, patient=None) -> dict:
     patient_data = {
         'height': record.height if hasattr(record, 'height') and record.height is not None else None,
         'weight': record.weight if hasattr(record, 'weight') and record.weight is not None else None,
+        'nodule_type': nodule_type,
     }
     
     # 添加年龄信息（优先从record获取，如果没有则从patient获取）
@@ -543,11 +544,18 @@ def prepare_llm_patient_data(record, nodule_type: str, patient=None) -> dict:
 
     # 整合影像报告数据（以报告为准）
     # 检查健康档案是否有关联的影像报告
+    imaging_reports = []
     if hasattr(record, 'imaging_reports') and record.imaging_reports:
-        print(f"\n📎 发现 {len(record.imaging_reports)} 个影像报告，开始整合数据...")
+        imaging_reports = list(record.imaging_reports)
+
+    patient_data['has_imaging_upload'] = bool(imaging_reports)
+    patient_data['imaging_upload_count'] = len(imaging_reports)
+
+    if imaging_reports:
+        print(f"\n📎 发现 {len(imaging_reports)} 个影像报告，开始整合数据...")
         
         # 遍历所有影像报告，合并提取的数据（以报告为准）
-        for imaging_report in record.imaging_reports:
+        for imaging_report in imaging_reports:
             if imaging_report.extracted_data:
                 print(f"📊 整合影像报告数据: {imaging_report.file_name}")
                 # 将报告提取的数据合并到patient_data中（覆盖表单数据）

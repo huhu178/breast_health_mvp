@@ -584,7 +584,7 @@ def generate_imaging_conclusion_with_llm(patient_data: dict, decision_result: di
         fallback_conclusion = generate_fallback_imaging_conclusion(patient_data, decision_result)
         return {
             "conclusion": fallback_conclusion,
-            "risk_warning": "暂无风险提示信息，请参考总体评估与随访建议。"
+            "risk_warning": generate_fallback_imaging_risk_warning(patient_data)
         }
 
 
@@ -646,19 +646,77 @@ def generate_fallback_conclusion(patient_data: dict, decision_result: dict, matc
     return conclusion
 
 
+def _has_value(value) -> bool:
+    """判断字段是否是用户真实填写/报告提取的有效值。"""
+    if value is None or value == '' or value == []:
+        return False
+    if isinstance(value, str) and value.strip() in ('未知', '未明确', '未记录', '未评估'):
+        return False
+    return True
+
+
+def _format_value(value, empty='未填写') -> str:
+    if isinstance(value, list):
+        value = '、'.join(str(item) for item in value if item)
+    if not _has_value(value):
+        return empty
+    return str(value)
+
+
+def _build_nodule_summary(patient_data: dict) -> list:
+    """按器官汇总当前档案已填写的结节检查字段，不补写未提供的影像细节。"""
+    nodule_type = patient_data.get('nodule_type', 'breast') or 'breast'
+    summaries = []
+
+    if nodule_type == 'triple' or 'breast' in nodule_type:
+        summaries.append(
+            f"乳腺：BI-RADS分级{_format_value(patient_data.get('birads_level'))}，"
+            f"结节大小{_format_value(patient_data.get('nodule_size'))}，"
+            f"结节数量{_format_value(patient_data.get('nodule_quantity_breast') or patient_data.get('nodule_quantity'))}。"
+        )
+
+    if nodule_type == 'triple' or 'lung' in nodule_type:
+        summaries.append(
+            f"肺部：Lung-RADS分级{_format_value(patient_data.get('lung_rads_level'))}，"
+            f"结节大小{_format_value(patient_data.get('lung_nodule_size'))}，"
+            f"结节数量{_format_value(patient_data.get('nodule_quantity_lung'))}。"
+        )
+
+    if nodule_type == 'triple' or 'thyroid' in nodule_type:
+        summaries.append(
+            f"甲状腺：TI-RADS分级{_format_value(patient_data.get('tirads_level'))}，"
+            f"结节大小{_format_value(patient_data.get('thyroid_nodule_size'))}，"
+            f"结节数量{_format_value(patient_data.get('nodule_quantity_thyroid'))}。"
+        )
+
+    return summaries
+
+
+def generate_fallback_imaging_risk_warning(patient_data: dict) -> str:
+    """生成降级方案的风险提示，避免把未上传影像报告说成已有影像结论。"""
+    if not patient_data.get('has_imaging_upload'):
+        return "本次未上传原始影像报告，系统仅能依据建档表单中的分级、大小、数量和症状等信息生成初步提示。请补充超声、CT或甲状腺检查报告，或由医生审核完善后再作为正式随访依据。"
+    return "大模型结论暂未生成完整结果，系统已根据已提取的检查字段生成初步提示。请医生结合原始报告、体征和既往检查变化进行审核。"
+
+
 def generate_fallback_imaging_conclusion(patient_data: dict, decision_result: dict) -> str:
-    """生成降级方案的影像学分析结论"""
-    birads = patient_data.get('birads_level', '未知')
-    location = patient_data.get('nodule_location', '未知')
-    size = patient_data.get('nodule_size', '未知')
-    
-    conclusion = f"""影像学特征显示：结节位于{location}，大小约{size}，BI-RADS分级为{birads}类。
+    """生成降级方案的检查信息分析结论。"""
+    summaries = _build_nodule_summary(patient_data)
+    summary_text = "\n".join(summaries) if summaries else "当前档案未记录明确的结节分级、大小或数量信息。"
 
-边界特征{patient_data.get('boundary_features', '未明确')}，内部回声{patient_data.get('internal_echo', '未记录')}，{patient_data.get('blood_flow_signal', 'CDFI未见明显异常血流信号')}。弹性评分{patient_data.get('elasticity_score', '未评估')}分。
+    if patient_data.get('has_imaging_upload'):
+        source_text = "基于已上传影像报告提取结果和本次建档表单，当前已记录的信息如下："
+        missing_text = "如原始报告中仍有位置、边界、回声、血流、钙化等细节未被结构化提取，建议医生在审核时补充完善。"
+    else:
+        source_text = "本次未上传原始影像报告，以下内容仅基于患者建档表单中已填写的检查字段生成："
+        missing_text = "由于缺少原始影像报告，系统不会推断位置、边界、回声、血流、钙化、弹性评分等未提供的影像细节。建议补充检查报告后再生成正式结论。"
 
-建议定期超声随访，监测结节大小和特征变化。根据BI-RADS分级和综合评估，建议3-6个月后复查。"""
-    
-    return conclusion
+    return f"""{source_text}
+{summary_text}
+
+{missing_text}
+
+当前建议先按已填写分级、结节大小、症状及既往/家族史进行初步分层，审核医生应结合原始检查报告和必要的复查结果确认随访周期、进一步检查或转诊方案。"""
 
 
 def match_knowledge(patient_data: dict) -> list:
@@ -1852,6 +1910,13 @@ def _generate_basic_recommendations(patient_data: dict, priority_map: dict) -> l
         基础建议列表
     """
     recommendations = []
+
+    def _as_text(value) -> str:
+        if value is None:
+            return ''
+        if isinstance(value, (list, tuple, set)):
+            return '、'.join(str(v).strip() for v in value if v is not None and str(v).strip())
+        return str(value).strip()
     
     # 1. 影像学建议（基于BI-RADS/TI-RADS/Lung-RADS分级）
     nodule_type = patient_data.get('nodule_type', 'breast')
@@ -1921,8 +1986,8 @@ def _generate_basic_recommendations(patient_data: dict, priority_map: dict) -> l
             })
     
     # 3. 症状管理建议
-    symptoms = patient_data.get('symptoms', '')
-    if symptoms and symptoms != '无' and symptoms.strip():
+    symptoms = _as_text(patient_data.get('symptoms', ''))
+    if symptoms and symptoms not in ('无', '无症状'):
         recommendations.append({
             "category": "症状管理",
             "source_type": "symptoms",
@@ -1934,8 +1999,8 @@ def _generate_basic_recommendations(patient_data: dict, priority_map: dict) -> l
         })
     
     # 4. 家族史管理建议
-    family_history = patient_data.get('family_history', '')
-    if family_history and family_history != '无' and family_history.strip():
+    family_history = _as_text(patient_data.get('family_history', ''))
+    if family_history and family_history != '无':
         recommendations.append({
             "category": "家族史管理",
             "source_type": "family_history",
@@ -2368,4 +2433,3 @@ def get_monitoring_recommendation(comprehensive_risk, risk_scores):
         ]
     
     return recommendations
-

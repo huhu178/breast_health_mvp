@@ -169,8 +169,9 @@ def create_patient():
     data = request.json
 
     try:
-        # 生成患者编号
-        patient_code = f"BP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        # 生成患者编号：秒级时间戳 + 随机后缀，避免并发/连续创建时撞唯一键
+        from utils.id_generator import generate_patient_code
+        patient_code = generate_patient_code().replace('PT', 'BP', 1)
 
         # 创建B端患者
         patient = BPatient(
@@ -837,8 +838,13 @@ def generate_patient_report(patient_id):
 
         # 4. 调用LLM生成AI评估
         print(f"[REPORT] [3/4] 调用LLM生成AI评估...（需要10-30秒）")
-        # 标记本次是否会真实调用大模型（OPENROUTER_API_KEY 未配置时会走 mock）
-        llm_enabled = bool(os.getenv('OPENROUTER_API_KEY', '').strip())
+        # 标记本次是否会真实调用大模型
+        llm_provider = os.getenv('LLM_PROVIDER', 'openrouter').strip().lower()
+        llm_enabled = bool(
+            os.getenv('DASHSCOPE_API_KEY', '').strip()
+            if llm_provider == 'dashscope'
+            else os.getenv('OPENROUTER_API_KEY', '').strip()
+        )
 
         # 4.1 生成影像学综合结论（包含影像学评估、综合分析和随访建议）
         # 注意：不再单独生成疾病史评估，因为已经包含在影像学评估的"其次"部分

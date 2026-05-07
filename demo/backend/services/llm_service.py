@@ -15,7 +15,8 @@ class LLMReportGenerator:
     
     def __init__(self):
         """初始化LLM配置"""
-        # OpenRouter配置
+        # LLM配置，默认兼容 OpenRouter；可通过环境变量切换到 DashScope/千问
+        self.provider = "openrouter"
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
         self.api_key = None  # 从环境变量读取
 
@@ -91,6 +92,15 @@ class LLMReportGenerator:
     def set_api_key(self, api_key: str):
         """设置API Key"""
         self.api_key = api_key
+
+    def set_provider(self, provider: str):
+        """设置模型服务商"""
+        self.provider = provider or "openrouter"
+
+    def set_api_url(self, api_url: str):
+        """设置Chat Completions接口地址"""
+        if api_url:
+            self.api_url = api_url
     
     def set_model(self, model: str):
         """设置模型"""
@@ -458,7 +468,7 @@ section h3 {{{{
 }}}}
 
 .executive-summary {{{{
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #e9f5e9 0%, #cfe8d6 100%);
     color: white;
 }}}}
 
@@ -906,15 +916,18 @@ table td {{{{
             - 这会导致“看起来没有调用大模型/很快返回/内容像模板”的误解
             - 这里明确打印提示，方便排查
             """
-            print("⚠️  LLM未启用：OPENROUTER_API_KEY 未配置，使用 mock 响应（不会真实调用大模型）")
+            print("⚠️  LLM未启用：API Key 未配置，使用 mock 响应（不会真实调用大模型）")
             return self._generate_mock_response(prompt)
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:5000",  # OpenRouter要求
-            "X-Title": "Breast Nodule Health Management System"  # Header必须是ASCII
         }
+        if self.provider == "openrouter":
+            headers.update({
+                "HTTP-Referer": "http://localhost:5000",  # OpenRouter要求
+                "X-Title": "Breast Nodule Health Management System"  # Header必须是ASCII
+            })
         
         payload = {
             "model": self.model,
@@ -962,9 +975,12 @@ table td {{{{
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:5000",
-            "X-Title": "Breast Nodule Health Management System"
         }
+        if self.provider == "openrouter":
+            headers.update({
+                "HTTP-Referer": "http://localhost:5000",
+                "X-Title": "Breast Nodule Health Management System"
+            })
         
         # 构建多模态消息内容（直接发送PDF）
         content = [
@@ -1283,7 +1299,7 @@ section h3 {
 }
 
 .executive-summary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #e9f5e9 0%, #cfe8d6 100%);
     color: white;
 }
 
@@ -1915,14 +1931,29 @@ llm_generator = LLMReportGenerator()
 
 # 从环境变量加载配置
 import os
-_openrouter_api_key = os.getenv('OPENROUTER_API_KEY', '')
-_openrouter_model = os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-pro')
+_provider = os.getenv('LLM_PROVIDER', '').strip().lower()
+_dashscope_api_key = os.getenv('DASHSCOPE_API_KEY', '').strip()
+_openrouter_api_key = os.getenv('OPENROUTER_API_KEY', '').strip()
 
-if _openrouter_api_key:
-    llm_generator.set_api_key(_openrouter_api_key)
-    # 不打印 key 本身，避免泄露敏感信息
-    print("OK: OpenRouter API Key configured (LLM enabled)")
-if _openrouter_model:
-    llm_generator.set_model(_openrouter_model)
-    print(f"OK: LLM model set to: {_openrouter_model}")
-
+if (_provider == 'dashscope') or (_dashscope_api_key and not _provider):
+    _dashscope_model = os.getenv('DASHSCOPE_MODEL', 'qwen-plus').strip()
+    _dashscope_api_url = os.getenv(
+        'DASHSCOPE_API_URL',
+        'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+    ).strip()
+    llm_generator.set_provider('dashscope')
+    llm_generator.set_api_url(_dashscope_api_url)
+    llm_generator.set_api_key(_dashscope_api_key)
+    llm_generator.set_model(_dashscope_model)
+    print("OK: DashScope API Key configured (LLM enabled)")
+    print(f"OK: LLM provider/model set to: dashscope/{_dashscope_model}")
+else:
+    _openrouter_model = os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-pro').strip()
+    llm_generator.set_provider('openrouter')
+    if _openrouter_api_key:
+        llm_generator.set_api_key(_openrouter_api_key)
+        # 不打印 key 本身，避免泄露敏感信息
+        print("OK: OpenRouter API Key configured (LLM enabled)")
+    if _openrouter_model:
+        llm_generator.set_model(_openrouter_model)
+        print(f"OK: LLM provider/model set to: openrouter/{_openrouter_model}")

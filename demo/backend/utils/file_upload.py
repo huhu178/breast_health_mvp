@@ -13,7 +13,7 @@ class FileUploadManager:
     """文件上传管理器"""
     
     # 允许的文件类型
-    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'}
     
     # 文件大小限制（10MB）
     MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -126,7 +126,6 @@ class FileUploadManager:
 
 # 创建单例
 file_upload_manager = FileUploadManager()
-
 
 
 

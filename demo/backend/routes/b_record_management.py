@@ -106,6 +106,100 @@ def get_record_detail(current_user, record_id):
         return Response.error(f'获取档案详情失败: {str(e)}')
 
 
+@b_record_bp.route('/<int:record_id>/imaging-reports', methods=['GET'])
+@login_required
+def list_record_imaging_reports(current_user, record_id):
+    """查询某个档案已上传的影像报告。"""
+    record = BHealthRecord.query.get(record_id)
+    if not record:
+        return Response.error('档案不存在', 404)
+    reports = BImagingReport.query.filter_by(record_id=record_id).order_by(BImagingReport.uploaded_at.desc()).all()
+    return Response.success({'items': [r.to_dict() for r in reports], 'total': len(reports)})
+
+
+@b_record_bp.route('/<int:record_id>/imaging-reports', methods=['POST'])
+@login_required
+def upload_record_imaging_reports(current_user, record_id):
+    """给已有档案补传影像报告。"""
+    record = BHealthRecord.query.get(record_id)
+    if not record:
+        return Response.error('档案不存在', 404)
+
+    files = request.files.getlist('imaging_reports')
+    if not files:
+        return Response.error('请选择要上传的影像报告', 400)
+
+    patient = BPatient.query.get(record.patient_id)
+    nodule_type = patient.nodule_type if patient and getattr(patient, 'nodule_type', None) else 'breast'
+    saved = []
+
+    for file in files:
+        if not file or not file.filename:
+            continue
+        try:
+            file_path, original_filename, file_size = file_upload_manager.save_file(file, record.id)
+            if not file_path:
+                continue
+
+            file_type = file_upload_manager.get_file_type(original_filename)
+            extracted_text = None
+            extracted_data = None
+
+            if file_type == 'pdf':
+                try:
+                    extracted_data = imaging_report_service.extract_structured_data_from_pdf(file_path, nodule_type)
+                except Exception as e:
+                    print(f"⚠️ PDF多模态解析失败，尝试文本提取: {e}")
+                if not extracted_data:
+                    try:
+                        extracted_text = pdf_parser.extract_text_from_pdf(file_path)
+                        if extracted_text:
+                            extracted_data = imaging_report_service.extract_structured_data_from_text(extracted_text, nodule_type)
+                    except Exception as e:
+                        print(f"⚠️ PDF文本解析失败: {e}")
+
+            imaging_report = BImagingReport(
+                record_id=record.id,
+                file_name=original_filename,
+                file_path=file_path,
+                file_size=file_size,
+                file_type=file_type,
+                extracted_text=extracted_text,
+                extracted_data=extracted_data,
+                uploaded_by=current_user.id
+            )
+            db.session.add(imaging_report)
+            db.session.flush()
+            saved.append(imaging_report.to_dict())
+        except Exception as e:
+            print(f"❌ 上传影像报告失败: {e}")
+            continue
+
+    if not saved:
+        db.session.rollback()
+        return Response.error('影像报告上传失败', 500)
+
+    db.session.commit()
+    return Response.success({'items': saved, 'total': len(saved)}, '影像报告上传成功', 201)
+
+
+@b_record_bp.route('/<int:record_id>/imaging-reports/<int:imaging_report_id>', methods=['DELETE'])
+@login_required
+def delete_record_imaging_report(current_user, record_id, imaging_report_id):
+    """删除某个档案下的影像报告。"""
+    imaging_report = BImagingReport.query.filter_by(id=imaging_report_id, record_id=record_id).first()
+    if not imaging_report:
+        return Response.error('影像报告不存在', 404)
+    try:
+        if imaging_report.file_path:
+            file_upload_manager.delete_file(imaging_report.file_path)
+    except Exception as e:
+        print(f"⚠️ 删除影像文件失败: {e}")
+    db.session.delete(imaging_report)
+    db.session.commit()
+    return Response.success(None, '影像报告已删除')
+
+
 @b_record_bp.route('', methods=['POST'])
 @login_required
 def create_record(current_user):
@@ -757,4 +851,3 @@ def delete_record(current_user, record_id):
     except Exception as e:
         db.session.rollback()
         return Response.error(f'删除档案失败: {str(e)}')
-

@@ -67,9 +67,13 @@ class Config:
     # 分页配置
     ITEMS_PER_PAGE = 20
     
-    # LLM配置（OpenRouter）
+    # LLM配置（支持 OpenRouter / DashScope）
+    LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'openrouter')
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')  # 从环境变量读取
     OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-pro')  # 默认使用gemini 2.5 pro
+    DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY', '')
+    DASHSCOPE_MODEL = os.getenv('DASHSCOPE_MODEL', 'qwen-plus')
+    DASHSCOPE_API_URL = os.getenv('DASHSCOPE_API_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions')
 
     # ========================================
     # 第三方插件配置：AI舌诊（小程序插件）
@@ -77,3 +81,8 @@ class Config:
     # @isdoc 小程序插件 idCode（外部平台审核通过后提供），用于 plugin.init
     AI_TONGUE_ID_CODE = os.getenv('AI_TONGUE_ID_CODE', '')
 
+    # ========================================
+    # 微信小程序配置
+    # ========================================
+    WECHAT_APPID = os.getenv('WECHAT_APPID', '')
+    WECHAT_SECRET = os.getenv('WECHAT_SECRET', '')
