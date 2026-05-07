@@ -29,7 +29,7 @@
             </div>
             <div class="field col-1">
               <div class="label">年龄</div>
-              <input v-model="form.age" type="number" min="0" placeholder="—">
+              <input v-model="form.age" type="number" min="0" placeholder="自动" readonly>
             </div>
             <div class="field col-3 required phone">
               <div class="label">手机号</div>
@@ -108,24 +108,9 @@
           </div>
         </section>
 
-        <!-- 3. 场景专项信息 -->
+        <!-- 3. 结节信息 -->
         <section class="form-sec">
-          <div class="sec-h"><span class="no">三</span>{{ scenarioSectionTitle }}</div>
-          <div class="grid-12">
-            <div v-for="field in scenarioFields" :key="field.key" class="field" :class="field.col || 'col-3'">
-              <div class="label">{{ field.label }}</div>
-              <select v-if="field.type === 'select'" v-model="form[field.key]">
-                <option v-for="opt in field.options" :key="opt">{{ opt }}</option>
-              </select>
-              <input v-else-if="field.type === 'date'" v-model="form[field.key]" type="date">
-              <input v-else v-model="form[field.key]" :placeholder="field.placeholder || ''">
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. 结节信息 -->
-        <section class="form-sec">
-          <div class="sec-h"><span class="no">四</span>结节信息</div>
+          <div class="sec-h"><span class="no">三</span>结节信息</div>
           <div class="field-row">
             <div class="field-label"><span class="req">结节类型（可多选）</span></div>
             <div class="tag-row">
@@ -207,6 +192,57 @@
                   <input v-model="form.lung_symptoms_other" placeholder="请输入其他症状">
                 </div>
               </div>
+
+              <div class="form-field full">
+                <div class="label">肺部基础疾病史（多选）</div>
+                <div class="tag-row">
+                  <button
+                    v-for="s in ['无','肺炎病史','肺结核病史','慢性阻塞性肺疾病','肺纤维化','肺癌病史','其他']"
+                    :key="s"
+                    type="button"
+                    class="tag-btn"
+                    :class="{ active: (form.lung_cancer_history||[]).includes(s) }"
+                    @click="toggleArr(form.lung_cancer_history, s)"
+                  >{{ s }}</button>
+                </div>
+                <div v-if="(form.lung_cancer_history||[]).includes('其他')" style="margin-top:8px">
+                  <input v-model="form.lung_cancer_history_other" placeholder="请输入其他肺部疾病史">
+                </div>
+              </div>
+
+              <div class="form-field full">
+                <div class="label">肺部家族史（多选）</div>
+                <div class="tag-row">
+                  <button
+                    v-for="s in familyHistoryOptions"
+                    :key="s"
+                    type="button"
+                    class="tag-btn"
+                    :class="{ active: (form.lung_family_history||[]).includes(s) }"
+                    @click="toggleArr(form.lung_family_history, s)"
+                  >{{ s }}</button>
+                </div>
+                <div v-if="(form.lung_family_history||[]).includes('其他')" style="margin-top:8px">
+                  <input v-model="form.lung_family_history_other" placeholder="请输入其他家族史">
+                </div>
+              </div>
+
+              <div class="form-field full">
+                <div class="label">肺部药物使用史（多选）</div>
+                <div class="tag-row">
+                  <button
+                    v-for="s in ['无','中成药治疗','激素调节药物','维生素辅助治疗','其他']"
+                    :key="s"
+                    type="button"
+                    class="tag-btn"
+                    :class="{ active: (form.lung_medication_history||[]).includes(s) }"
+                    @click="toggleArr(form.lung_medication_history, s)"
+                  >{{ s }}</button>
+                </div>
+                <div v-if="(form.lung_medication_history||[]).includes('其他')" style="margin-top:8px">
+                  <input v-model="form.lung_medication_other" placeholder="请输入其他药物使用史">
+                </div>
+              </div>
             </div>
           </div>
 
@@ -260,6 +296,57 @@
                 </div>
                 <div v-if="(form.thyroid_symptoms||[]).includes('其他')" style="margin-top:8px">
                   <input v-model="form.thyroid_symptoms_other" placeholder="请输入其他症状">
+                </div>
+              </div>
+
+              <div class="form-field full">
+                <div class="label">甲状腺基础疾病史（多选）</div>
+                <div class="tag-row">
+                  <button
+                    v-for="s in ['无','甲状腺功能亢进（甲亢）','甲状腺功能减退（甲减）','桥本甲状腺炎','亚急性甲状腺炎','甲状腺癌病史','其他']"
+                    :key="s"
+                    type="button"
+                    class="tag-btn"
+                    :class="{ active: (form.hypothyroidism_history||[]).includes(s) }"
+                    @click="toggleArr(form.hypothyroidism_history, s)"
+                  >{{ s }}</button>
+                </div>
+                <div v-if="(form.hypothyroidism_history||[]).includes('其他')" style="margin-top:8px">
+                  <input v-model="form.hypothyroidism_history_other" placeholder="请输入其他甲状腺疾病史">
+                </div>
+              </div>
+
+              <div class="form-field full">
+                <div class="label">甲状腺家族史（多选）</div>
+                <div class="tag-row">
+                  <button
+                    v-for="s in familyHistoryOptions"
+                    :key="s"
+                    type="button"
+                    class="tag-btn"
+                    :class="{ active: (form.thyroid_family_history||[]).includes(s) }"
+                    @click="toggleArr(form.thyroid_family_history, s)"
+                  >{{ s }}</button>
+                </div>
+                <div v-if="(form.thyroid_family_history||[]).includes('其他')" style="margin-top:8px">
+                  <input v-model="form.thyroid_family_history_other" placeholder="请输入其他家族史">
+                </div>
+              </div>
+
+              <div class="form-field full">
+                <div class="label">甲状腺药物使用史（多选）</div>
+                <div class="tag-row">
+                  <button
+                    v-for="s in ['无','甲状腺激素治疗','抗甲状腺药物','放射性碘治疗','中成药治疗','其他']"
+                    :key="s"
+                    type="button"
+                    class="tag-btn"
+                    :class="{ active: (form.thyroid_medication_history||[]).includes(s) }"
+                    @click="toggleArr(form.thyroid_medication_history, s)"
+                  >{{ s }}</button>
+                </div>
+                <div v-if="(form.thyroid_medication_history||[]).includes('其他')" style="margin-top:8px">
+                  <input v-model="form.thyroid_medication_other" placeholder="请输入其他药物使用史">
                 </div>
               </div>
             </div>
@@ -370,11 +457,69 @@
             </div>
           </div>
 
+          <section class="form-sec asset-sec">
+            <div class="sec-h"><span class="no">四</span>检查资料上传</div>
+            <div class="asset-grid">
+              <section class="asset-panel">
+                <div class="asset-title">影像报告</div>
+                <div class="asset-sub">支持 PDF、JPG、PNG；保存档案后自动关联到当前健康档案。</div>
+                <input ref="imagingInputRef" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,image/*" style="display:none" @change="handleImagingFiles">
+                <button class="mini-action primary-action" type="button" @click="imagingInputRef?.click()">上传影像报告</button>
+                <div class="asset-list">
+                  <div v-for="file in imagingFiles" :key="file.key" class="asset-row">
+                    <div>
+                      <b>{{ file.name }}</b>
+                      <span>{{ formatFileSize(file.size) }} · {{ file.uploaded ? '已关联档案' : '待保存上传' }}</span>
+                    </div>
+                    <button class="asset-link" type="button" @click="removeImagingFile(file.key)">删除</button>
+                  </div>
+                  <div v-if="!imagingFiles.length" class="asset-empty">暂无影像报告</div>
+                </div>
+              </section>
+
+              <section class="asset-panel">
+                <div class="asset-title">手机舌诊 H5</div>
+                <div class="asset-sub">B端只生成手机可访问的舌诊链接；请用患者手机或健康管理师手机打开，电脑和平板不作为采集终端。</div>
+                <div class="tongue-h5-panel">
+                  <div class="tongue-h5-copy">
+                    <input :value="tongueDisplayUrl || '生成后显示手机舌诊链接'" readonly>
+                    <button class="asset-link" type="button" @click="copyTongueLink" :disabled="!tongueDisplayUrl">复制链接</button>
+                  </div>
+                  <div class="tongue-h5-body">
+                    <div class="tongue-qr">
+                      <img v-if="tongueQrUrl" :src="tongueQrUrl" alt="舌诊H5二维码">
+                      <span v-else>生成二维码</span>
+                    </div>
+                    <div class="tongue-h5-help">
+                      <b>手机打开提示</b>
+                      <span>生成链接后，用手机扫码或复制链接发送给患者；进入第三方 H5 后在手机内完成舌面图、舌下图采集。</span>
+                      <span>检测完成后，结果通过报告回调或报告检索回流到本系统。</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="tongue-diagnosis-bar">
+                  <button
+                    class="mini-action primary-action"
+                    type="button"
+                    @click="startTongueDiagnosis"
+                    :disabled="tongueSubmitting"
+                  >
+                    {{ tongueSubmitting ? '提交中...' : tongueActionLabel }}
+                  </button>
+                  <span v-if="tongueTask" class="tongue-status">{{ tongueStatusLabel }}</span>
+                </div>
+                <div v-if="tongueTask?.tongue_feature" class="tongue-result">
+                  {{ tongueTask.tongue_feature }}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <!-- 底部操作行 -->
           <div class="grid-12" style="margin-top:10px">
             <div class="field col-5" style="display:flex;align-items:flex-end;gap:8px">
               <button class="mini-action" type="button" @click="save" :disabled="saving">{{ saving ? '保存中...' : '保存档案' }}</button>
-              <button class="mini-action primary-action" type="button" @click="generateReport" :disabled="generating">{{ generating ? 'AI生成中...' : '生成健康档案' }}</button>
+              <button class="mini-action primary-action" type="button" @click="generateReport" :disabled="generating">{{ generating ? reportJobMessage : '生成健康档案' }}</button>
             </div>
           </div>
         </section>
@@ -397,10 +542,25 @@
           <div class="side-title">档案预览</div>
           <div class="preview-grid">
             <div class="pv-row"><span class="k">姓名</span><span class="v">{{ form.name || '—' }}</span></div>
+            <div class="pv-row"><span class="k">年龄</span><span class="v">{{ form.age || '—' }}</span></div>
             <div class="pv-row"><span class="k">来源</span><span class="v">{{ previewSource }}</span></div>
             <div class="pv-row"><span class="k">结节类型</span><span class="v">{{ visibleNodules.join('、') || '—' }}</span></div>
             <div class="pv-row"><span class="k">负责人</span><span class="v">{{ form.doctor || '—' }}</span></div>
-            <div class="pv-row"><span class="k">{{ scenarioPreviewLabel }}</span><span class="v">{{ scenarioPreviewValue }}</span></div>
+          </div>
+        </section>
+
+        <section v-if="savedPatientId && savedRecordId" class="side-card saved-card">
+          <div class="side-title">已保存</div>
+          <div class="preview-grid">
+            <div class="pv-row"><span class="k">患者ID</span><span class="v">{{ savedPatientId }}</span></div>
+            <div class="pv-row"><span class="k">档案ID</span><span class="v">{{ savedRecordId }}</span></div>
+            <div class="pv-row"><span class="k">保存时间</span><span class="v">{{ savedAt || '—' }}</span></div>
+          </div>
+          <div class="saved-actions">
+            <button class="mini-action primary-action" type="button" @click="generateReport" :disabled="generating">
+              {{ generating ? reportJobMessage : '基于该档案生成报告' }}
+            </button>
+            <button class="mini-action" type="button" @click="goPatientList">查看患者列表</button>
           </div>
         </section>
 
@@ -411,7 +571,7 @@
             <div class="muted" style="font-size:12px;margin-top:8px">{{ completeness }}%</div>
           </div>
           <div class="muted" style="font-size:12px;line-height:1.6;margin-top:10px">
-            建议优先补全：手机号、出生日期、来源信息、{{ scenarioRequiredTip }}。
+            建议优先补全：手机号、出生日期、来源信息、至少选择一种结节类型。
           </div>
         </section>
 
@@ -420,7 +580,7 @@
           <div class="next-box">
             <div class="next-main">{{ nextTip }}</div>
             <div class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">
-              保存后可进入“上传资料 → AI结构化解析 → 生成{{ scenario.reportLabel }}”流程。
+            保存后会停留在当前页，确认患者与档案ID后再生成{{ scenario.reportLabel }}。
             </div>
           </div>
         </section>
@@ -467,6 +627,42 @@ const scenario = computed(() => getStoredScenario())
 const moreOpen = ref(false)
 const saving = ref(false)
 const generating = ref(false)
+const reportJobMessage = ref('AI生成中...')
+const savedPatientId = ref('')
+const savedRecordId = ref('')
+const savedAt = ref('')
+const savedSnapshot = ref('')
+const imagingInputRef = ref(null)
+const imagingFiles = ref([])
+const uploadedImagingKeys = ref(new Set())
+const tongueTask = ref(null)
+const tongueH5Url = ref('')
+const tongueMobileOpenUrl = ref('')
+const tongueSubmitting = ref(false)
+
+const tongueDisplayUrl = computed(() => tongueMobileOpenUrl.value || tongueH5Url.value)
+
+const tongueQrUrl = computed(() => {
+  if (!tongueDisplayUrl.value) return ''
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(tongueDisplayUrl.value)}`
+})
+
+const tongueActionLabel = computed(() => {
+  if (tongueTask.value?.status === 'h5_sso_created') return '重新打开舌诊 H5'
+  if (tongueTask.value?.status === 'completed') return '已完成舌诊'
+  return '打开舌诊 H5'
+})
+
+const tongueStatusLabel = computed(() => {
+  const status = tongueTask.value?.status
+  const map = {
+    h5_sso_created: 'H5已生成',
+    completed: '舌诊已完成',
+    failed: '检测失败',
+    waiting_inquiry: '待完成'
+  }
+  return map[status] || status || ''
+})
 
 const isImport = computed(() => true)
 
@@ -477,6 +673,8 @@ const presetTags = [
   { id: 'thyroid_breast', label: '甲+乳' },
   { id: 'triple', label: '三合并' }
 ]
+
+const familyHistoryOptions = ['无', '一级亲属（父母、子女、亲兄弟姐妹）', '二级亲属（伯父、姑妈、舅舅、姨妈、祖父母）', '三级亲属（表/堂兄妹）', '其他']
 
 const selectedTag = ref('乳腺结节')
 
@@ -523,72 +721,6 @@ const ownerOptions = computed(() => {
   return map[scenario.value.key] || map.hospital
 })
 
-const scenarioSectionTitle = computed(() => {
-  const map = {
-    hospital: '诊疗与检查信息',
-    checkup: '体检筛查信息',
-    pharmacy: '药店健康服务信息',
-    community: '家庭医生签约信息',
-  }
-  return map[scenario.value.key] || map.hospital
-})
-
-const scenarioFields = computed(() => {
-  if (scenario.value.key === 'checkup') {
-    return [
-      { key: 'checkupPackage', label: '体检套餐', type: 'select', options: ['基础筛查套餐', '肺结节专项', '甲状腺专项', '乳腺专项', '女性健康专项'] },
-      { key: 'checkupBatch', label: '体检批次号', placeholder: '例如：TJ20260429' },
-      { key: 'companyName', label: '团检单位', placeholder: '单位团检可填写' },
-      { key: 'abnormalIndicators', label: '异常指标', col: 'col-3', placeholder: '例如：肺结节、甲状腺结节' },
-      { key: 'reportDate', label: '报告日期', type: 'date' },
-      { key: 'reviewAction', label: '后续安排', type: 'select', options: ['复查预约', '报告解读', '转诊建议', '常规随访'] },
-    ]
-  }
-  if (scenario.value.key === 'pharmacy') {
-    return [
-      { key: 'memberLevel', label: '服务等级', type: 'select', options: ['普通服务', '慢病服务', '重点随访', '企业服务'] },
-      { key: 'medicationUse', label: '近期用药', placeholder: '例如：降压药、降糖药' },
-      { key: 'chronicTags', label: '慢病标签', placeholder: '例如：高血压、糖尿病' },
-      { key: 'consultationType', label: '咨询类型', type: 'select', options: ['用药咨询', '报告解读', '慢病管理', '转诊建议'] },
-    ]
-  }
-  if (scenario.value.key === 'community') {
-    return [
-      { key: 'contractStatus', label: '签约状态', type: 'select', options: ['已签约', '待签约', '重点人群', '临时随访'] },
-      { key: 'familyDoctorTeam', label: '家医团队', placeholder: '例如：第一家庭医生团队' },
-      { key: 'gridName', label: '社区网格', placeholder: '例如：南城三网格' },
-      { key: 'chronicManagement', label: '慢病管理', type: 'select', options: ['无', '高血压', '糖尿病', '双病共管', '老年人管理'] },
-    ]
-  }
-  return [
-    { key: 'visitNo', label: '门诊/住院号', placeholder: '请输入就诊号' },
-    { key: 'dept', label: '科室', placeholder: '例如：甲乳外科' },
-    { key: 'chiefComplaint', label: '主诉', placeholder: '例如：体检发现结节' },
-    { key: 'examType', label: '检查类型', type: 'select', options: ['超声', 'CT', '钼靶', '病理', '综合检查'] },
-  ]
-})
-
-const scenarioPreviewLabel = computed(() => {
-  if (scenario.value.key === 'checkup') return '体检套餐'
-  if (scenario.value.key === 'pharmacy') return '服务类型'
-  if (scenario.value.key === 'community') return '签约状态'
-  return '检查类型'
-})
-
-const scenarioPreviewValue = computed(() => {
-  if (scenario.value.key === 'checkup') return form.value.checkupPackage || '—'
-  if (scenario.value.key === 'pharmacy') return form.value.consultationType || '—'
-  if (scenario.value.key === 'community') return form.value.contractStatus || '—'
-  return form.value.examType || '—'
-})
-
-const scenarioRequiredTip = computed(() => {
-  if (scenario.value.key === 'checkup') return '体检套餐和异常指标'
-  if (scenario.value.key === 'pharmacy') return '用药情况和慢病标签'
-  if (scenario.value.key === 'community') return '签约状态和家医团队'
-  return '至少选择一种结节类型'
-})
-
 const form = ref({
   // 基础信息
   age: '',
@@ -632,6 +764,12 @@ const form = ref({
   thyroid_nodule_quantity: '',
   thyroid_nodule_size: '',
   thyroid_nodule_count: '',
+  hypothyroidism_history: [],
+  hypothyroidism_history_other: '',
+  thyroid_family_history: [],
+  thyroid_family_history_other: '',
+  thyroid_medication_history: [],
+  thyroid_medication_other: '',
 
   // 肺部结节字段
   lung_discovery_date: '',
@@ -641,6 +779,12 @@ const form = ref({
   lung_nodule_quantity: '',
   lung_nodule_size: '',
   lung_nodule_count: '',
+  lung_cancer_history: [],
+  lung_cancer_history_other: '',
+  lung_family_history: [],
+  lung_family_history_other: '',
+  lung_medication_history: [],
+  lung_medication_other: '',
 })
 
 watch(
@@ -651,6 +795,25 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => form.value.birthDate,
+  (birthDate) => {
+    form.value.age = calculateAge(birthDate) || ''
+  }
+)
+
+function calculateAge(birthDate) {
+  if (!birthDate) return null
+  const birth = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(birth.getTime())) return null
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age -= 1
+  if (age < 0 || age > 130) return null
+  return age
+}
 
 function toggleOrganType(t) {
   selectedTag.value = t
@@ -786,6 +949,99 @@ function toast(text) {
   toastRef.value?.show(text)
 }
 
+function fileKey(file) {
+  return `${file.name}-${file.size}-${file.lastModified || 0}`
+}
+
+function formatFileSize(size) {
+  if (!size) return '0KB'
+  if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))}KB`
+  return `${(size / 1024 / 1024).toFixed(1)}MB`
+}
+
+function handleImagingFiles(event) {
+  const files = Array.from(event.target.files || [])
+  const existing = new Set(imagingFiles.value.map(f => f.key))
+  files.forEach(file => {
+    const key = fileKey(file)
+    if (existing.has(key)) return
+    imagingFiles.value.push({
+      key,
+      file,
+      name: file.name,
+      size: file.size,
+      uploaded: uploadedImagingKeys.value.has(key)
+    })
+    existing.add(key)
+  })
+  event.target.value = ''
+}
+
+function removeImagingFile(key) {
+  imagingFiles.value = imagingFiles.value.filter(item => item.key !== key)
+}
+
+async function startTongueDiagnosis() {
+  tongueSubmitting.value = true
+  try {
+    const { patientId, recordId } = await saveRecordIfNeeded()
+    const res = await fetch('/api/b/tongue-diagnosis/h5-sso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ patient_id: patientId, record_id: recordId })
+    })
+    const data = await res.json()
+    if (!data.success) throw new Error(data.message || 'H5舌诊地址生成失败')
+    tongueTask.value = data.data?.task
+    tongueH5Url.value = data.data?.h5_url || data.data?.task?.h5_url || ''
+    tongueMobileOpenUrl.value = data.data?.mobile_open_url || ''
+    if (tongueH5Url.value) window.open(tongueH5Url.value, '_blank', 'noopener')
+    toast('手机舌诊链接已生成')
+  } catch (e) {
+    toast(e.message || 'H5舌诊打开失败')
+  } finally {
+    tongueSubmitting.value = false
+  }
+}
+
+async function copyTongueLink() {
+  if (!tongueDisplayUrl.value) return
+  try {
+    await navigator.clipboard.writeText(tongueDisplayUrl.value)
+    toast('舌诊链接已复制')
+  } catch (e) {
+    toast('复制失败，请手动选择链接')
+  }
+}
+
+async function uploadRecordAssets(recordId) {
+  if (!recordId) return
+  const pending = imagingFiles.value.filter(item => !uploadedImagingKeys.value.has(item.key))
+  if (!pending.length) return
+
+  const formData = new FormData()
+  pending.forEach(item => formData.append('imaging_reports', item.file))
+  const res = await fetch(`/api/b/records/${recordId}/imaging-reports`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData
+  })
+  const data = await res.json()
+  if (!data.success) throw new Error('影像报告上传失败：' + (data.message || ''))
+
+  const nextUploaded = new Set(uploadedImagingKeys.value)
+  pending.forEach(item => nextUploaded.add(item.key))
+  uploadedImagingKeys.value = nextUploaded
+  imagingFiles.value = imagingFiles.value.map(item => (
+    nextUploaded.has(item.key) ? { ...item, uploaded: true } : item
+  ))
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 function back() {
   if (props.embedded) {
     emit('back')
@@ -822,8 +1078,8 @@ function buildRecordPayload() {
     height: f.height ? parseFloat(f.height) : null,
     weight: f.weight ? parseFloat(f.weight) : null,
     phone: f.phone,
-    diabetes_history: f.diabetes_history,
-    gaofang_address: f.gaofang_address,
+    diabetes_history: f.diabetesHistory || f.diabetes_history,
+    gaofang_address: f.addr || f.gaofang_address,
 
     // 乳腺
     breast_discovery_date: f.breast_discovery_date || null,
@@ -850,6 +1106,12 @@ function buildRecordPayload() {
     thyroid_nodule_count: f.thyroid_nodule_count,
     thyroid_symptoms: arrToStr(f.thyroid_symptoms),
     thyroid_symptoms_other: f.thyroid_symptoms_other,
+    hypothyroidism_history: arrToStr(f.hypothyroidism_history),
+    hypothyroidism_history_other: f.hypothyroidism_history_other,
+    thyroid_family_history: arrToStr(f.thyroid_family_history),
+    thyroid_family_history_other: f.thyroid_family_history_other,
+    thyroid_medication_history: arrToStr(f.thyroid_medication_history),
+    thyroid_medication_other: f.thyroid_medication_other,
 
     // 肺部
     lung_discovery_date: f.lung_discovery_date || null,
@@ -859,7 +1121,62 @@ function buildRecordPayload() {
     lung_nodule_count: f.lung_nodule_count,
     lung_symptoms: arrToStr(f.lung_symptoms),
     lung_symptoms_other: f.lung_symptoms_other,
+    lung_cancer_history: arrToStr(f.lung_cancer_history),
+    lung_cancer_history_other: f.lung_cancer_history_other,
+    lung_family_history: arrToStr(f.lung_family_history),
+    lung_family_history_other: f.lung_family_history_other,
+    lung_medication_history: arrToStr(f.lung_medication_history),
+    lung_medication_other: f.lung_medication_other,
   }
+}
+
+function currentRecordSnapshot() {
+  return JSON.stringify({
+    patient: buildPatientPayload(),
+    record: buildRecordPayload(),
+    noduleTag: selectedTag.value
+  })
+}
+
+async function saveRecordIfNeeded() {
+  const snapshot = currentRecordSnapshot()
+  if (savedPatientId.value && savedRecordId.value && savedSnapshot.value === snapshot) {
+    await uploadRecordAssets(savedRecordId.value)
+    return {
+      patientId: savedPatientId.value,
+      recordId: savedRecordId.value,
+      reused: true
+    }
+  }
+
+  const patRes = await fetch('/api/b/patients', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(buildPatientPayload())
+  })
+  const patData = await patRes.json()
+  if (!patData.success) throw new Error('创建患者失败：' + (patData.message || ''))
+  const patientId = patData.data.id
+
+  const recPayload = { ...buildRecordPayload(), patient_id: patientId }
+  const recRes = await fetch(`/api/b/patients/${patientId}/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(recPayload)
+  })
+  const recData = await recRes.json()
+  if (!recData.success) throw new Error('保存档案失败：' + (recData.message || ''))
+  const recordId = recData.data?.id || recData.data?.record_id
+
+  savedPatientId.value = patientId
+  savedRecordId.value = recordId
+  savedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
+  savedSnapshot.value = snapshot
+  await uploadRecordAssets(recordId)
+
+  return { patientId, recordId, reused: false }
 }
 
 async function save() {
@@ -869,42 +1186,10 @@ async function save() {
   }
   saving.value = true
   try {
-    // 1. 创建患者
-    const patRes = await fetch('/api/b/patients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(buildPatientPayload())
-    })
-    const patData = await patRes.json()
-    if (!patData.success) {
-      toast('创建患者失败：' + (patData.message || ''))
-      return
-    }
-    const patientId = patData.data.id
-    toast('患者已创建，正在保存档案...')
-
-    // 2. 创建健康档案
-    const recPayload = { ...buildRecordPayload(), patient_id: patientId }
-    const recRes = await fetch(`/api/b/patients/${patientId}/records`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(recPayload)
-    })
-    const recData = await recRes.json()
-    if (!recData.success) {
-      toast('保存档案失败：' + (recData.message || ''))
-      return
-    }
-    toast('档案已保存！')
-    // 跳转到患者队列
-    setTimeout(() => {
-      if (props.embedded) emit('back')
-      else router.push('/patient')
-    }, 1200)
+    const result = await saveRecordIfNeeded()
+    toast(result.reused ? '档案已保存，无需重复提交' : '档案已保存，请确认后继续生成报告')
   } catch (e) {
-    toast('网络错误，请确认后端服务已启动')
+    toast(e.message || '网络错误，请确认后端服务已启动')
   } finally {
     saving.value = false
   }
@@ -916,59 +1201,80 @@ async function generateReport() {
     return
   }
   generating.value = true
+  reportJobMessage.value = '提交中...'
   try {
-    // 1. 创建患者
-    const patRes = await fetch('/api/b/patients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(buildPatientPayload())
-    })
-    const patData = await patRes.json()
-    if (!patData.success) {
-      toast('创建患者失败：' + (patData.message || ''))
-      return
-    }
-    const patientId = patData.data.id
-    toast('患者已创建，正在保存档案...')
+    const { recordId } = await saveRecordIfNeeded()
+    reportJobMessage.value = 'AI生成中...'
+    toast('报告生成任务已提交，AI处理中...')
 
-    // 2. 创建健康档案
-    const recPayload = { ...buildRecordPayload(), patient_id: patientId }
-    const recRes = await fetch(`/api/b/patients/${patientId}/records`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(recPayload)
-    })
-    const recData = await recRes.json()
-    if (!recData.success) {
-      toast('保存档案失败：' + (recData.message || ''))
-      return
-    }
-    const recordId = recData.data?.id || recData.data?.record_id
-    toast('档案已保存，正在生成健康报告（AI处理中，请稍候）...')
-
-    // 3. 生成报告
-    const rptRes = await fetch('/api/b/reports/generate', {
+    const jobRes = await fetch('/api/b/reports/generate-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ record_id: recordId })
     })
-    const rptData = await rptRes.json()
-    if (!rptData.success) {
-      toast('生成报告失败：' + (rptData.message || ''))
+    const jobData = await jobRes.json()
+    if (!jobData.success) {
+      toast('提交报告生成任务失败：' + (jobData.message || ''))
       return
     }
-    toast('健康报告已生成！正在跳转到报告审核页...')
+
+    const jobId = jobData.data?.job_id
+    if (!jobId) {
+      toast('提交报告生成任务失败：未返回任务ID')
+      return
+    }
+
+    let completed = false
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      await wait(attempt < 10 ? 2000 : 5000)
+      const statusRes = await fetch(`/api/b/reports/generate-jobs/${jobId}`, {
+        credentials: 'include'
+      })
+      const statusData = await statusRes.json()
+      if (!statusData.success) {
+        toast('查询报告生成状态失败：' + (statusData.message || ''))
+        return
+      }
+
+      const status = statusData.data?.status
+      const message = statusData.data?.message
+      if (status === 'queued') {
+        reportJobMessage.value = '排队中...'
+      } else if (status === 'running') {
+        reportJobMessage.value = 'AI生成中...'
+      }
+      if (message && attempt % 6 === 0) toast(message)
+
+      if (status === 'completed') {
+        completed = true
+        toast('健康报告已生成！正在跳转到报告审核页...')
+        break
+      }
+
+      if (status === 'failed') {
+        toast('生成报告失败：' + (message || 'AI生成失败'))
+        return
+      }
+    }
+
+    if (!completed) {
+      toast('报告仍在生成中，请稍后到报告审核页查看')
+    }
+
     setTimeout(() => {
       router.push('/patient?tab=review')
     }, 1500)
   } catch (e) {
-    toast('网络错误，请确认后端服务已启动')
+    toast(e.message || '网络错误，请确认后端服务已启动')
   } finally {
     generating.value = false
+    reportJobMessage.value = 'AI生成中...'
   }
+}
+
+function goPatientList() {
+  router.push('/patient?tab=queue')
 }
 </script>
 
@@ -1010,6 +1316,29 @@ async function generateReport() {
 
 .nodule-mini{border:1px solid #eef2f7;border-radius:10px;background:#fbfdff;padding:8px 10px;margin-top:8px}
 .nodule-mini-title{font-weight:950;color:#155eef;font-size:12px;margin-bottom:6px}
+.asset-sec{background:#f8fbff!important}
+.asset-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.asset-panel{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px;min-width:0}
+.asset-title{font-weight:950;color:#0f172a;font-size:13px}
+.asset-sub{color:#64748b;font-size:12px;line-height:1.5;margin:4px 0 10px}
+.asset-list{display:grid;gap:8px;margin-top:10px}
+.asset-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #eef2f7;border-radius:10px;background:#fbfdff;padding:8px 10px;min-width:0}
+.asset-row b{display:block;font-size:12px;color:#0f172a;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asset-row span{display:block;font-size:11px;color:#94a3b8;margin-top:2px}
+.asset-link{border:0;background:transparent;color:#155eef;font-weight:900;font-size:12px;cursor:pointer;padding:0}
+.asset-link:disabled{color:#cbd5e1;cursor:not-allowed}
+.asset-empty{border:1px dashed #dbe5f2;border-radius:10px;padding:10px;color:#94a3b8;font-size:12px;background:#fff}
+.tongue-h5-panel{border:1px solid #e6edf7;border-radius:10px;background:#fbfdff;padding:10px;display:grid;gap:10px}
+.tongue-h5-copy{display:flex;gap:8px;align-items:center;min-width:0}
+.tongue-h5-copy input{height:32px;border:1px solid #dbe5f2;border-radius:8px;background:#fff;padding:0 10px;color:#334155;font-size:12px;min-width:0;flex:1}
+.tongue-h5-body{display:grid;grid-template-columns:104px minmax(0,1fr);gap:10px;align-items:center}
+.tongue-qr{width:104px;height:104px;border:1px dashed #bfdbfe;border-radius:8px;background:#fff;display:grid;place-items:center;color:#94a3b8;font-size:12px;overflow:hidden}
+.tongue-qr img{width:100%;height:100%;object-fit:contain}
+.tongue-h5-help{display:grid;gap:5px;color:#64748b;font-size:12px;line-height:1.5}
+.tongue-h5-help b{color:#0f172a;font-size:12px}
+.tongue-diagnosis-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e6edf7}
+.tongue-status{font-size:12px;font-weight:850;color:#475569}
+.tongue-result{margin-top:8px;border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:8px 10px;color:#1e3a8a;font-size:12px;line-height:1.6;white-space:pre-line}
 .upload-zone{border:1px dashed #cbd5e1;border-radius:10px;padding:8px;text-align:center;color:#64748b;background:#fbfdff;font-size:12px}
 .file-card2{display:flex;align-items:center;gap:8px;border:1px solid #eef2f7;border-radius:10px;padding:8px 10px;background:#fff}
 .file-card2 .fi{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:950;color:#fff}
@@ -1103,6 +1432,8 @@ async function generateReport() {
 .pv-row{display:flex;justify-content:space-between;gap:10px;font-size:12px}
 .pv-row .k{color:#94a3b8;font-weight:850;white-space:nowrap}
 .pv-row .v{color:#0f172a;font-weight:900;text-align:right}
+.saved-card{border-color:#bfdbfe;background:#f8fbff}
+.saved-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 .progress .bar{height:10px;border-radius:999px;background:#eef2f7;overflow:hidden}
 .progress .fill{height:100%;background:linear-gradient(90deg,#155eef,#22c55e);border-radius:999px}
 .next-box{border:1px solid #eef2f7;background:#fbfdff;border-radius:12px;padding:10px}

@@ -125,6 +125,7 @@ def create_app():
     from routes.b_record_management import b_record_bp
     from routes.b_report_management import b_report_bp
     from routes.b_report_update import b_report_update_bp
+    from routes.b_tongue_diagnosis import b_tongue_bp
     from routes.c_patient_service import c_patient_bp
     from routes.c_auth_routes import c_auth_bp
     from routes.miniprogram_routes import miniprogram_bp  # 微信小程序路由
@@ -134,6 +135,7 @@ def create_app():
     app.register_blueprint(b_record_bp)
     app.register_blueprint(b_report_bp)
     app.register_blueprint(b_report_update_bp)  # 新增：报告审核相关API
+    app.register_blueprint(b_tongue_bp)
     app.register_blueprint(c_patient_bp)
     app.register_blueprint(c_auth_bp)
     app.register_blueprint(miniprogram_bp)  # 微信小程序接口
@@ -208,10 +210,21 @@ def create_app():
                 'db': m.group(3)
             }
         # 脱敏 LLM 配置状态（不返回 key）
-        llm_enabled = bool(os.getenv('OPENROUTER_API_KEY', '').strip())
+        llm_provider = os.getenv('LLM_PROVIDER', 'openrouter').strip().lower()
+        llm_model = (
+            os.getenv('DASHSCOPE_MODEL', 'qwen-plus')
+            if llm_provider == 'dashscope'
+            else os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-pro')
+        )
+        llm_enabled = bool(
+            os.getenv('DASHSCOPE_API_KEY', '').strip()
+            if llm_provider == 'dashscope'
+            else os.getenv('OPENROUTER_API_KEY', '').strip()
+        )
         llm_info = {
             'enabled': llm_enabled,
-            'model': os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-pro')
+            'provider': llm_provider,
+            'model': llm_model
         }
         return jsonify({
             'success': True,
@@ -251,6 +264,26 @@ def create_app():
                     db.session.execute(text("ALTER TABLE b_reports ADD COLUMN source_channel VARCHAR(50) DEFAULT 'b_end'"))
                     db.session.commit()
                     print("OK: Added missing column b_reports.source_channel")
+
+            # B端：补齐健康档案舌诊结果字段
+            if 'b_health_records' in inspector.get_table_names():
+                cols = {c.get('name') for c in inspector.get_columns('b_health_records')}
+                if 'tongue_check_result_id' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN tongue_check_result_id VARCHAR(80)"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.tongue_check_result_id")
+                if 'tongue_result_raw' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN tongue_result_raw TEXT"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.tongue_result_raw")
+                if 'tongue_result_summary' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN tongue_result_summary TEXT"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.tongue_result_summary")
+                if 'tongue_checked_at' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN tongue_checked_at TIMESTAMP"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.tongue_checked_at")
 
             # C端：确保核心表存在（create_all会建表，但不会补列；C端目前未新增列，这里仅做存在性提示）
             for t in ('c_patients', 'c_health_records', 'c_reports'):
@@ -332,5 +365,3 @@ if __name__ == '__main__':
     print("API Health Check: http://localhost:5000/api/health")
     print("="*60 + "\n")
     app.run(host='0.0.0.0', port=5000, debug=True)
-
- 

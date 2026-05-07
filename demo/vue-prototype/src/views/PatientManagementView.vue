@@ -164,7 +164,7 @@
                   <td class="muted">{{ p.owner }}</td>
                   <td>
                     <div style="display:flex;gap:8px">
-                      <button class="tbl-act" type="button" @click.stop="setSubTab('review')">查看</button>
+                      <button class="tbl-act" type="button" @click.stop="openPatientWorkspace(p)">查看</button>
                       <button class="tbl-act" type="button" @click.stop="setSubTab('follow')">随访</button>
                     </div>
                   </td>
@@ -281,6 +281,193 @@
       <!-- record tab：患者建档（表单） -->
       <div v-else-if="subTab === 'record'" class="pm-record">
         <RecordView :embedded="true" @back="backToQueue" />
+      </div>
+
+      <!-- detail tab：患者全流程管理工作台 -->
+      <div v-else-if="subTab === 'detail'" class="patient-workspace">
+        <section class="workspace-hero card">
+          <div class="workspace-id">
+            <button class="btn-link-lite" type="button" @click="setSubTab('queue')">返回队列</button>
+            <div>
+              <div class="workspace-name">{{ activePatient.name || '未选择患者' }}</div>
+              <div class="workspace-sub">{{ activePatient.gender }} · {{ activePatient.age }}岁 · {{ activePatient.phoneMasked }} · {{ activePatient.nodules }}</div>
+            </div>
+          </div>
+          <div class="workspace-badges">
+            <span class="pill" :data-tone="activePatient.riskTone">{{ activePatient.risk || '未评估' }}</span>
+            <span class="status-tag" :data-s="statusKey(activePatient)">{{ statusLabel(activePatient) }}</span>
+          </div>
+        </section>
+
+        <section class="workspace-flow card">
+          <div v-for="step in patientFlowSteps" :key="step.key" class="workspace-flow-node" :data-state="step.state">
+            <span class="flow-dot">{{ step.no }}</span>
+            <span>{{ step.label }}</span>
+          </div>
+        </section>
+
+        <div class="workspace-grid">
+          <section class="workspace-main">
+            <section class="flow-section card">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">一、患者档案与资料管理</div>
+                  <div class="section-sub">基础信息、病史、检查资料、影像报告和手机舌诊入口统一维护。</div>
+                </div>
+                <button class="btn" type="button" @click="patientEditMode = !patientEditMode">{{ patientEditMode ? '完成编辑' : '编辑档案' }}</button>
+              </div>
+              <div class="profile-grid">
+                <label class="profile-field"><span>姓名</span><input v-model="activePatient.name" :readonly="!patientEditMode"></label>
+                <label class="profile-field"><span>性别</span><input v-model="activePatient.gender" :readonly="!patientEditMode"></label>
+                <label class="profile-field"><span>年龄</span><input v-model="activePatient.age" :readonly="!patientEditMode"></label>
+                <label class="profile-field"><span>来源</span><input v-model="activePatient.source" :readonly="!patientEditMode"></label>
+                <label class="profile-field"><span>负责人</span><input v-model="activePatient.owner" :readonly="!patientEditMode"></label>
+                <label class="profile-field"><span>结节类型</span><input v-model="activePatient.nodules" :readonly="!patientEditMode"></label>
+              </div>
+              <div class="profile-note">
+                <label class="profile-field wide"><span>病史/既往史/体征</span><textarea v-model="activePatient.profileNote" :readonly="!patientEditMode"></textarea></label>
+              </div>
+
+              <div class="upload-grid">
+                <section class="upload-panel">
+                  <div class="upload-title">影像报告</div>
+                  <div class="upload-sub">支持 PDF、图片等文件；后续可接入结构化解析。</div>
+                  <input ref="imagingInputRef" type="file" multiple accept=".pdf,image/*" style="display:none" @change="handleImagingUpload">
+                  <button class="primary" type="button" @click="imagingInputRef?.click()">上传影像报告</button>
+                  <div class="file-list">
+                    <div v-for="file in activePatient.assets?.imagingReports || []" :key="file.id" class="file-row">
+                      <div><b>{{ file.name }}</b><span>{{ file.uploadedAt }} · {{ file.uploader }}</span></div>
+                      <button class="btn-link-lite" type="button" @click="removeAsset('imagingReports', file.id)">删除</button>
+                    </div>
+                    <div v-if="!(activePatient.assets?.imagingReports || []).length" class="empty-line">暂无影像报告</div>
+                  </div>
+                </section>
+
+                <section class="upload-panel">
+                  <div class="upload-title">手机舌诊 H5</div>
+                  <div class="upload-sub">B端只生成手机可访问的舌诊链接；请用患者手机或健康管理师手机打开，电脑和平板不作为采集终端。</div>
+                  <div class="tongue-h5-panel">
+                    <div class="tongue-h5-copy">
+                      <input :value="activePatient.tongueMobileOpenUrl || activePatient.tongueH5Url || '生成后显示手机舌诊链接'" readonly>
+                      <button class="btn-link-lite" type="button" @click="copyWorkspaceTongueLink" :disabled="!(activePatient.tongueMobileOpenUrl || activePatient.tongueH5Url)">复制链接</button>
+                    </div>
+                    <div class="tongue-h5-body">
+                      <div class="tongue-qr">
+                        <img v-if="workspaceTongueQrUrl" :src="workspaceTongueQrUrl" alt="舌诊H5二维码">
+                        <span v-else>生成二维码</span>
+                      </div>
+                      <div class="tongue-h5-help">
+                        <b>手机打开提示</b>
+                        <span>生成链接后，用手机扫码或复制链接发送给患者；进入第三方 H5 后在手机内完成舌面图、舌下图采集。</span>
+                        <span>检测完成后，结果通过报告回调或报告检索回流到本系统。</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tongue-diagnosis-bar">
+                    <button
+                      class="primary"
+                      type="button"
+                      @click="startWorkspaceTongueDiagnosis"
+                      :disabled="tongueSubmitting || !activePatient.workspaceRecordId"
+                    >
+                      {{ tongueSubmitting ? '提交中...' : workspaceTongueActionLabel }}
+                    </button>
+                    <span v-if="activePatient.tongueTask" class="tongue-status">{{ workspaceTongueStatusLabel }}</span>
+                  </div>
+                  <div v-if="activePatient.tongueTask?.tongue_feature" class="tongue-result">
+                    {{ activePatient.tongueTask.tongue_feature }}
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section class="flow-section card">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">二、风险评估</div>
+                  <div class="section-sub">按结节分级、大小、病史和资料完整度拆分展示，避免只给一个笼统结论。</div>
+                </div>
+                <span class="pill" :data-tone="computedRisk.tone">{{ computedRisk.level }}</span>
+              </div>
+              <div class="risk-layers">
+                <div v-for="item in riskLayerItems" :key="item.key" class="risk-layer" :data-tone="item.tone">
+                  <div class="risk-layer-top"><b>{{ item.label }}</b><span>{{ item.level }}</span></div>
+                  <p>{{ item.reason }}</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="flow-section card">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">三、健康报告意见</div>
+                  <div class="section-sub">AI意见作为可迭代草稿，支持再次生成、人工编辑、提交审核和历史版本留痕。</div>
+                </div>
+                <div class="section-actions">
+                  <button class="btn" type="button" @click="regenerateAdviceForActive" :disabled="adviceGenerating">{{ adviceGenerating ? '生成中...' : '再次生成建议' }}</button>
+                  <button class="primary" type="button" @click="saveAdviceDraft">保存草稿</button>
+                  <button class="primary" type="button" @click="submitAdviceReview">提交审核</button>
+                </div>
+              </div>
+              <div class="advice-status-row">
+                <span class="status-tag" :data-s="activeAdvice.status">{{ adviceStatusLabel(activeAdvice.status) }}</span>
+                <span class="muted">当前版本：V{{ activeAdvice.version || 1 }} · {{ activeAdvice.updatedAt || '未保存' }}</span>
+              </div>
+              <textarea class="advice-editor" v-model="activeAdvice.content" placeholder="生成后的建议会出现在这里，也可以人工编辑。"></textarea>
+              <div class="version-list">
+                <div v-for="v in activeAdvice.history || []" :key="v.id" class="version-row">
+                  <span>V{{ v.version }}</span><b>{{ adviceStatusLabel(v.status) }}</b><span>{{ v.savedAt }}</span>
+                </div>
+                <div v-if="!(activeAdvice.history || []).length" class="empty-line">暂无历史版本</div>
+              </div>
+            </section>
+
+            <section class="flow-section card">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">四、最终健康报告</div>
+                  <div class="section-sub">只有审核通过的建议才能写入最终报告，与草稿意见明确区分。</div>
+                </div>
+                <button class="primary" type="button" @click="approveAdviceToFinal" :disabled="activeAdvice.status !== 'reviewing'">审核通过并写入最终报告</button>
+              </div>
+              <div v-if="activePatient.finalReport?.content" class="final-report-box">
+                <div class="final-report-meta">已归档 · {{ activePatient.finalReport.archivedAt }} · 来源 V{{ activePatient.finalReport.version }}</div>
+                <p>{{ activePatient.finalReport.content }}</p>
+              </div>
+              <div v-else class="empty-line">暂无最终报告。请先生成/编辑建议并完成审核。</div>
+            </section>
+          </section>
+
+          <aside class="workspace-side">
+            <section class="card side-flow-card">
+              <div class="section-title">随访计划与后续管理</div>
+              <div class="follow-plan-box">
+                <label class="profile-field"><span>复查周期</span><select v-model="activePatient.followPlan.cycle"><option>3个月</option><option>6个月</option><option>12个月</option></select></label>
+                <label class="profile-field"><span>触达方式</span><select v-model="activePatient.followPlan.channel"><option>小程序</option><option>电话</option><option>企微</option><option>小程序+电话</option></select></label>
+                <label class="profile-field wide"><span>随访重点</span><textarea v-model="activePatient.followPlan.note"></textarea></label>
+                <button class="primary full" type="button" @click="saveFollowPlan">保存随访计划</button>
+              </div>
+            </section>
+
+            <section class="card side-flow-card">
+              <div class="section-title">管理记录</div>
+              <div class="mgmt-log">
+                <div v-for="log in activePatient.managementLogs || []" :key="log.id" class="mgmt-log-row">
+                  <b>{{ log.action }}</b>
+                  <span>{{ log.at }} · {{ log.by }}</span>
+                  <p v-if="log.note">{{ log.note }}</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="card side-flow-card">
+              <div class="section-title">舌诊 H5 接入位</div>
+              <div class="integration-note">
+                当前流程：B端生成 H5 单点登录链接 → 患者手机或健康管理师手机打开 → 在手机 H5 内拍照采集 → 结果通过报告回调或报告检索回流。
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
 
       <!-- followup-plan tab：随访计划制定（展示计划内容） -->
@@ -1144,9 +1331,10 @@
                     <td><span class="pill" :data-tone="r.riskTone">{{ r.risk }}</span></td>
                     <td class="muted">{{ r.owner }}</td>
                     <td>
-                      <div style="display:flex;gap:8px">
-                        <button class="tbl-act" type="button" @click.stop="openAudit(r)" :disabled="r.reportStatus === '已审核'">{{ r.reportStatus === '已审核' ? reportTerms.reviewed : reportTerms.reviewAction }}</button>
+                      <div class="rp-row-actions">
                         <button class="tbl-act" type="button" @click.stop="viewReport(r.id)">查看</button>
+                        <button class="tbl-act" type="button" @click.stop="openAudit(r)">{{ r.reportStatus === '已审核' ? '复审/编辑' : reportTerms.reviewAction }}</button>
+                        <button class="tbl-act" type="button" @click.stop="downloadReport(r.id)">下载</button>
                       </div>
                     </td>
                   </tr>
@@ -1210,10 +1398,11 @@
               <section class="card">
                 <div class="card-head"><div class="card-title">快捷操作</div></div>
                 <div class="rp-actions">
-                  <button class="primary" type="button" @click="openAudit(rpActive)" :disabled="rpActive.reportStatus === '已审核'">
-                    {{ rpActive.reportStatus === '已审核' ? reportTerms.reviewed : reportTerms.auditAi }}
+                  <button class="primary" type="button" @click="openAudit(rpActive)">
+                    {{ rpActive.reportStatus === '已审核' ? '复审/编辑报告' : reportTerms.auditAi }}
                   </button>
                   <button class="btn" type="button" @click="viewReport(rpActive.id)">查看报告</button>
+                  <button class="btn" type="button" @click="downloadReport(rpActive.id)">下载报告</button>
                   <button class="btn" type="button">{{ reportTerms.createTask }}</button>
                 </div>
               </section>
@@ -1441,12 +1630,16 @@
         <button class="rp-modal-close" type="button" @click="rpAuditId=''">✕</button>
       </div>
       <div class="rp-modal-body">
+        <div v-if="rpAuditStatus" class="rp-audit-state">
+          <span class="status-tag" :data-s="rpAuditStatus">{{ adviceStatusLabel(rpAuditStatus) }}</span>
+          <span class="muted">当前版本：V{{ rpAuditVersion || 1 }} · 已审核报告也可重新编辑并再次写入最终报告</span>
+        </div>
         <div class="rp-audit-label">{{ reportTerms.summaryLabel }}</div>
         <textarea class="rp-audit-ta" v-model="rpAuditPara1" rows="5"></textarea>
         <div class="rp-audit-label" style="margin-top:14px">{{ reportTerms.adviceLabel }}</div>
         <textarea class="rp-audit-ta" v-model="rpAuditPara2" rows="5"></textarea>
         <div style="display:flex;gap:8px;margin-top:16px">
-          <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : reportTerms.approveAction }}</button>
+          <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : (rpAuditWasReviewed ? '重新审核通过' : reportTerms.approveAction) }}</button>
           <button class="btn" type="button" @click="rpAuditId=''">取消</button>
         </div>
       </div>
@@ -1462,6 +1655,7 @@ import { getStoredScenario } from '../config/scenarios'
 
 const router = useRouter()
 const route = useRoute()
+const toast = { show: (msg) => window.alert(msg) }
 const scenario = computed(() => getStoredScenario())
 const isCheckupScenario = computed(() => scenario.value.key === 'checkup')
 const reportTerms = computed(() => {
@@ -1521,6 +1715,7 @@ const subTab = ref('queue')
 // 子页定义（URL query.tab -> subTab）
 const subTabs = [
   { key: 'queue', label: '患者队列' },
+  { key: 'detail', label: '患者详情' },
   { key: 'record', label: '档案与报告' },
   { key: 'review', label: isCheckupScenario.value ? '体检报告确认' : '健康报告审核' },
   { key: 'followup-plan', label: '随访计划' },
@@ -1561,6 +1756,10 @@ const followRiskFilter = ref('')
 const followStageFilter = ref('')
 const showAllTimeline = ref(false)
 const reviewReject = ref(false)
+const patientEditMode = ref(false)
+const adviceGenerating = ref(false)
+const tongueSubmitting = ref(false)
+const imagingInputRef = ref(null)
 const activeAssistant = ref('hlp')
 const assistPlanZoneRef = ref(null)
 
@@ -2914,11 +3113,10 @@ async function loadReports() {
   if (rpLoaded.value || rpLoading.value) return
   rpLoading.value = true
   try {
-    const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
-    const data = await res.json()
-    if (data.success) {
-      rpList.value = (data.data?.reports || [])
-        .filter(r => r.risk_level && r.risk_level !== '—')
+      const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
+      const data = await res.json()
+      if (data.success) {
+        rpList.value = (data.data?.reports || [])
         .map((r) => {
           const patient = r.patient || {}
           const record = r.record || {}
@@ -2942,12 +3140,13 @@ async function loadReports() {
             nodules: noduleTypeLabel(nType),
             noduleKey: nType,
             uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
-            aiStatus: r.status === 'finalized' ? '已完成' : '未完成',
-            risk: r.risk_level || '—',
+            aiStatus: r.status === 'finalized' || r.status === 'published' ? '已完成' : '待审核',
+            risk: r.risk_level || '未评估',
             riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
             owner: r.created_by_name || scenario.value.defaultOwner,
-            summary: r.summary || '',
-            reportStatus: r.status === 'finalized' ? '已完成' : '待审核',
+            summary: r.report_summary || r.summary || '',
+            aiReadSummary: r.imaging_conclusion || r.ai_read_summary || '',
+            reportStatus: r.status === 'finalized' || r.status === 'published' ? '已审核' : '待审核',
             reportHtml: '',
             flow: makeReportFlow(r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '', r.status === 'finalized')
           })
@@ -2986,37 +3185,77 @@ const rpViewVisible = ref(false)
 const rpAuditId = ref('')
 const rpAuditPara1 = ref('')
 const rpAuditPara2 = ref('')
+const rpAuditStatus = ref('')
+const rpAuditVersion = ref(1)
+const rpAuditWasReviewed = ref(false)
 
-function openAudit(r) {
+async function openAudit(r) {
   rpAuditId.value = r.id
   rpAuditPara1.value = r.summary || `暂无${reportTerms.value.summaryLabel}`
   rpAuditPara2.value = r.aiReadSummary || `暂无${reportTerms.value.adviceLabel}`
+  rpAuditStatus.value = ''
+  rpAuditVersion.value = 1
+  rpAuditWasReviewed.value = r.reportStatus === '已审核'
   rpActiveId.value = r.id
+  if (!String(r.id || '').startsWith('r')) {
+    try {
+      const data = await apiJson(`/api/b/reports/${r.id}/advice`)
+      const advice = normalizeAdvicePayload(data.advice, {})
+      rpAuditPara2.value = advice.content || rpAuditPara2.value
+      rpAuditStatus.value = advice.status || ''
+      rpAuditVersion.value = advice.version || 1
+
+      const detail = await apiJson(`/api/b/reports/${r.id}`)
+      rpAuditPara1.value = detail.report_summary || detail.summary || rpAuditPara1.value
+      r.summary = rpAuditPara1.value
+      r.aiReadSummary = rpAuditPara2.value
+    } catch (e) {
+      console.error('加载报告建议失败', e)
+    }
+  }
 }
 
 async function finalizeReport(reportId) {
   if (!reportId) return
   rpFinalizing.value = true
   try {
-    const res = await fetch(`/api/b/reports/${reportId}/finalize`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ summary: rpAuditPara1.value, ai_read_summary: rpAuditPara2.value })
-    })
-    const data = await res.json()
-    if (data.success) {
+    if (!String(reportId || '').startsWith('r')) {
+      await apiJson(`/api/b/reports/${reportId}/advice`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: rpAuditPara2.value, preserve_history: true })
+      })
+      const data = await apiJson(`/api/b/reports/${reportId}/advice/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: rpAuditPara2.value, summary: rpAuditPara1.value })
+      })
       const r = rpList.value.find(x => x.id === reportId)
-      if (r) r.reportStatus = '已审核'
+      if (r) {
+        r.reportStatus = '已审核'
+        r.aiStatus = '已完成'
+        r.summary = rpAuditPara1.value
+        r.aiReadSummary = rpAuditPara2.value
+        r.flow = makeReportFlow(r.uploadAt, true)
+      }
+      rpAuditStatus.value = data.advice?.status || 'archived'
+      rpAuditVersion.value = data.advice?.version || rpAuditVersion.value
       rpAuditId.value = ''
+      rpLoaded.value = false
       await loadReports()
-    } else {
-      // mock fallback: mark as approved locally
-      const r = rpList.value.find(x => x.id === reportId)
-      if (r) r.reportStatus = '已审核'
-      rpAuditId.value = ''
+      return
     }
   } catch (e) {
+    console.error('审核报告失败', e)
+    if (!String(reportId || '').startsWith('r')) {
+      toast?.show(e.message || '审核失败')
+      return
+    }
+  } finally {
+    rpFinalizing.value = false
+  }
+
+  try {
     const r = rpList.value.find(x => x.id === reportId)
     if (r) r.reportStatus = '已审核'
     rpAuditId.value = ''
@@ -3055,8 +3294,15 @@ async function viewReport(reportId) {
   try {
     const res = await fetch(`/api/b/reports/${reportId}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success && (data.data?.report_html || data.data?.summary)) {
-      rpViewHtml.value = data.data?.report_html || data.data?.summary
+    if (data.success && data.data?.report_html) {
+      rpViewHtml.value = data.data.report_html
+      rpViewVisible.value = true
+      return
+    }
+    if (data.success && (data.data?.imaging_conclusion || data.data?.report_summary || data.data?.summary)) {
+      const summary = data.data?.report_summary || data.data?.summary || '暂无'
+      const advice = data.data?.imaging_conclusion || data.data?.ai_read_summary || '暂无'
+      rpViewHtml.value = `<h2>${scenario.value.reportLabel}（报告内容预览）</h2><p><b>报告编号：</b>${data.data?.report_code || reportId} &nbsp; <b>状态：</b>${data.data?.status || '—'}</p><h3>${reportTerms.value.summaryLabel}</h3><p>${summary}</p><h3>${reportTerms.value.adviceLabel}</h3><p>${advice}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">最后审核时间：${data.data?.reviewed_at || data.data?.updated_at || '—'}</p>`
       rpViewVisible.value = true
       return
     }
@@ -3068,6 +3314,14 @@ async function viewReport(reportId) {
     rpViewHtml.value = `<h2>${scenario.value.reportLabel}</h2><p><b>患者：</b>${mockR.name} &nbsp; <b>结节类型：</b>${mockR.nodules} &nbsp; <b>风险等级：</b>${mockR.risk}</p><h3>${reportTerms.value.summaryLabel}</h3><p>${rpAuditPara1.value || mockR.summary || '暂无'}</p><h3>${reportTerms.value.adviceLabel}</h3><p>${rpAuditPara2.value || mockR.aiReadSummary || '暂无'}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">报告生成时间：${mockR.uploadAt}</p>`
     rpViewVisible.value = true
   }
+}
+
+function downloadReport(reportId) {
+  if (!reportId || String(reportId).startsWith('r')) {
+    toast?.show('示例报告暂无可下载文件')
+    return
+  }
+  window.open(`/api/b/reports/${reportId}/export-pdf`, '_blank')
 }
 
 const rpFilteredList = computed(() => {
@@ -3185,21 +3439,21 @@ function stageActions(p) {
   if (k === 'gen') {
     return [
       { label: isCheckupScenario.value ? '生成解读' : '生成报告', primary: true, onClick: () => toast?.show(`生成${scenario.value.reportLabel}`) },
-      { label: '编辑档案', primary: false, onClick: () => goRecord() },
+      { label: '全流程管理', primary: false, onClick: () => openPatientWorkspace(p) },
     ]
   }
   if (k === 'review') {
     return [
-      { label: isCheckupScenario.value ? '总检确认' : '审核报告', primary: true, onClick: () => setSubTab('review') },
-      { label: '退回修改', primary: false, onClick: () => toast?.show('退回修改') },
+      { label: isCheckupScenario.value ? '总检确认' : '审核报告', primary: true, onClick: () => openPatientWorkspace(p) },
+      { label: '报告列表', primary: false, onClick: () => setSubTab('review') },
     ]
   }
   if (k === 'plan') {
-    return [{ label: '制定随访计划', primary: true, onClick: () => setSubTab('followup-plan') }]
+    return [{ label: '制定随访计划', primary: true, onClick: () => openPatientWorkspace(p) }]
   }
   if (k === 'follow') {
     return [
-      { label: '查看随访记录', primary: true, onClick: () => setSubTab('follow') },
+      { label: '查看全流程', primary: true, onClick: () => openPatientWorkspace(p) },
       { label: '人工接管', primary: false, onClick: () => toast?.show('人工接管') },
     ]
   }
@@ -3414,7 +3668,7 @@ async function loadPatients() {
     const res = await fetch('/api/b/patients?per_page=50', { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
-      const items = (data.data?.items || data.data || []).filter(p => p.risk_level && p.risk_level !== '—')
+      const items = (data.data?.items || data.data || [])
       queue.value = items.map(p => ({
         id: p.id,
         _apiId: p.id,
@@ -3512,6 +3766,416 @@ const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === '
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
 })
+
+function nowText() {
+  return new Date().toLocaleString('zh-CN', { hour12: false })
+}
+
+function normalizeAdvicePayload(advice, fallback = {}) {
+  return {
+    version: advice?.version || fallback.version || 1,
+    status: advice?.status || fallback.status || 'draft',
+    updatedAt: advice?.updated_at || advice?.updatedAt || fallback.updatedAt || '',
+    content: advice?.content || fallback.content || '',
+    history: (advice?.history || fallback.history || []).map((h, idx) => ({
+      id: h.id || `${h.saved_at || h.savedAt || idx}-${h.version || idx}`,
+      version: h.version || 1,
+      status: h.status || 'draft',
+      content: h.content || '',
+      savedAt: h.saved_at || h.savedAt || ''
+    }))
+  }
+}
+
+function normalizeImagingReport(item) {
+  return {
+    id: item.id,
+    name: item.file_name || item.name || '影像报告',
+    size: item.file_size || item.size || 0,
+    uploadedAt: item.uploaded_at || item.uploadedAt || '',
+    uploader: item.uploader_name || item.uploaded_by || scenario.value.defaultOwner,
+    type: item.file_type || item.type || 'file',
+    backend: true
+  }
+}
+
+async function apiJson(url, options = {}) {
+  const res = await fetch(url, { credentials: 'include', ...options })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || data.success === false) throw new Error(data.message || `请求失败：${res.status}`)
+  return data.data ?? data
+}
+
+function makeDefaultAdvice(p) {
+  return {
+    version: 1,
+    status: 'draft',
+    updatedAt: '',
+    content: p?.aiReadSummary || p?.report?.summary || '',
+    history: []
+  }
+}
+
+function ensurePatientWorkflow(p) {
+  if (!p || !p.id) return p
+  p.profileNote = p.profileNote || '既往史、家族史、症状、体征信息待完善。'
+  p.assets = p.assets || {}
+  p.assets.imagingReports = Array.isArray(p.assets.imagingReports) ? p.assets.imagingReports : []
+  p.tongueTask = p.tongueTask || null
+  p.tongueH5Url = p.tongueH5Url || p.tongueTask?.h5_url || ''
+  p.tongueMobileOpenUrl = p.tongueMobileOpenUrl || ''
+  p.adviceDraft = p.adviceDraft || makeDefaultAdvice(p)
+  p.finalReport = p.finalReport || { content: '', archivedAt: '', version: '' }
+  p.followPlan = p.followPlan || {
+    cycle: p.planTask?.cycle || (p.riskTone === 'r' ? '3个月' : p.riskTone === 'o' ? '6个月' : '12个月'),
+    channel: p.planTask?.channel || '小程序',
+    note: `${p.nodules || '结节'}随访，关注分级、大小、症状变化和资料补充。`
+  }
+  p.managementLogs = Array.isArray(p.managementLogs) ? p.managementLogs : [
+    { id: `${p.id}-log-1`, at: '建档后', by: p.owner || scenario.value.defaultOwner, action: '建立患者档案', note: p.nodules || '' },
+    { id: `${p.id}-log-2`, at: '待处理', by: '系统', action: '等待报告意见审核', note: statusLabel(p) },
+  ]
+  return p
+}
+
+watch(
+  () => activePatient.value?.id,
+  () => ensurePatientWorkflow(activePatient.value),
+  { immediate: true }
+)
+
+async function openPatientWorkspace(p) {
+  if (p?.id) activePatientId.value = p.id
+  const current = ensurePatientWorkflow(p || activePatient.value)
+  setSubTab('detail')
+  await hydratePatientWorkspace(current)
+}
+
+async function hydratePatientWorkspace(p) {
+  if (!p?._apiId) return
+  p.workspaceLoading = true
+  try {
+    const records = await apiJson(`/api/b/patients/${p._apiId}/records`)
+    const latestRecord = (Array.isArray(records) ? records : [])
+      .slice()
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
+    if (latestRecord?.id) {
+      p.workspaceRecordId = latestRecord.id
+      const imaging = await apiJson(`/api/b/records/${latestRecord.id}/imaging-reports`)
+      p.assets.imagingReports = (imaging.items || []).map(normalizeImagingReport)
+      const tongue = await apiJson(`/api/b/tongue-diagnosis/tasks/by-record/${latestRecord.id}`)
+      p.tongueTask = (tongue.items || [])[0] || null
+      p.tongueH5Url = p.tongueTask?.h5_url || p.tongueH5Url || ''
+      p.tongueMobileOpenUrl = p.tongueTask?.mobile_open_url || p.tongueMobileOpenUrl || ''
+    }
+
+    const reports = await apiJson(`/api/b/reports?patient_id=${p._apiId}&per_page=20`)
+    const latestReport = (reports.reports || [])[0]
+    if (latestReport?.id) {
+      p.workspaceReportId = latestReport.id
+      p.risk = latestReport.risk_level || p.risk
+      p.riskTone = latestReport.risk_level === '高风险' ? 'r' : latestReport.risk_level === '中风险' ? 'o' : latestReport.risk_level === '低风险' ? 'g' : p.riskTone
+      const advice = await apiJson(`/api/b/reports/${latestReport.id}/advice`)
+      p.adviceDraft = normalizeAdvicePayload(advice.advice, p.adviceDraft)
+      if (latestReport.status === 'finalized' || latestReport.status === 'published' || p.adviceDraft.status === 'archived') {
+        p.finalReport = {
+          content: p.adviceDraft.content || latestReport.imaging_conclusion || latestReport.report_summary || '',
+          archivedAt: latestReport.reviewed_at || p.adviceDraft.updatedAt || '',
+          version: p.adviceDraft.version || 1
+        }
+        p.stage = 'plan'
+      }
+    }
+  } catch (e) {
+    console.error('加载患者工作台失败', e)
+  } finally {
+    p.workspaceLoading = false
+  }
+}
+
+const activeAdvice = computed(() => {
+  const p = ensurePatientWorkflow(activePatient.value)
+  return p?.adviceDraft || makeDefaultAdvice(p)
+})
+
+const workspaceTongueActionLabel = computed(() => {
+  const task = activePatient.value?.tongueTask
+  if (task?.status === 'h5_sso_created') return '重新打开舌诊 H5'
+  if (task?.status === 'completed') return '已完成舌诊'
+  return '打开舌诊 H5'
+})
+
+const workspaceTongueStatusLabel = computed(() => {
+  const status = activePatient.value?.tongueTask?.status
+  const map = {
+    h5_sso_created: 'H5已生成',
+    completed: '舌诊已完成',
+    failed: '检测失败',
+    waiting_inquiry: '待完成'
+  }
+  return map[status] || status || ''
+})
+
+const workspaceTongueQrUrl = computed(() => {
+  const url = activePatient.value?.tongueMobileOpenUrl || activePatient.value?.tongueH5Url || ''
+  if (!url) return ''
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(url)}`
+})
+
+function adviceStatusLabel(status) {
+  const map = {
+    draft: '草稿',
+    reviewing: '待审核',
+    approved: '审核通过',
+    archived: '已写入最终报告',
+  }
+  return map[status] || '草稿'
+}
+
+const patientFlowSteps = computed(() => {
+  const p = ensurePatientWorkflow(activePatient.value)
+  const adviceStatus = p?.adviceDraft?.status || 'draft'
+  const hasFinal = !!p?.finalReport?.content
+  const hasPlan = !!p?.followPlan?.note
+  const nodes = [
+    { key: 'archive', no: 1, label: '档案' },
+    { key: 'risk', no: 2, label: '评估' },
+    { key: 'advice', no: 3, label: '建议' },
+    { key: 'review', no: 4, label: '审核' },
+    { key: 'final', no: 5, label: '最终报告' },
+    { key: 'follow', no: 6, label: '随访管理' },
+  ]
+  const current = hasFinal && hasPlan ? 5 : hasFinal ? 4 : adviceStatus === 'reviewing' ? 3 : 2
+  return nodes.map((n, idx) => ({ ...n, state: idx < current ? 'done' : idx === current ? 'current' : 'todo' }))
+})
+
+const computedRisk = computed(() => {
+  const p = activePatient.value || {}
+  if (p.riskTone === 'r' || p.risk === '高风险') return { level: '高风险', tone: 'r' }
+  if (p.riskTone === 'o' || p.risk === '中风险') return { level: '中风险', tone: 'o' }
+  if (p.riskTone === 'g' || p.risk === '低风险') return { level: '低风险', tone: 'g' }
+  return { level: '待评估', tone: 'g' }
+})
+
+const riskLayerItems = computed(() => {
+  const p = ensurePatientWorkflow(activePatient.value)
+  const completenessRisk = (p.assets?.imagingReports || []).length ? { level: '资料较完整', tone: 'g' } : { level: '资料缺口', tone: 'o' }
+  const tongueRisk = p.tongueTask?.status === 'completed'
+    ? { level: '舌诊已回流', tone: 'g' }
+    : p.tongueH5Url
+      ? { level: 'H5链接已生成', tone: 'g' }
+      : { level: '待生成手机链接', tone: 'o' }
+  return [
+    { key: 'nodule', label: '结节分层', level: computedRisk.value.level, tone: computedRisk.value.tone, reason: `${p.nodules || '结节'}当前标记为${computedRisk.value.level}，需结合分级、大小、数量和症状复核。` },
+    { key: 'material', label: '资料完整度', level: completenessRisk.level, tone: completenessRisk.tone, reason: (p.assets?.imagingReports || []).length ? '已上传影像报告，可进入报告解析/复核。' : '缺少原始影像报告，AI只能基于表单生成初步建议。' },
+    { key: 'history', label: '病史风险', level: p.profileNote?.includes('家族') ? '需关注' : '常规', tone: p.profileNote?.includes('家族') ? 'o' : 'g', reason: p.profileNote || '病史信息待完善。' },
+    { key: 'tongue', label: '舌诊资料', level: tongueRisk.level, tone: tongueRisk.tone, reason: 'B端生成手机H5链接，由患者手机或健康管理师手机完成采集；结果回流后写入档案和报告。' },
+  ]
+})
+
+function addManagementLog(action, note = '') {
+  const p = ensurePatientWorkflow(activePatient.value)
+  p.managementLogs = p.managementLogs || []
+  p.managementLogs.unshift({ id: `${Date.now()}-${Math.random()}`, at: nowText(), by: p.owner || scenario.value.defaultOwner, action, note })
+}
+
+async function handleImagingUpload(event) {
+  const p = ensurePatientWorkflow(activePatient.value)
+  const files = Array.from(event.target.files || [])
+  if (!files.length) return
+  try {
+    if (p.workspaceRecordId) {
+      const form = new FormData()
+      files.forEach(file => form.append('imaging_reports', file))
+      const data = await apiJson(`/api/b/records/${p.workspaceRecordId}/imaging-reports`, { method: 'POST', body: form })
+      const existing = (p.assets.imagingReports || []).filter(x => !x.backend)
+      p.assets.imagingReports = [...(data.items || []).map(normalizeImagingReport), ...existing]
+    } else {
+      files.forEach(file => {
+        p.assets.imagingReports.unshift({
+          id: `${Date.now()}-${file.name}-${Math.random()}`,
+          name: file.name,
+          size: file.size,
+          uploadedAt: nowText(),
+          uploader: p.owner || scenario.value.defaultOwner,
+          type: file.type || 'file'
+        })
+      })
+    }
+    addManagementLog('上传影像报告', files.map(f => f.name).join('、'))
+  } catch (e) {
+    toast?.show(e.message || '影像报告上传失败')
+  } finally {
+    event.target.value = ''
+  }
+}
+
+async function startWorkspaceTongueDiagnosis() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  if (!p._apiId || !p.workspaceRecordId) {
+    toast?.show('请先保存患者档案，再发起舌诊')
+    return
+  }
+  tongueSubmitting.value = true
+  try {
+    const data = await apiJson('/api/b/tongue-diagnosis/h5-sso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: p._apiId, record_id: p.workspaceRecordId })
+    })
+    p.tongueTask = data.task
+    p.tongueH5Url = data.h5_url || data.task?.h5_url || ''
+    p.tongueMobileOpenUrl = data.mobile_open_url || ''
+    addManagementLog('打开舌诊H5', data.task?.out_id || '')
+    if (p.tongueH5Url) window.open(p.tongueH5Url, '_blank', 'noopener')
+    toast?.show('手机舌诊链接已生成')
+  } catch (e) {
+    toast?.show(e.message || 'H5舌诊打开失败')
+  } finally {
+    tongueSubmitting.value = false
+  }
+}
+
+async function copyWorkspaceTongueLink() {
+  const url = activePatient.value?.tongueMobileOpenUrl || activePatient.value?.tongueH5Url || ''
+  if (!url) return
+  try {
+    await navigator.clipboard.writeText(url)
+    toast?.show('舌诊链接已复制')
+  } catch (e) {
+    toast?.show('复制失败，请手动选择链接')
+  }
+}
+
+async function removeAsset(type, id) {
+  const p = ensurePatientWorkflow(activePatient.value)
+  const hit = (p.assets[type] || []).find(x => x.id === id)
+  if (type === 'imagingReports' && hit?.backend && p.workspaceRecordId) {
+    try {
+      await apiJson(`/api/b/records/${p.workspaceRecordId}/imaging-reports/${id}`, { method: 'DELETE' })
+    } catch (e) {
+      toast?.show(e.message || '删除影像报告失败')
+      return
+    }
+  }
+  p.assets[type] = (p.assets[type] || []).filter(x => x.id !== id)
+  addManagementLog('删除资料', type)
+}
+
+async function regenerateAdviceForActive() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  adviceGenerating.value = true
+  try {
+    const previous = p.adviceDraft.content
+    if (previous) {
+      p.adviceDraft.history = p.adviceDraft.history || []
+      p.adviceDraft.history.unshift({
+        id: `${Date.now()}-${p.adviceDraft.version}`,
+        version: p.adviceDraft.version || 1,
+        status: p.adviceDraft.status || 'draft',
+        content: previous,
+        savedAt: p.adviceDraft.updatedAt || nowText()
+      })
+    }
+    p.adviceDraft.version = (p.adviceDraft.version || 1) + 1
+    p.adviceDraft.status = 'draft'
+    p.adviceDraft.updatedAt = nowText()
+    p.adviceDraft.content = `基于${p.name}当前档案，${p.nodules}建议按${computedRisk.value.level}路径管理。请补充原始影像报告，结合分级、大小、症状、病史进行复核；若分级不清或资料缺失，应优先完善检查资料后再形成最终报告。随访建议：${p.followPlan?.cycle || '6个月'}复查，通过${p.followPlan?.channel || '小程序'}进行提醒和记录。`
+    if (p.workspaceReportId) {
+      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: p.adviceDraft.content, preserve_history: true })
+      })
+      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
+    }
+    addManagementLog('再次生成建议草稿', `V${p.adviceDraft.version}`)
+  } catch (e) {
+    toast?.show(e.message || '再次生成建议失败')
+  } finally {
+    adviceGenerating.value = false
+  }
+}
+
+async function saveAdviceDraft() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  if (!String(p.adviceDraft.content || '').trim()) {
+    toast?.show('请先生成或填写建议内容')
+    return false
+  }
+  if (p.workspaceReportId) {
+    try {
+      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: p.adviceDraft.content, preserve_history: true })
+      })
+      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
+    } catch (e) {
+      toast?.show(e.message || '保存建议草稿失败')
+      return false
+    }
+  }
+  p.adviceDraft.status = 'draft'
+  p.adviceDraft.updatedAt = nowText()
+  addManagementLog('保存建议草稿', `V${p.adviceDraft.version || 1}`)
+  return true
+}
+
+async function submitAdviceReview() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  if (!String(p.adviceDraft.content || '').trim()) {
+    toast?.show('请先生成或填写建议内容')
+    return
+  }
+  if (p.workspaceReportId) {
+    try {
+      const saved = await saveAdviceDraft()
+      if (!saved) return
+      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice/submit-review`, { method: 'POST' })
+      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
+    } catch (e) {
+      toast?.show(e.message || '提交建议审核失败')
+      return
+    }
+  }
+  p.adviceDraft.status = 'reviewing'
+  p.adviceDraft.updatedAt = nowText()
+  p.stage = 'review'
+  addManagementLog('提交建议审核', `V${p.adviceDraft.version || 1}`)
+}
+
+async function approveAdviceToFinal() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  if (p.adviceDraft.status !== 'reviewing') return
+  if (p.workspaceReportId) {
+    try {
+      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: p.adviceDraft.content, summary: p.report?.summary || '' })
+      })
+      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
+    } catch (e) {
+      toast?.show(e.message || '审核通过失败')
+      return
+    }
+  }
+  p.adviceDraft.status = 'archived'
+  p.finalReport = {
+    content: p.adviceDraft.content,
+    archivedAt: nowText(),
+    version: p.adviceDraft.version || 1
+  }
+  p.stage = 'plan'
+  addManagementLog('审核通过并写入最终报告', `V${p.adviceDraft.version || 1}`)
+}
+
+function saveFollowPlan() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  p.stage = p.finalReport?.content ? 'follow' : 'plan'
+  addManagementLog('保存随访计划', `${p.followPlan.cycle} · ${p.followPlan.channel}`)
+}
 
 watch(
   () => [subTab.value, planPatients.value.length],
@@ -3653,7 +4317,7 @@ function backToQueue() {
 </script>
 
 <style scoped>
-.pm{height:100%;display:flex;flex-direction:column;overflow:hidden;margin:-16px -20px}
+.pm{height:100%;display:flex;flex-direction:column;overflow:hidden;margin:0}
 .pm-shell{flex:1;min-height:0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
 .pm-record{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
 
@@ -4519,6 +5183,7 @@ function backToQueue() {
 .rp-ik{color:#94a3b8;font-weight:850;white-space:nowrap}
 .rp-iv{color:#0f172a;font-weight:700}
 .rp-doc-btn{width:44px;height:44px;border-radius:10px;border:1px solid #e6edf7;background:#f8fafc;color:#64748b;display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+.rp-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .rp-pad{padding:10px 12px;font-size:13px;color:#334155;line-height:1.6}
 .rp-ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 0;padding:10px 12px}
 .rp-ai-row{display:flex;gap:4px;font-size:12px;line-height:1.8}
@@ -4550,6 +5215,7 @@ function backToQueue() {
 .rp-audit-label{font-size:12px;font-weight:750;color:#334155;margin-bottom:4px}
 .rp-audit-ta{width:100%;border:1px solid #d9e2ef;border-radius:6px;padding:8px 10px;font-size:13px;line-height:1.6;color:#1e293b;resize:vertical;outline:none;font-family:inherit}
 .rp-audit-ta:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.1)}
+.rp-audit-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;border:1px solid #e6edf7;border-radius:10px;background:#f8fafc}
 .rp-empty{display:flex;align-items:center;justify-content:center;height:200px;color:#94a3b8;font-size:13px}
 
 /* 报告查看弹窗 */
@@ -4562,4 +5228,84 @@ function backToQueue() {
 .rp-modal-body{padding:20px 24px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1e293b}
 .rp-modal-body h1,.rp-modal-body h2,.rp-modal-body h3{color:#111827;margin:16px 0 8px}
 .rp-modal-body p{margin:6px 0}
+
+/* 患者全流程详情工作台 */
+.patient-workspace{height:100%;min-height:0;overflow:auto;background:#f6f8fb;padding:14px;display:flex;flex-direction:column;gap:12px;scroll-padding-top:14px}
+.workspace-hero{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;flex-shrink:0;min-height:64px}
+.workspace-id{display:flex;align-items:center;gap:12px;min-width:0}
+.workspace-name{font-size:18px;font-weight:950;color:#0f172a}
+.workspace-sub{font-size:12px;color:#64748b;margin-top:4px}
+.workspace-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.workspace-flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:10px 12px;flex-shrink:0;min-height:64px;box-sizing:border-box}
+.workspace-flow-node{min-height:42px;border:1px solid #e6edf7;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:950;color:#64748b;line-height:1.2}
+.workspace-flow-node[data-state="done"]{background:#ecfdf5;border-color:#bbf7d0;color:#047857}
+.workspace-flow-node[data-state="current"]{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.flow-dot{width:20px;height:20px;border-radius:999px;background:#f1f5f9;display:grid;place-items:center;font-size:11px}
+.workspace-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;align-items:start}
+.workspace-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.workspace-side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.flow-section,.side-flow-card{padding:14px}
+.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.section-title{font-weight:950;color:#0f172a;font-size:14px}
+.section-sub{font-size:12px;color:#64748b;margin-top:4px}
+.section-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.profile-note{margin-top:10px}
+.profile-field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#64748b;font-weight:850;min-width:0}
+.profile-field input,.profile-field select,.profile-field textarea{width:100%;box-sizing:border-box;border:1px solid #dbe5f2;border-radius:9px;background:#fff;padding:8px 10px;color:#0f172a;font-size:13px;font-weight:650}
+.profile-field input[readonly],.profile-field textarea[readonly]{background:#f8fafc;color:#334155}
+.profile-field textarea{min-height:76px;resize:vertical;line-height:1.6}
+.profile-field.wide{grid-column:1/-1}
+.upload-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px}
+.upload-panel{border:1px solid #e6edf7;border-radius:12px;background:#fbfdff;padding:12px;min-width:0}
+.upload-title{font-weight:950;color:#0f172a}
+.upload-sub{font-size:12px;color:#64748b;margin:4px 0 10px;line-height:1.5}
+.file-list{display:grid;gap:8px;margin-top:10px}
+.file-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #eef2f7;border-radius:10px;background:#fff;padding:8px 10px;min-width:0}
+.file-row b{display:block;font-size:12px;color:#0f172a;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-row span{display:block;font-size:11px;color:#94a3b8;margin-top:2px}
+.empty-line{border:1px dashed #dbe5f2;border-radius:10px;padding:10px;color:#94a3b8;font-size:12px;background:#fff}
+.tongue-h5-panel{border:1px solid #e6edf7;border-radius:10px;background:#fff;padding:10px;display:grid;gap:10px}
+.tongue-h5-copy{display:flex;gap:8px;align-items:center;min-width:0}
+.tongue-h5-copy input{height:32px;border:1px solid #dbe5f2;border-radius:8px;background:#f8fafc;padding:0 10px;color:#334155;font-size:12px;min-width:0;flex:1}
+.tongue-h5-body{display:grid;grid-template-columns:104px minmax(0,1fr);gap:10px;align-items:center}
+.tongue-qr{width:104px;height:104px;border:1px dashed #bfdbfe;border-radius:8px;background:#fff;display:grid;place-items:center;color:#94a3b8;font-size:12px;overflow:hidden}
+.tongue-qr img{width:100%;height:100%;object-fit:contain}
+.tongue-h5-help{display:grid;gap:5px;color:#64748b;font-size:12px;line-height:1.5}
+.tongue-h5-help b{color:#0f172a;font-size:12px}
+.tongue-diagnosis-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e6edf7}
+.tongue-status{font-size:12px;font-weight:850;color:#475569}
+.tongue-result{margin-top:8px;border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:8px 10px;color:#1e3a8a;font-size:12px;line-height:1.6;white-space:pre-line}
+.risk-layers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.risk-layer{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:10px;min-width:0}
+.risk-layer[data-tone="r"]{background:#fff1f2;border-color:#fecdd3}
+.risk-layer[data-tone="o"]{background:#fff7ed;border-color:#fed7aa}
+.risk-layer[data-tone="g"]{background:#f0fdf4;border-color:#bbf7d0}
+.risk-layer-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#0f172a}
+.risk-layer-top span{font-weight:950}
+.risk-layer p{font-size:12px;color:#64748b;line-height:1.55;margin:8px 0 0}
+.advice-status-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.advice-editor{width:100%;box-sizing:border-box;min-height:160px;border:1px solid #dbe5f2;border-radius:12px;padding:12px;font-size:13px;line-height:1.7;resize:vertical;color:#0f172a}
+.version-list{display:grid;gap:6px;margin-top:10px}
+.version-row{display:grid;grid-template-columns:52px 90px 1fr;gap:8px;align-items:center;border:1px solid #eef2f7;border-radius:9px;background:#fff;padding:8px 10px;font-size:12px;color:#64748b}
+.version-row b{color:#0f172a}
+.final-report-box{border:1px solid #bbf7d0;border-radius:12px;background:#f0fdf4;padding:12px}
+.final-report-meta{font-size:12px;color:#047857;font-weight:950;margin-bottom:8px}
+.final-report-box p{margin:0;color:#0f172a;line-height:1.7;font-size:13px}
+.follow-plan-box{display:grid;gap:10px;margin-top:10px}
+.primary.full{width:100%}
+.mgmt-log{display:grid;gap:8px;margin-top:10px;max-height:280px;overflow:auto}
+.mgmt-log-row{border-left:3px solid #bfdbfe;background:#f8fafc;border-radius:8px;padding:8px 10px}
+.mgmt-log-row b{display:block;font-size:12px;color:#0f172a}
+.mgmt-log-row span{display:block;font-size:11px;color:#94a3b8;margin-top:2px}
+.mgmt-log-row p{margin:5px 0 0;font-size:12px;color:#64748b;line-height:1.5}
+.integration-note{font-size:12px;color:#64748b;line-height:1.7;margin-top:8px;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:10px}
+.status-tag[data-s="draft"]{background:#f8fafc;color:#475569}
+.status-tag[data-s="reviewing"]{background:#eff6ff;color:#1d4ed8}
+.status-tag[data-s="approved"],.status-tag[data-s="archived"]{background:#ecfdf5;color:#047857}
+@media (max-width: 1180px){
+  .workspace-grid{grid-template-columns:1fr}
+  .workspace-flow{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .risk-layers{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style>

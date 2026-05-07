@@ -407,6 +407,12 @@ class BHealthRecord(db.Model):
     thyroid_cancer_history = db.Column(db.String(50))  # 甲状腺癌病史
     hereditary_thyroid_history = db.Column(db.String(50))  # 遗传性甲状腺病史
 
+    # === 中医/舌诊结果（第三方舌诊接口返回）===
+    tongue_check_result_id = db.Column(db.String(80))  # 外部检测任务ID/outId
+    tongue_result_raw = db.Column(db.Text)  # 原始结果JSON（字符串化）
+    tongue_result_summary = db.Column(db.Text)  # 舌象特征分析摘要
+    tongue_checked_at = db.Column(db.DateTime)  # 舌诊完成时间
+
     # B端特有字段
     data_completeness = db.Column(db.String(20), default='full')  # full/partial
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -435,6 +441,9 @@ class BHealthRecord(db.Model):
             'lung_family_history_other': self.lung_family_history_other,
             'thyroid_family_history': self._format_checkbox_value(self.thyroid_family_history),
             'thyroid_family_history_other': self.thyroid_family_history_other,
+            'tongue_check_result_id': self.tongue_check_result_id,
+            'tongue_result_summary': self.tongue_result_summary,
+            'tongue_checked_at': self.tongue_checked_at.strftime('%Y-%m-%d %H:%M:%S') if self.tongue_checked_at else None,
             
             # 病程信息
             'nodule_discovery_time': self.nodule_discovery_time.strftime('%Y-%m-%d') if self.nodule_discovery_time else None,
@@ -601,6 +610,69 @@ class BImagingReport(db.Model):
             'llm_analysis': self.llm_analysis,
             'uploaded_by': self.uploaded_by,
             'uploaded_at': self.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if self.uploaded_at else None
+        }
+
+
+class BTongueDiagnosis(db.Model):
+    """B端舌诊检测任务表"""
+    __tablename__ = 'b_tongue_diagnosis'
+
+    id = db.Column(db.Integer, primary_key=True)
+    out_id = db.Column(db.String(80), unique=True, nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('b_patients.id'), nullable=True)
+    record_id = db.Column(db.Integer, db.ForeignKey('b_health_records.id'))
+    report_id = db.Column(db.Integer, db.ForeignKey('b_reports.id'))
+
+    # 状态：created/pre_submitted/pre_valid/pre_invalid/detecting/completed/failed/waiting_inquiry
+    status = db.Column(db.String(32), default='created')
+    pre_status = db.Column(db.String(32))
+    result_status = db.Column(db.String(32))
+
+    tongue_img_path = db.Column(db.String(500))
+    tongue_back_img_path = db.Column(db.String(500))
+    submitted_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+    request_payload = db.Column(db.JSON)
+    pre_response = db.Column(db.JSON)
+    confirm_response = db.Column(db.JSON)
+    callback_payload = db.Column(db.JSON)
+    result_json = db.Column(db.JSON)
+    error_json = db.Column(db.JSON)
+
+    tongue_feature = db.Column(db.Text)
+    callback_received_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    patient = db.relationship('BPatient', foreign_keys=[patient_id])
+    record = db.relationship('BHealthRecord', foreign_keys=[record_id])
+    report = db.relationship('BReport', foreign_keys=[report_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'out_id': self.out_id,
+            'patient_id': self.patient_id,
+            'record_id': self.record_id,
+            'report_id': self.report_id,
+            'status': self.status,
+            'pre_status': self.pre_status,
+            'result_status': self.result_status,
+            'tongue_img_path': self.tongue_img_path,
+            'tongue_back_img_path': self.tongue_back_img_path,
+            'submitted_by': self.submitted_by,
+            'pre_response': self.pre_response,
+            'confirm_response': self.confirm_response,
+            'callback_payload': self.callback_payload,
+            'result_json': self.result_json,
+            'error_json': self.error_json,
+            'tongue_feature': self.tongue_feature,
+            'h5_url': (self.request_payload or {}).get('h5_url') if isinstance(self.request_payload, dict) else None,
+            'mobile_open_url': (self.request_payload or {}).get('mobile_open_url') if isinstance(self.request_payload, dict) else None,
+            'third_id': (self.request_payload or {}).get('third_id') if isinstance(self.request_payload, dict) else None,
+            'callback_received_at': self.callback_received_at.strftime('%Y-%m-%d %H:%M:%S') if self.callback_received_at else None,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
         }
 
 
