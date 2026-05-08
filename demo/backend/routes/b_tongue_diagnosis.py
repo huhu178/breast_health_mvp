@@ -48,6 +48,13 @@ def _mobile_open_url(task_id):
     return f'{base}/api/b/tongue-diagnosis/open/{task_id}'
 
 
+def _task_response(task):
+    data = task.to_dict()
+    if task.status == 'h5_sso_created':
+        data['mobile_open_url'] = _mobile_open_url(task.id)
+    return data
+
+
 def _build_third_id(patient_id, record_id=None):
     suffix = uuid.uuid4().hex[:8]
     record_part = record_id if record_id else 'latest'
@@ -102,6 +109,30 @@ def _write_tongue_result_to_record_and_report(task, payload):
                 report.report_html = report.report_html.replace('</body>', f'{summary_html}</body>')
             else:
                 report.report_html = report.report_html + summary_html
+
+
+def _apply_tongue_report_payload(task, payload, *, source):
+    default_return_type = 1 if source == 'report_query' and (payload.get('tongueFeature') or payload.get('pdf')) else -1
+    return_type = int(payload.get('returnType', default_return_type))
+    task.callback_received_at = datetime.utcnow() if source == 'callback' else task.callback_received_at
+
+    if return_type in (1, 3):
+        task.status = 'completed'
+        task.result_status = 'pdf_generated' if return_type == 3 else 'completed'
+        task.result_json = payload
+        task.tongue_feature = tongue_diagnosis_service.extract_tongue_feature(payload)
+        _write_tongue_result_to_record_and_report(task, payload)
+    elif return_type == 2:
+        task.status = 'failed'
+        task.result_status = 'failed'
+        task.error_json = {
+            'source': source,
+            'errorMsg': payload.get('errorMsg'),
+            'payload': payload
+        }
+    else:
+        task.status = 'callback_unknown' if source == 'callback' else 'sync_unknown'
+        task.result_status = f'unknown_return_type_{return_type}'
 
 
 @b_tongue_bp.route('/tasks', methods=['POST'])
@@ -208,7 +239,7 @@ def create_h5_sso(current_user):
         }
         db.session.commit()
         return Response.success({
-            'task': task.to_dict(),
+            'task': _task_response(task),
             'third_id': third_id,
             'h5_url': sso.get('h5_url'),
             'mobile_open_url': mobile_open_url,
@@ -235,7 +266,53 @@ def get_tongue_task(current_user, task_id):
     task = BTongueDiagnosis.query.get(task_id)
     if not task:
         return Response.error('舌诊任务不存在', 404)
-    return Response.success({'task': task.to_dict()})
+    return Response.success({'task': _task_response(task)})
+
+
+@b_tongue_bp.route('/tasks/<int:task_id>/sync-report', methods=['POST'])
+@login_required
+def sync_tongue_report(current_user, task_id):
+    """按 thirdId 主动检索 H5 舌诊报告，作为回调兜底。"""
+    task = BTongueDiagnosis.query.get(task_id)
+    if not task:
+        return Response.error('舌诊任务不存在', 404)
+
+    try:
+        query_response = tongue_diagnosis_service.query_h5_reports(third_id=task.out_id)
+        if query_response.get('code') not in (0, '0'):
+            task.error_json = {
+                'source': 'report_query',
+                'response': query_response
+            }
+            db.session.commit()
+            return Response.error(query_response.get('msg') or '舌诊报告检索失败', 502)
+
+        report_row = tongue_diagnosis_service.find_report_row(query_response, task.out_id)
+        if not report_row:
+            task.confirm_response = {
+                'source': 'report_query',
+                'response': query_response,
+                'message': '未查询到匹配thirdId的舌诊报告'
+            }
+            db.session.commit()
+            return Response.success({
+                'task': _task_response(task),
+                'query_response': query_response
+            }, '暂未查询到舌诊报告')
+
+        _apply_tongue_report_payload(task, report_row, source='report_query')
+        task.confirm_response = {
+            'source': 'report_query',
+            'response': query_response
+        }
+        db.session.commit()
+        return Response.success({
+            'task': _task_response(task),
+            'report': report_row
+        }, '舌诊报告已同步')
+    except Exception as e:
+        db.session.rollback()
+        return Response.error(f'舌诊报告同步失败: {str(e)}', 500)
 
 
 @b_tongue_bp.route('/tasks/<int:task_id>/confirm', methods=['POST'])
@@ -267,7 +344,7 @@ def confirm_tongue_task(current_user, task_id):
 @login_required
 def list_tongue_tasks_by_record(current_user, record_id):
     tasks = BTongueDiagnosis.query.filter_by(record_id=record_id).order_by(BTongueDiagnosis.created_at.desc()).all()
-    return Response.success({'items': [task.to_dict() for task in tasks], 'total': len(tasks)})
+    return Response.success({'items': [_task_response(task) for task in tasks], 'total': len(tasks)})
 
 
 @b_tongue_bp.route('/callback', methods=['POST'])
@@ -277,18 +354,29 @@ def tongue_callback():
     out_id = request.form.get('outId') or (json_body or {}).get('outId')
     signature = request.form.get('signature') or (json_body or {}).get('signature')
     encrypt_data = request.form.get('encryptData') or (json_body or {}).get('encryptData')
+    encrypted_json = request.form.get('encryptedJson') or (json_body or {}).get('encryptedJson')
+    sign_encrypted_json = request.form.get('signEncryptedJson') or (json_body or {}).get('signEncryptedJson')
 
     payload = None
     try:
-        if encrypt_data:
+        if encrypted_json:
+            payload = tongue_diagnosis_service.decrypt_payload(encrypted_json)
+        elif encrypt_data:
             payload = tongue_diagnosis_service.decrypt_payload(encrypt_data)
         elif request.is_json:
             payload = request.get_json(silent=True) or {}
         else:
             payload = request.form.to_dict()
-        out_id = out_id or payload.get('outId')
+        if sign_encrypted_json:
+            sign_source = f"{payload.get('thirdId')}_{payload.get('time')}"
+            if not payload.get('thirdId') or not payload.get('time'):
+                return FlaskResponse('missing signature source', status=400, mimetype='text/plain')
+            if not tongue_diagnosis_service.verify_value_signature(sign_source, sign_encrypted_json):
+                return FlaskResponse('invalid signature', status=400, mimetype='text/plain')
+
+        out_id = out_id or payload.get('outId') or payload.get('thirdId')
         if not out_id:
-            return FlaskResponse('missing outId', status=400, mimetype='text/plain')
+            return FlaskResponse('missing thirdId', status=400, mimetype='text/plain')
         if signature and not tongue_diagnosis_service.verify_signature(out_id, signature):
             return FlaskResponse('invalid signature', status=400, mimetype='text/plain')
 
@@ -297,32 +385,9 @@ def tongue_callback():
             print(f'舌诊回调未匹配到任务: outId={out_id}; payload={payload}')
             return FlaskResponse('success', mimetype='text/plain')
 
-        return_type = int(payload.get('returnType', -1))
         task.callback_payload = payload
         task.callback_received_at = datetime.utcnow()
-
-        if return_type == 31:
-            task.status = 'pre_valid'
-            task.pre_status = 'valid'
-        elif return_type == 32:
-            task.status = 'pre_invalid'
-            task.pre_status = 'invalid'
-            task.error_json = payload.get('errorMap') or payload
-        elif return_type == 0:
-            task.status = 'waiting_inquiry'
-            task.result_status = 'waiting_inquiry'
-        elif return_type == 1:
-            task.status = 'completed'
-            task.result_status = 'completed'
-            task.result_json = payload
-            task.tongue_feature = tongue_diagnosis_service.extract_tongue_feature(payload)
-            _write_tongue_result_to_record_and_report(task, payload)
-        elif return_type == 2:
-            task.status = 'failed'
-            task.result_status = 'failed'
-            task.error_json = payload.get('errorMap') or payload
-        else:
-            task.status = 'callback_unknown'
+        _apply_tongue_report_payload(task, payload, source='callback')
 
         db.session.commit()
         return FlaskResponse('success', mimetype='text/plain')

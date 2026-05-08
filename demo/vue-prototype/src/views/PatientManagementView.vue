@@ -372,6 +372,14 @@
                     >
                       {{ tongueSubmitting ? '提交中...' : workspaceTongueActionLabel }}
                     </button>
+                    <button
+                      class="btn"
+                      type="button"
+                      @click="syncWorkspaceTongueReport"
+                      :disabled="tongueSyncing || !activePatient.tongueTask?.id"
+                    >
+                      {{ tongueSyncing ? '同步中...' : '同步舌诊结果' }}
+                    </button>
                     <span v-if="activePatient.tongueTask" class="tongue-status">{{ workspaceTongueStatusLabel }}</span>
                   </div>
                   <div v-if="activePatient.tongueTask?.tongue_feature" class="tongue-result">
@@ -1759,6 +1767,7 @@ const reviewReject = ref(false)
 const patientEditMode = ref(false)
 const adviceGenerating = ref(false)
 const tongueSubmitting = ref(false)
+const tongueSyncing = ref(false)
 const imagingInputRef = ref(null)
 const activeAssistant = ref('hlp')
 const assistPlanZoneRef = ref(null)
@@ -4044,6 +4053,31 @@ async function copyWorkspaceTongueLink() {
     toast?.show('舌诊链接已复制')
   } catch (e) {
     toast?.show('复制失败，请手动选择链接')
+  }
+}
+
+async function syncWorkspaceTongueReport() {
+  const p = ensurePatientWorkflow(activePatient.value)
+  const taskId = p.tongueTask?.id
+  if (!taskId) {
+    toast?.show('请先生成舌诊H5链接')
+    return
+  }
+  tongueSyncing.value = true
+  try {
+    const data = await apiJson(`/api/b/tongue-diagnosis/tasks/${taskId}/sync-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    p.tongueTask = data.task || p.tongueTask
+    p.tongueH5Url = p.tongueTask?.h5_url || p.tongueH5Url || ''
+    p.tongueMobileOpenUrl = p.tongueTask?.mobile_open_url || p.tongueMobileOpenUrl || ''
+    addManagementLog('同步舌诊结果', p.tongueTask?.status || '')
+    toast?.show(p.tongueTask?.tongue_feature ? '舌诊结果已同步' : '暂未查询到舌诊报告')
+  } catch (e) {
+    toast?.show(e.message || '舌诊结果同步失败')
+  } finally {
+    tongueSyncing.value = false
   }
 }
 

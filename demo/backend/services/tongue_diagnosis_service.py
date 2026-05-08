@@ -38,6 +38,10 @@ class TongueDiagnosisService:
             'TONGUE_THIRD_USER_INIT_URL',
             f'{self.base_url}/backend/check/i/secret/thirdUser/init'
         )
+        self.report_query_url = os.getenv(
+            'TONGUE_REPORT_QUERY_URL',
+            f'{self.base_url}/backend/check/i/report/query'
+        )
         self.enabled = os.getenv('TONGUE_API_ENABLED', 'false').lower() == 'true'
         self.dry_run = os.getenv('TONGUE_API_DRY_RUN', 'true').lower() != 'false'
         self.timeout = int(os.getenv('TONGUE_API_TIMEOUT', '20'))
@@ -131,6 +135,10 @@ class TongueDiagnosisService:
 
     def verify_signature(self, out_id: str, signature: str) -> bool:
         """Verify MD5withRSA signature using the platform public key."""
+        return self.verify_value_signature(out_id, signature)
+
+    def verify_value_signature(self, value: str, signature: str) -> bool:
+        """Verify MD5withRSA signature for an arbitrary source string."""
         public_key_text = os.getenv('TONGUE_PLATFORM_RSA_PUBLIC_KEY', '').strip()
         if not public_key_text:
             return not self.is_real_call_enabled()
@@ -140,7 +148,7 @@ class TongueDiagnosisService:
         try:
             public_key.verify(
                 base64.b64decode(signature),
-                out_id.encode('utf-8'),
+                value.encode('utf-8'),
                 padding.PKCS1v15(),
                 hashes.MD5()
             )
@@ -257,6 +265,45 @@ class TongueDiagnosisService:
                 'supported': False,
                 'error': str(e)
             }
+
+    def query_h5_reports(self, *, third_id: str = None, start: str = None, end: str = None, next_page_key: str = None) -> Dict[str, Any]:
+        token = self.get_real_access_token_for_h5()
+        payload = {
+            'apiVersion': 20240815
+        }
+        if third_id:
+            payload['thirdId'] = third_id
+        if start:
+            payload['start'] = start
+        if end:
+            payload['end'] = end
+        if next_page_key:
+            payload['nextPageKey'] = next_page_key
+
+        resp = requests.post(
+            self.report_query_url,
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            },
+            json=payload,
+            timeout=self.timeout
+        )
+        try:
+            data = resp.json()
+        except Exception:
+            data = {'raw_text': resp.text}
+        data['_http_status'] = resp.status_code
+        data['_request'] = payload
+        return data
+
+    def find_report_row(self, response: Dict[str, Any], third_id: str) -> Optional[Dict[str, Any]]:
+        data = response.get('data') or {}
+        rows = data.get('rows') or []
+        matches = [row for row in rows if row.get('thirdId') == third_id]
+        if not matches:
+            return None
+        return sorted(matches, key=lambda row: str(row.get('time') or ''), reverse=True)[0]
 
     def submit_precheck(self, *, out_id: str, return_url: str, tongue_img_path: str, tongue_back_img_path: str) -> Dict[str, Any]:
         encrypt_payload = {
