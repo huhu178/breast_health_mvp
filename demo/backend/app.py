@@ -126,6 +126,8 @@ def create_app():
     from routes.b_report_management import b_report_bp
     from routes.b_report_update import b_report_update_bp
     from routes.b_tongue_diagnosis import b_tongue_bp
+    from routes.b_followup_workflow import b_followup_bp, wecom_callback_bp
+    from routes.public_followup_routes import public_followup_bp
     from routes.c_patient_service import c_patient_bp
     from routes.c_auth_routes import c_auth_bp
     from routes.miniprogram_routes import miniprogram_bp  # 微信小程序路由
@@ -136,6 +138,9 @@ def create_app():
     app.register_blueprint(b_report_bp)
     app.register_blueprint(b_report_update_bp)  # 新增：报告审核相关API
     app.register_blueprint(b_tongue_bp)
+    app.register_blueprint(b_followup_bp)
+    app.register_blueprint(wecom_callback_bp)
+    app.register_blueprint(public_followup_bp)
     app.register_blueprint(c_patient_bp)
     app.register_blueprint(c_auth_bp)
     app.register_blueprint(miniprogram_bp)  # 微信小程序接口
@@ -240,6 +245,12 @@ def create_app():
         """C端API测试页面"""
         frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
         return send_from_directory(frontend_dir, 'test_c_api.html')
+
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        """只读访问本地上传文件，用于随访打卡图片预览。"""
+        uploads_dir = os.path.join(os.getcwd(), 'uploads')
+        return send_from_directory(uploads_dir, filename)
     
     # 创建数据库表
     with app.app_context():
@@ -265,6 +276,26 @@ def create_app():
                     db.session.commit()
                     print("OK: Added missing column b_reports.source_channel")
 
+            # B端患者：补齐企业微信身份绑定字段
+            if 'b_patients' in inspector.get_table_names():
+                cols = {c.get('name') for c in inspector.get_columns('b_patients')}
+                if 'wecom_external_userid' not in cols:
+                    db.session.execute(text("ALTER TABLE b_patients ADD COLUMN wecom_external_userid VARCHAR(100)"))
+                    db.session.commit()
+                    print("OK: Added missing column b_patients.wecom_external_userid")
+                if 'wecom_userid' not in cols:
+                    db.session.execute(text("ALTER TABLE b_patients ADD COLUMN wecom_userid VARCHAR(100)"))
+                    db.session.commit()
+                    print("OK: Added missing column b_patients.wecom_userid")
+                if 'wecom_bind_status' not in cols:
+                    db.session.execute(text("ALTER TABLE b_patients ADD COLUMN wecom_bind_status VARCHAR(20) DEFAULT 'unbound'"))
+                    db.session.commit()
+                    print("OK: Added missing column b_patients.wecom_bind_status")
+                if 'wecom_bound_at' not in cols:
+                    db.session.execute(text("ALTER TABLE b_patients ADD COLUMN wecom_bound_at TIMESTAMP"))
+                    db.session.commit()
+                    print("OK: Added missing column b_patients.wecom_bound_at")
+
             # B端：补齐健康档案舌诊结果字段
             if 'b_health_records' in inspector.get_table_names():
                 cols = {c.get('name') for c in inspector.get_columns('b_health_records')}
@@ -284,6 +315,22 @@ def create_app():
                     db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN tongue_checked_at TIMESTAMP"))
                     db.session.commit()
                     print("OK: Added missing column b_health_records.tongue_checked_at")
+                if 'hand_check_result_id' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN hand_check_result_id VARCHAR(80)"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.hand_check_result_id")
+                if 'hand_result_raw' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN hand_result_raw TEXT"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.hand_result_raw")
+                if 'hand_result_summary' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN hand_result_summary TEXT"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.hand_result_summary")
+                if 'hand_checked_at' not in cols:
+                    db.session.execute(text("ALTER TABLE b_health_records ADD COLUMN hand_checked_at TIMESTAMP"))
+                    db.session.commit()
+                    print("OK: Added missing column b_health_records.hand_checked_at")
 
             # C端：确保核心表存在（create_all会建表，但不会补列；C端目前未新增列，这里仅做存在性提示）
             for t in ('c_patients', 'c_health_records', 'c_reports'):
@@ -309,6 +356,22 @@ def create_app():
                     db.session.execute(text("ALTER TABLE c_health_records ADD COLUMN tongue_checked_at TIMESTAMP"))
                     db.session.commit()
                     print("OK: Added missing column c_health_records.tongue_checked_at")
+                if 'hand_check_result_id' not in cols:
+                    db.session.execute(text("ALTER TABLE c_health_records ADD COLUMN hand_check_result_id VARCHAR(50)"))
+                    db.session.commit()
+                    print("OK: Added missing column c_health_records.hand_check_result_id")
+                if 'hand_result_raw' not in cols:
+                    db.session.execute(text("ALTER TABLE c_health_records ADD COLUMN hand_result_raw TEXT"))
+                    db.session.commit()
+                    print("OK: Added missing column c_health_records.hand_result_raw")
+                if 'hand_result_summary' not in cols:
+                    db.session.execute(text("ALTER TABLE c_health_records ADD COLUMN hand_result_summary TEXT"))
+                    db.session.commit()
+                    print("OK: Added missing column c_health_records.hand_result_summary")
+                if 'hand_checked_at' not in cols:
+                    db.session.execute(text("ALTER TABLE c_health_records ADD COLUMN hand_checked_at TIMESTAMP"))
+                    db.session.commit()
+                    print("OK: Added missing column c_health_records.hand_checked_at")
         except Exception as e:
             # 不阻塞启动，避免在无权限/只读数据库时报错
             print(f"WARNING: Auto-migration for b_reports.source_channel skipped: {e}")

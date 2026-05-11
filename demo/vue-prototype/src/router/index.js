@@ -6,6 +6,8 @@ import ReportView from '../views/ReportView.vue'
 import ReviewView from '../views/ReviewView.vue'
 import PushView from '../views/PushView.vue'
 import FollowupView from '../views/FollowupView.vue'
+import FollowupCheckinView from '../views/FollowupCheckinView.vue'
+import FollowupWorkflowView from '../views/FollowupWorkflowView.vue'
 import PatientManagementView from '../views/PatientManagementView.vue'
 import RecordView from '../views/RecordView.vue'
 import RwsView from '../views/RwsView.vue'
@@ -18,6 +20,7 @@ const router = createRouter({
   routes: [
     { path: '/', redirect: '/login' },
     { path: '/login', name: 'login', component: LoginView },
+    { path: '/followup-checkin/:taskCode', name: 'followup-checkin', component: FollowupCheckinView },
     { path: '/analytics', name: 'analytics', component: AnalyticsView, meta: auth },
     { path: '/workbench', redirect: '/patient' },
     { path: '/queue', name: 'queue', component: QueueView, meta: auth },      // 兼容旧入口（不在主导航展示）
@@ -25,6 +28,7 @@ const router = createRouter({
     { path: '/review', name: 'review', component: ReviewView, meta: auth },   // 兼容旧入口（不在主导航展示）
     { path: '/push', name: 'push', component: PushView, meta: auth },         // 兼容旧入口（不在主导航展示）
     { path: '/followup', name: 'followup', component: FollowupView, meta: auth }, // 兼容旧入口（不在主导航展示）
+    { path: '/followup-workflow', name: 'followup-workflow', component: FollowupWorkflowView, meta: auth },
     { path: '/stats', redirect: '/analytics' },      // 已合并到运营看板
     { path: '/patient', name: 'patient', component: PatientManagementView, meta: auth },
     { path: '/record', name: 'record', component: RecordView, meta: auth },
@@ -34,7 +38,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.name === 'login') return true
+  if (['login', 'followup-checkin'].includes(to.name)) return true
   if (to.meta?.requiresAuth) {
     const authed = localStorage.getItem('proto_authed') === 'true'
     if (!authed) return { name: 'login' }

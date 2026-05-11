@@ -190,6 +190,10 @@ class BPatient(db.Model):
     gender = db.Column(db.String(10))
     phone = db.Column(db.String(20))
     wechat_id = db.Column(db.String(50))
+    wecom_external_userid = db.Column(db.String(100), index=True)
+    wecom_userid = db.Column(db.String(100), index=True)
+    wecom_bind_status = db.Column(db.String(20), default='unbound', index=True)  # unbound/bound
+    wecom_bound_at = db.Column(db.DateTime)
 
     # B端特有字段
     nodule_type = db.Column(db.String(50))  # 结节类型：breast/lung/thyroid/breast_lung/breast_thyroid/lung_thyroid/triple
@@ -207,6 +211,8 @@ class BPatient(db.Model):
     records = db.relationship('BHealthRecord', backref='patient', lazy='dynamic')
     reports = db.relationship('BReport', backref='patient', lazy='dynamic')
     follow_ups = db.relationship('BFollowUpRecord', backref='patient', lazy='dynamic')
+    followup_tasks = db.relationship('BFollowUpTask', backref='patient', lazy='dynamic')
+    followup_plans = db.relationship('BFollowUpPatientPlan', backref='patient', lazy='dynamic')
     
     def to_dict(self):
         return {
@@ -217,6 +223,10 @@ class BPatient(db.Model):
             'gender': self.gender,
             'phone': self.phone,
             'wechat_id': self.wechat_id,
+            'wecom_external_userid': self.wecom_external_userid,
+            'wecom_userid': self.wecom_userid,
+            'wecom_bind_status': self.wecom_bind_status,
+            'wecom_bound_at': self.wecom_bound_at.strftime('%Y-%m-%d %H:%M:%S') if self.wecom_bound_at else None,
             'nodule_type': self.nodule_type,
             'source_channel': self.source_channel,
             'status': self.status,
@@ -412,6 +422,10 @@ class BHealthRecord(db.Model):
     tongue_result_raw = db.Column(db.Text)  # 原始结果JSON（字符串化）
     tongue_result_summary = db.Column(db.Text)  # 舌象特征分析摘要
     tongue_checked_at = db.Column(db.DateTime)  # 舌诊完成时间
+    hand_check_result_id = db.Column(db.String(80))  # 外部手诊检测任务ID/outId
+    hand_result_raw = db.Column(db.Text)  # 手诊原始结果JSON（字符串化）
+    hand_result_summary = db.Column(db.Text)  # 手诊报告摘要
+    hand_checked_at = db.Column(db.DateTime)  # 手诊完成时间
 
     # B端特有字段
     data_completeness = db.Column(db.String(20), default='full')  # full/partial
@@ -444,6 +458,9 @@ class BHealthRecord(db.Model):
             'tongue_check_result_id': self.tongue_check_result_id,
             'tongue_result_summary': self.tongue_result_summary,
             'tongue_checked_at': self.tongue_checked_at.strftime('%Y-%m-%d %H:%M:%S') if self.tongue_checked_at else None,
+            'hand_check_result_id': self.hand_check_result_id,
+            'hand_result_summary': self.hand_result_summary,
+            'hand_checked_at': self.hand_checked_at.strftime('%Y-%m-%d %H:%M:%S') if self.hand_checked_at else None,
             
             # 病程信息
             'nodule_discovery_time': self.nodule_discovery_time.strftime('%Y-%m-%d') if self.nodule_discovery_time else None,
@@ -823,6 +840,480 @@ class BFollowUpRecord(db.Model):
         }
 
 
+class BFollowUpTask(db.Model):
+    """B端随访任务表 - 面向企微/AI随访工作流"""
+    __tablename__ = 'b_followup_tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_code = db.Column(db.String(50), unique=True, nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('b_patients.id'), nullable=False, index=True)
+    record_id = db.Column(db.Integer, db.ForeignKey('b_health_records.id'), index=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('b_reports.id'), index=True)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
+    # 任务状态：pending/scheduled/sent/replied/alert/manual_processing/completed/cancelled/failed
+    status = db.Column(db.String(32), default='pending', index=True)
+    priority = db.Column(db.String(20), default='normal')  # low/normal/high/urgent
+    risk_level = db.Column(db.String(20))
+    nodule_type = db.Column(db.String(50))
+    source = db.Column(db.String(32), default='manual')  # manual/report/plan/wecom_callback
+
+    title = db.Column(db.String(200))
+    plan_name = db.Column(db.String(200))
+    plan_day = db.Column(db.Integer, default=1)
+    due_at = db.Column(db.DateTime, index=True)
+    scheduled_send_at = db.Column(db.DateTime, index=True)
+    completed_at = db.Column(db.DateTime)
+
+    channel = db.Column(db.String(32), default='wecom')  # wecom/phone/miniapp/manual
+    channel_recipient = db.Column(db.String(120))  # 企业微信 external_userid/userid/手机号等
+    last_message_id = db.Column(db.Integer, db.ForeignKey('b_followup_messages.id'))
+
+    ai_enabled = db.Column(db.Boolean, default=True)
+    ai_summary = db.Column(db.Text)
+    abnormal_flag = db.Column(db.Boolean, default=False, index=True)
+    abnormal_reason = db.Column(db.Text)
+    handoff_to = db.Column(db.String(80))
+
+    task_payload = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    record = db.relationship('BHealthRecord', foreign_keys=[record_id])
+    report = db.relationship('BReport', foreign_keys=[report_id])
+    manager = db.relationship('User', foreign_keys=[manager_id])
+    messages = db.relationship(
+        'BFollowUpMessage',
+        backref='task',
+        lazy='dynamic',
+        foreign_keys='BFollowUpMessage.task_id',
+        cascade='all, delete-orphan'
+    )
+    events = db.relationship(
+        'BFollowUpEvent',
+        backref='task',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+
+    def to_dict(self, include_messages=False, include_events=False):
+        data = {
+            'id': self.id,
+            'task_code': self.task_code,
+            'patient_id': self.patient_id,
+            'record_id': self.record_id,
+            'report_id': self.report_id,
+            'manager_id': self.manager_id,
+            'manager_name': self.manager.real_name if self.manager else None,
+            'patient': self.patient.to_dict() if self.patient else None,
+            'status': self.status,
+            'priority': self.priority,
+            'risk_level': self.risk_level,
+            'nodule_type': self.nodule_type,
+            'source': self.source,
+            'title': self.title,
+            'plan_name': self.plan_name,
+            'plan_day': self.plan_day,
+            'due_at': self.due_at.strftime('%Y-%m-%d %H:%M:%S') if self.due_at else None,
+            'scheduled_send_at': self.scheduled_send_at.strftime('%Y-%m-%d %H:%M:%S') if self.scheduled_send_at else None,
+            'completed_at': self.completed_at.strftime('%Y-%m-%d %H:%M:%S') if self.completed_at else None,
+            'channel': self.channel,
+            'channel_recipient': self.channel_recipient,
+            'last_message_id': self.last_message_id,
+            'ai_enabled': self.ai_enabled,
+            'ai_summary': self.ai_summary,
+            'abnormal_flag': self.abnormal_flag,
+            'abnormal_reason': self.abnormal_reason,
+            'handoff_to': self.handoff_to,
+            'task_payload': self.task_payload,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+        if include_messages:
+            data['messages'] = [
+                message.to_dict()
+                for message in self.messages.order_by(BFollowUpMessage.created_at.asc()).all()
+            ]
+        if include_events:
+            data['events'] = [
+                event.to_dict()
+                for event in self.events.order_by(BFollowUpEvent.created_at.asc()).all()
+            ]
+        return data
+
+
+class BFollowUpMessage(db.Model):
+    """B端随访消息表 - 记录AI话术、企微发送、患者回复"""
+    __tablename__ = 'b_followup_messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('b_followup_tasks.id'), nullable=False, index=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('b_patients.id'), nullable=False, index=True)
+    direction = db.Column(db.String(16), nullable=False)  # outbound/inbound/internal
+    sender_type = db.Column(db.String(24), default='system')  # ai/system/patient/staff/wecom
+    channel = db.Column(db.String(32), default='wecom')
+
+    content_type = db.Column(db.String(32), default='text')  # text/markdown/questionnaire/card
+    content = db.Column(db.Text, nullable=False)
+    ai_intent = db.Column(db.String(80))
+    risk_signal = db.Column(db.String(80))
+    requires_manual_review = db.Column(db.Boolean, default=False)
+
+    send_status = db.Column(db.String(32), default='created')  # created/sent/delivered/read/replied/failed/dry_run
+    provider_message_id = db.Column(db.String(120))
+    provider_payload = db.Column(db.JSON)
+    provider_response = db.Column(db.JSON)
+    error_message = db.Column(db.Text)
+    sent_at = db.Column(db.DateTime)
+    received_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    patient = db.relationship('BPatient', foreign_keys=[patient_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'task_id': self.task_id,
+            'patient_id': self.patient_id,
+            'direction': self.direction,
+            'sender_type': self.sender_type,
+            'channel': self.channel,
+            'content_type': self.content_type,
+            'content': self.content,
+            'ai_intent': self.ai_intent,
+            'risk_signal': self.risk_signal,
+            'requires_manual_review': self.requires_manual_review,
+            'send_status': self.send_status,
+            'provider_message_id': self.provider_message_id,
+            'provider_payload': self.provider_payload,
+            'provider_response': self.provider_response,
+            'error_message': self.error_message,
+            'sent_at': self.sent_at.strftime('%Y-%m-%d %H:%M:%S') if self.sent_at else None,
+            'received_at': self.received_at.strftime('%Y-%m-%d %H:%M:%S') if self.received_at else None,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
+        }
+
+
+class BFollowUpEvent(db.Model):
+    """B端随访事件表 - 记录状态流转、企微回调、人工交接"""
+    __tablename__ = 'b_followup_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('b_followup_tasks.id'), nullable=False, index=True)
+    event_type = db.Column(db.String(64), nullable=False, index=True)
+    from_status = db.Column(db.String(32))
+    to_status = db.Column(db.String(32))
+    actor_type = db.Column(db.String(32), default='system')  # system/ai/wecom/staff/patient
+    actor_id = db.Column(db.String(80))
+    summary = db.Column(db.Text)
+    payload = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'task_id': self.task_id,
+            'event_type': self.event_type,
+            'from_status': self.from_status,
+            'to_status': self.to_status,
+            'actor_type': self.actor_type,
+            'actor_id': self.actor_id,
+            'summary': self.summary,
+            'payload': self.payload,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
+        }
+
+
+class BFollowUpKnowledgeItem(db.Model):
+    """随访运营知识库 - 面向计划模板、打卡、AI机器人"""
+    __tablename__ = 'b_followup_knowledge_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(50), nullable=False, index=True)  # medical_rule/task/checkin/script/ai_rule/diet/exercise/psych
+    content = db.Column(db.Text, nullable=False)
+    nodule_type = db.Column(db.String(50), index=True)
+    risk_level = db.Column(db.String(20), index=True)
+    task_type = db.Column(db.String(50), index=True)
+    age_min = db.Column(db.Integer)
+    age_max = db.Column(db.Integer)
+    gender = db.Column(db.String(10))
+    trigger_keywords = db.Column(db.Text)
+    action_type = db.Column(db.String(50))  # push/checkin/review/escalate/diet_review/image_recognition
+    priority = db.Column(db.Integer, default=5, index=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    source = db.Column(db.String(100))
+    metadata_json = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'category': self.category,
+            'content': self.content,
+            'nodule_type': self.nodule_type,
+            'risk_level': self.risk_level,
+            'task_type': self.task_type,
+            'age_min': self.age_min,
+            'age_max': self.age_max,
+            'gender': self.gender,
+            'trigger_keywords': self.trigger_keywords,
+            'action_type': self.action_type,
+            'priority': self.priority,
+            'is_active': self.is_active,
+            'source': self.source,
+            'metadata_json': self.metadata_json,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+
+
+class BFollowUpPlanTemplate(db.Model):
+    """随访计划模板 - 定义适用人群和节点编排"""
+    __tablename__ = 'b_followup_plan_templates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    template_code = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    nodule_type = db.Column(db.String(50), index=True)
+    risk_level = db.Column(db.String(20), index=True)
+    cycle_days = db.Column(db.Integer, default=90)
+    default_channel = db.Column(db.String(32), default='wecom')
+    default_reminder_strategy = db.Column(db.String(100), default='到期前3天提醒；逾期转人工；异常转医生')
+    audience_rule = db.Column(db.JSON)
+    status = db.Column(db.String(20), default='draft', index=True)  # draft/active/paused/archived
+    version = db.Column(db.Integer, default=1)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    creator = db.relationship('User', foreign_keys=[created_by])
+    nodes = db.relationship(
+        'BFollowUpPlanNode',
+        backref='template',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+        order_by='BFollowUpPlanNode.day_offset.asc()'
+    )
+
+    def to_dict(self, include_nodes=False):
+        data = {
+            'id': self.id,
+            'template_code': self.template_code,
+            'name': self.name,
+            'description': self.description,
+            'nodule_type': self.nodule_type,
+            'risk_level': self.risk_level,
+            'cycle_days': self.cycle_days,
+            'default_channel': self.default_channel,
+            'default_reminder_strategy': self.default_reminder_strategy,
+            'audience_rule': self.audience_rule,
+            'status': self.status,
+            'version': self.version,
+            'created_by': self.created_by,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+        if include_nodes:
+            data['nodes'] = [node.to_dict() for node in self.nodes.all()]
+        return data
+
+
+class BFollowUpPlanNode(db.Model):
+    """随访计划节点 - 每个节点可生成一个或多个实际任务"""
+    __tablename__ = 'b_followup_plan_nodes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('b_followup_plan_templates.id'), nullable=False, index=True)
+    node_code = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    day_offset = db.Column(db.Integer, default=1, index=True)
+    send_time = db.Column(db.String(8), default='09:00')
+    task_type = db.Column(db.String(50), nullable=False, index=True)  # symptom_checkin/diet_checkin/review_reminder/knowledge_push
+    patient_action = db.Column(db.String(50))  # reply_text/upload_image/upload_report/fill_form/none
+    ai_action = db.Column(db.String(50))  # reply/analyze_symptom/diet_review/report_ocr/none
+    message_template = db.Column(db.Text, nullable=False)
+    knowledge_item_ids = db.Column(db.JSON)
+    checkin_schema = db.Column(db.JSON)
+    escalation_rule = db.Column(db.JSON)
+    completion_rule = db.Column(db.JSON)
+    is_required = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'template_id': self.template_id,
+            'node_code': self.node_code,
+            'name': self.name,
+            'day_offset': self.day_offset,
+            'send_time': self.send_time,
+            'task_type': self.task_type,
+            'patient_action': self.patient_action,
+            'ai_action': self.ai_action,
+            'message_template': self.message_template,
+            'knowledge_item_ids': self.knowledge_item_ids,
+            'checkin_schema': self.checkin_schema,
+            'escalation_rule': self.escalation_rule,
+            'completion_rule': self.completion_rule,
+            'is_required': self.is_required,
+            'is_active': self.is_active,
+            'sort_order': self.sort_order,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+
+
+class BFollowUpAIRule(db.Model):
+    """随访AI规则 - 患者回复/图片/打卡后的处理和升级规则"""
+    __tablename__ = 'b_followup_ai_rules'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    rule_type = db.Column(db.String(50), nullable=False, index=True)  # symptom_alert/diet_review/image_recognition/no_reply/escalation
+    nodule_type = db.Column(db.String(50), index=True)
+    risk_level = db.Column(db.String(20), index=True)
+    task_type = db.Column(db.String(50), index=True)
+    trigger_keywords = db.Column(db.Text)
+    condition_json = db.Column(db.JSON)
+    action = db.Column(db.String(50), nullable=False)  # ai_reply/manual_handoff/doctor_handoff/close/notify
+    response_template = db.Column(db.Text)
+    priority = db.Column(db.Integer, default=5, index=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'rule_type': self.rule_type,
+            'nodule_type': self.nodule_type,
+            'risk_level': self.risk_level,
+            'task_type': self.task_type,
+            'trigger_keywords': self.trigger_keywords,
+            'condition_json': self.condition_json,
+            'action': self.action,
+            'response_template': self.response_template,
+            'priority': self.priority,
+            'is_active': self.is_active,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+
+
+class BFollowUpPatientPlan(db.Model):
+    """患者个性化随访计划 - 从模板复制并按患者调整"""
+    __tablename__ = 'b_followup_patient_plans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    plan_code = db.Column(db.String(50), unique=True, nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('b_patients.id'), nullable=False, index=True)
+    record_id = db.Column(db.Integer, db.ForeignKey('b_health_records.id'), index=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('b_reports.id'), index=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('b_followup_plan_templates.id'), index=True)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
+    name = db.Column(db.String(200), nullable=False)
+    status = db.Column(db.String(20), default='draft', index=True)  # draft/active/paused/completed/cancelled
+    nodule_type = db.Column(db.String(50), index=True)
+    risk_level = db.Column(db.String(20), index=True)
+    cycle_days = db.Column(db.Integer, default=90)
+    channel = db.Column(db.String(32), default='wecom')
+    reminder_strategy = db.Column(db.String(100))
+    start_at = db.Column(db.DateTime)
+    activated_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+
+    plan_content = db.Column(db.JSON)  # nodes/knowledge snapshot/settings
+    selected_knowledge_ids = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    template = db.relationship('BFollowUpPlanTemplate', foreign_keys=[template_id])
+    record = db.relationship('BHealthRecord', foreign_keys=[record_id])
+    report = db.relationship('BReport', foreign_keys=[report_id])
+    manager = db.relationship('User', foreign_keys=[manager_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'plan_code': self.plan_code,
+            'patient_id': self.patient_id,
+            'record_id': self.record_id,
+            'report_id': self.report_id,
+            'template_id': self.template_id,
+            'manager_id': self.manager_id,
+            'manager_name': self.manager.real_name if self.manager else None,
+            'patient': self.patient.to_dict() if self.patient else None,
+            'name': self.name,
+            'status': self.status,
+            'nodule_type': self.nodule_type,
+            'risk_level': self.risk_level,
+            'cycle_days': self.cycle_days,
+            'channel': self.channel,
+            'reminder_strategy': self.reminder_strategy,
+            'start_at': self.start_at.strftime('%Y-%m-%d %H:%M:%S') if self.start_at else None,
+            'activated_at': self.activated_at.strftime('%Y-%m-%d %H:%M:%S') if self.activated_at else None,
+            'completed_at': self.completed_at.strftime('%Y-%m-%d %H:%M:%S') if self.completed_at else None,
+            'plan_content': self.plan_content,
+            'selected_knowledge_ids': self.selected_knowledge_ids,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+
+
+class BFollowUpCheckin(db.Model):
+    """患者打卡记录 - 症状/饮食/运动/睡眠/心理/报告上传"""
+    __tablename__ = 'b_followup_checkins'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('b_followup_tasks.id'), index=True)
+    patient_plan_id = db.Column(db.Integer, db.ForeignKey('b_followup_patient_plans.id'), index=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('b_patients.id'), nullable=False, index=True)
+    checkin_type = db.Column(db.String(50), nullable=False, index=True)
+    content_text = db.Column(db.Text)
+    image_urls = db.Column(db.JSON)
+    structured_data = db.Column(db.JSON)
+    ai_result = db.Column(db.JSON)
+    status = db.Column(db.String(20), default='submitted', index=True)  # submitted/analyzed/alert/closed
+    abnormal_flag = db.Column(db.Boolean, default=False, index=True)
+    abnormal_reason = db.Column(db.Text)
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    reviewed_at = db.Column(db.DateTime)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+    task = db.relationship('BFollowUpTask', foreign_keys=[task_id])
+    patient_plan = db.relationship('BFollowUpPatientPlan', foreign_keys=[patient_plan_id])
+    patient = db.relationship('BPatient', foreign_keys=[patient_id])
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'task_id': self.task_id,
+            'patient_plan_id': self.patient_plan_id,
+            'patient_id': self.patient_id,
+            'checkin_type': self.checkin_type,
+            'content_text': self.content_text,
+            'image_urls': self.image_urls,
+            'structured_data': self.structured_data,
+            'ai_result': self.ai_result,
+            'status': self.status,
+            'abnormal_flag': self.abnormal_flag,
+            'abnormal_reason': self.abnormal_reason,
+            'submitted_at': self.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if self.submitted_at else None,
+            'reviewed_at': self.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if self.reviewed_at else None,
+            'reviewed_by': self.reviewed_by
+        }
+
+
 # ============================================
 # C端专用表
 # ============================================
@@ -965,6 +1456,10 @@ class CHealthRecord(db.Model):
     tongue_result_raw = db.Column(db.Text)  # 原始结果JSON（字符串化）
     tongue_result_summary = db.Column(db.Text)  # 摘要（用于后续写入报告）
     tongue_checked_at = db.Column(db.DateTime)  # 舌诊完成时间
+    hand_check_result_id = db.Column(db.String(50))  # 外部手诊检测结果ID
+    hand_result_raw = db.Column(db.Text)  # 手诊原始结果JSON（字符串化）
+    hand_result_summary = db.Column(db.Text)  # 手诊摘要（用于后续写入报告）
+    hand_checked_at = db.Column(db.DateTime)  # 手诊完成时间
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1015,6 +1510,9 @@ class CHealthRecord(db.Model):
             'tongue_check_result_id': self.tongue_check_result_id,
             'tongue_result_summary': self.tongue_result_summary,
             'tongue_checked_at': self.tongue_checked_at.strftime('%Y-%m-%d %H:%M:%S') if self.tongue_checked_at else None,
+            'hand_check_result_id': self.hand_check_result_id,
+            'hand_result_summary': self.hand_result_summary,
+            'hand_checked_at': self.hand_checked_at.strftime('%Y-%m-%d %H:%M:%S') if self.hand_checked_at else None,
             'data_completeness': self.data_completeness,
             'status': self.status,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None

@@ -31,8 +31,8 @@
           <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">{{ scenario.queueLabel }}</RouterLink>
           <RouterLink class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">{{ scenario.recordLabel }}</RouterLink>
           <RouterLink class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">{{ scenario.reportLabel }}</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访计划</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">AI随访</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访任务下发</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">执行跟踪</RouterLink>
         </div>
 
         <RouterLink class="nav-item" :to="scenario.workspacePath">
@@ -45,6 +45,19 @@
             </svg>
           </span>
           <span class="nav-label">{{ scenario.workspaceLabel }}</span>
+        </RouterLink>
+
+        <RouterLink class="nav-item" to="/followup-workflow">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6h16" />
+              <path d="M4 12h10" />
+              <path d="M4 18h7" />
+              <circle cx="18" cy="12" r="3" />
+              <path d="M18 9V7M18 17v-2M21 12h2M13 12h2" />
+            </svg>
+          </span>
+          <span class="nav-label">随访知识库与模板</span>
         </RouterLink>
       </nav>
 

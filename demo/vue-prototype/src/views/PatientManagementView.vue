@@ -113,8 +113,8 @@
                   <option value="">全部</option>
                   <option value="gen">建立档案</option>
                   <option value="review">{{ reportTerms.toReview }}</option>
-                  <option value="plan">随访计划制定</option>
-                  <option value="follow">AI随访中</option>
+                  <option value="plan">任务待下发</option>
+                  <option value="follow">任务执行中</option>
                   <option value="push">待推送</option>
                   <option value="abnormal">异常待处理</option>
                 </select>
@@ -122,7 +122,7 @@
               <div class="q-filter-actions">
                 <button class="btn" type="button" @click="qSearch='';qSource='';qNodule='';qRisk='';qStatus=''">重置</button>
                 <button class="primary" type="button">查询</button>
-                <button class="primary" type="button" @click="goRecord">+ 新建档案</button>
+                <button class="primary" type="button" @click="goRecord(null)">+ 新建档案</button>
               </div>
             </div>
           </div>
@@ -140,6 +140,7 @@
                   <th style="width:160px">结节类型</th>
                   <th style="width:72px">风险等级</th>
                   <th style="width:100px">当前状态</th>
+                  <th style="width:80px">企微</th>
                   <th style="width:72px">负责人</th>
                   <th>操作</th>
                 </tr>
@@ -161,11 +162,12 @@
                   </td>
                   <td><span class="pill" :data-tone="p.riskTone">{{ p.risk }}</span></td>
                   <td><span class="status-tag" :data-s="statusKey(p)">{{ statusLabel(p) }}</span></td>
+                  <td><span class="wecom-badge" :data-on="isWecomBound(p)">{{ wecomStatusText(p) }}</span></td>
                   <td class="muted">{{ p.owner }}</td>
                   <td>
                     <div style="display:flex;gap:8px">
                       <button class="tbl-act" type="button" @click.stop="openPatientWorkspace(p)">查看</button>
-                      <button class="tbl-act" type="button" @click.stop="setSubTab('follow')">随访</button>
+                      <button class="tbl-act" type="button" @click.stop="setSubTab('followup-plan')">任务</button>
                     </div>
                   </td>
                 </tr>
@@ -206,6 +208,17 @@
                 <div class="kv2"><div class="k">手机号</div><div class="v">{{ activePatient.phoneMasked }}</div></div>
                 <div class="kv2"><div class="k">来源</div><div class="v">{{ sourceLabel(activePatient.source) }}</div></div>
                 <div class="kv2"><div class="k">负责人</div><div class="v">{{ ownerLabel(activePatient.owner) }}</div></div>
+                <div class="kv2"><div class="k">企微</div><div class="v"><span class="wecom-badge" :data-on="isWecomBound(activePatient)">{{ wecomStatusText(activePatient) }}</span></div></div>
+              </div>
+              <div class="wecom-bind-row">
+                <div class="wecom-bind-main">
+                  <b>{{ activePatient.wecomExternalUserid || activePatient.wecomUserid || '未绑定企业微信身份' }}</b>
+                  <span>{{ isWecomBound(activePatient) ? '可用于后续企微触达和患者会话识别' : '绑定 external_userid 后才能做真实企微随访' }}</span>
+                </div>
+                <div class="wecom-bind-actions">
+                  <button class="tbl-act" type="button" @click="openWecomBind(activePatient)">{{ isWecomBound(activePatient) ? '修改' : '绑定' }}</button>
+                  <button v-if="isWecomBound(activePatient)" class="tbl-act danger" type="button" @click="unbindWecom(activePatient)">解绑</button>
+                </div>
               </div>
             </div>
 
@@ -253,6 +266,7 @@
                     :class="a.primary ? 'primary full' : 'btn-link-lite'"
                     type="button"
                     @click="a.onClick()"
+                    :disabled="a.disabled"
                   >
                     {{ a.label }}
                   </button>
@@ -280,7 +294,7 @@
 
       <!-- record tab：患者建档（表单） -->
       <div v-else-if="subTab === 'record'" class="pm-record">
-        <RecordView :embedded="true" @back="backToQueue" />
+        <RecordView :embedded="true" :patient="recordPatient" @back="backToQueue" />
       </div>
 
       <!-- detail tab：患者全流程管理工作台 -->
@@ -296,6 +310,7 @@
           <div class="workspace-badges">
             <span class="pill" :data-tone="activePatient.riskTone">{{ activePatient.risk || '未评估' }}</span>
             <span class="status-tag" :data-s="statusKey(activePatient)">{{ statusLabel(activePatient) }}</span>
+            <span class="wecom-badge" :data-on="isWecomBound(activePatient)">{{ wecomStatusText(activePatient) }}</span>
           </div>
         </section>
 
@@ -314,7 +329,7 @@
                   <div class="section-title">一、患者档案与资料管理</div>
                   <div class="section-sub">基础信息、病史、检查资料、影像报告和手机舌诊入口统一维护。</div>
                 </div>
-                <button class="btn" type="button" @click="patientEditMode = !patientEditMode">{{ patientEditMode ? '完成编辑' : '编辑档案' }}</button>
+                <button class="btn" type="button" @click="goRecord(activePatient)">编辑档案</button>
               </div>
               <div class="profile-grid">
                 <label class="profile-field"><span>姓名</span><input v-model="activePatient.name" :readonly="!patientEditMode"></label>
@@ -323,9 +338,27 @@
                 <label class="profile-field"><span>来源</span><input v-model="activePatient.source" :readonly="!patientEditMode"></label>
                 <label class="profile-field"><span>负责人</span><input v-model="activePatient.owner" :readonly="!patientEditMode"></label>
                 <label class="profile-field"><span>结节类型</span><input v-model="activePatient.nodules" :readonly="!patientEditMode"></label>
+                <label class="profile-field"><span>企微 external_userid</span><input :value="activePatient.wecomExternalUserid || '未绑定'" readonly></label>
               </div>
               <div class="profile-note">
                 <label class="profile-field wide"><span>病史/既往史/体征</span><textarea v-model="activePatient.profileNote" :readonly="!patientEditMode"></textarea></label>
+              </div>
+              <div class="record-report-card">
+                <div>
+                  <b>关联健康报告</b>
+                  <span v-if="activePatient.latestReport?.id">
+                    {{ activePatient.latestReport.report_code || `报告 #${activePatient.latestReport.id}` }} · {{ reportDbStatusLabel(activePatient.latestReport.status) }}
+                  </span>
+                  <span v-else>当前档案还没有生成健康报告</span>
+                </div>
+                <button
+                  v-if="activePatient.latestReport?.id"
+                  class="btn"
+                  type="button"
+                  @click="viewReport(activePatient.latestReport.id)"
+                >
+                  查看报告
+                </button>
               </div>
 
               <div class="upload-grid">
@@ -448,12 +481,12 @@
 
           <aside class="workspace-side">
             <section class="card side-flow-card">
-              <div class="section-title">随访计划与后续管理</div>
+              <div class="section-title">健康管理任务与后续管理</div>
               <div class="follow-plan-box">
                 <label class="profile-field"><span>复查周期</span><select v-model="activePatient.followPlan.cycle"><option>3个月</option><option>6个月</option><option>12个月</option></select></label>
                 <label class="profile-field"><span>触达方式</span><select v-model="activePatient.followPlan.channel"><option>小程序</option><option>电话</option><option>企微</option><option>小程序+电话</option></select></label>
-                <label class="profile-field wide"><span>随访重点</span><textarea v-model="activePatient.followPlan.note"></textarea></label>
-                <button class="primary full" type="button" @click="saveFollowPlan">保存随访计划</button>
+                <label class="profile-field wide"><span>任务重点</span><textarea v-model="activePatient.followPlan.note"></textarea></label>
+                <button class="primary full" type="button" @click="saveFollowPlan">保存任务配置</button>
               </div>
             </section>
 
@@ -478,462 +511,157 @@
         </div>
       </div>
 
-      <!-- followup-plan tab：随访计划制定（展示计划内容） -->
+      <!-- followup-plan tab：随访任务下发 -->
       <div v-else-if="subTab === 'followup-plan'" class="plan-page">
-
-        <!-- 统计卡片 -->
-        <div class="stat-cards" style="padding:0 0 0">
-          <div class="stat-card">
-            <div class="stat-icon" style="background:#eff6ff;color:#2563eb">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            </div>
-            <div class="stat-body">
-              <div class="stat-label">今日随访</div>
-              <div class="stat-val">{{ filteredTasks.filter(t=>t.status==='pending').length }}</div>
-              <div class="stat-sub" style="color:#2563eb">较昨日 +3</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background:#fffbeb;color:#d97706">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div class="stat-body">
-              <div class="stat-label">待随访</div>
-              <div class="stat-val">{{ followTasks.filter(t=>t.status==='pending').length }}</div>
-              <div class="stat-sub" style="color:#d97706">较昨日 +5</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background:#ecfdf5;color:#059669">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            </div>
-            <div class="stat-body">
-              <div class="stat-label">已完成</div>
-              <div class="stat-val">{{ followTasks.filter(t=>t.status==='done').length }}</div>
-              <div class="stat-sub" style="color:#059669">较昨日 +8</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background:#fff1f2;color:#dc2626">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <div class="stat-body">
-              <div class="stat-label">逾期随访</div>
-              <div class="stat-val">{{ followTasks.filter(t=>t.status==='overdue').length }}</div>
-              <div class="stat-sub" style="color:#dc2626">较昨日 +1</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background:#fdf4ff;color:#a21caf">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-            </div>
-            <div class="stat-body">
-              <div class="stat-label">异常反馈</div>
-              <div class="stat-val">{{ followTasks.filter(t=>t.status==='abnormal').length }}</div>
-              <div class="stat-sub" style="color:#a21caf">较昨日 +2</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </div>
-            <div class="stat-body">
-              <div class="stat-label">自动提醒中</div>
-              <div class="stat-val">{{ followTasks.filter(t=>t.channel==='小程序').length }}</div>
-              <div class="stat-sub" style="color:#16a34a">较昨日 +4</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 顶部筛选条 -->
-        <section class="card plan-filter">
-          <div class="q-filter-title" style="padding:10px 16px 0;font-size:13px;font-weight:800;color:#374151">筛选条件</div>
-          <div class="pad pad-lg plan-filter-row" style="padding-top:8px">
-            <label class="pf" style="min-width:180px">
-              <span class="k">{{ scenario.personLabel }}姓名/手机号</span>
-              <input class="pf-in" v-model="taskFilters.q" placeholder="姓名 / 手机号" />
-            </label>
-            <label class="pf">
-              <span class="k">{{ scenario.personLabel }}来源</span>
-              <select class="pf-in" v-model="taskFilters.source">
-                <option value="">全部</option>
-                <option v-for="src in scenario.sourceOptions" :key="src">{{ src }}</option>
-              </select>
-            </label>
-            <label class="pf">
-              <span class="k">结节类型</span>
-              <select class="pf-in" v-model="taskFilters.nodule">
-                <option value="">全部</option>
-                <option>乳腺结节</option>
-                <option>肺部结节</option>
-                <option>甲状腺结节</option>
-                <option>乳腺+肺部结节</option>
-                <option>三合并结节</option>
-              </select>
-            </label>
-            <label class="pf">
-              <span class="k">风险等级</span>
-              <select class="pf-in" v-model="taskFilters.risk">
-                <option value="">全部</option>
-                <option value="高风险">高风险</option>
-                <option value="中风险">中风险</option>
-                <option value="低风险">低风险</option>
-              </select>
-            </label>
-            <label class="pf">
-              <span class="k">随访状态</span>
-              <select class="pf-in" v-model="taskFilters.status">
-                <option value="">全部</option>
-                <option value="pending">待随访</option>
-                <option value="done">已完成</option>
-                <option value="overdue">逾期</option>
-                <option value="abnormal">异常反馈</option>
-              </select>
-            </label>
-            <label class="pf">
-              <span class="k">触达方式</span>
-              <select class="pf-in" v-model="taskFilters.channel">
-                <option value="">全部</option>
-                <option value="企微">企微</option>
-                <option value="电话">电话</option>
-                <option value="小程序">小程序</option>
-              </select>
-            </label>
-            <label class="pf">
-              <span class="k">负责人</span>
-              <input class="pf-in" v-model="taskFilters.owner" placeholder="例如：张医生" />
-            </label>
-            <div class="plan-filter-actions">
-              <button class="btn-link-lite" type="button" @click="resetTaskFilters">重置</button>
-              <button class="primary" type="button">查询</button>
-            </div>
-          </div>
-        </section>
-
         <div class="plan-workbench">
-          <!-- 左：任务列表 -->
+          <!-- 左：患者选择 -->
           <section class="card plan-task-list">
             <div class="card-head one-line">
-              <div class="card-title" style="display:flex;align-items:center;gap:10px;min-width:0">
-                <span>工作台列表</span>
-                <span class="muted" style="font-size:12px;font-weight:700">· {{ scenario.personLabel }} {{ filteredPlanPatients.length }} · 任务 {{ filteredTasks.length }}</span>
-              </div>
-              <div class="panel-tools">
+              <div class="card-title">
+                选择患者
+                <span class="muted" style="font-size:12px;font-weight:700">· {{ filteredPlanPatients.length }} 人</span>
               </div>
             </div>
             <div class="pad pad-lg" style="padding-bottom:0">
               <div class="left-search-row">
                 <input class="pf-in" v-model="taskFilters.q" placeholder="搜索患者姓名/手机号" />
-                <button class="kb-act" type="button">筛选</button>
+                <button class="btn-link-lite" type="button" @click="resetTaskFilters">重置</button>
               </div>
-              <div class="muted" style="font-size:12px">选择患者后在右侧完成知识库推荐、方案组合与预览下发。</div>
             </div>
             <div class="pat-table">
               <div class="pat-rows">
                 <div v-for="p in filteredPlanPatients" :key="p.id" class="pat-row plan-patient-card" :data-active="p.id===activePatientId">
-                  <button type="button" class="pat-main" @click="activePatientId=p.id">
+                  <button type="button" class="pat-main" @click="activePatientId=p.id; createTaskForPatient(p)">
                     <div class="patient-card-top">
                       <div>
                         <div class="pat-name"><b>{{ p.name }}</b><span class="muted">（{{ p.gender }}·{{ p.age }}岁）</span></div>
-                        <div class="muted" style="font-size:12px;margin-top:4px">{{ p.nodules }}</div>
+                        <div class="muted" style="font-size:12px;margin-top:4px">{{ p.nodules }} · {{ p.phoneMasked }}</div>
                       </div>
                       <span class="pill mini" :data-tone="p.riskTone">{{ p.risk }}</span>
                     </div>
-                    <div class="patient-card-meta">
-                      <span>{{ p.phoneMasked }}</span>
-                      <span>{{ p.owner || '未分派' }}</span>
-                    </div>
                   </button>
-                  <div class="patient-card-actions">
-                    <button class="kb-act" type="button" @click="createTaskForPatient(p)">制定任务</button>
-                  </div>
                 </div>
                 <div v-if="!filteredPlanPatients.length" class="muted" style="font-size:12px;padding:10px 12px">暂无匹配患者</div>
               </div>
             </div>
-            <div class="pager" style="margin-top:10px">
-              <div class="muted" style="font-size:12px">分页</div>
-              <div style="display:flex;gap:8px;align-items:center">
-                <button class="btn-link-lite" type="button">上一页</button>
-                <span class="muted" style="font-size:12px">1 / 1</span>
-                <button class="btn-link-lite" type="button">下一页</button>
-              </div>
-            </div>
           </section>
 
-          <!-- 右：任务详情 -->
+          <!-- 中：下发操作 -->
           <section class="card plan-task-detail">
-            <div class="card-head one-line">
+            <div class="card-head plan-editor-head">
               <div class="plan-detail-title">
-                <div class="plan-breadcrumb">{{ scenario.navPatient }} / 随访计划 / 知识库驱动任务制定</div>
-                <div class="card-title">知识库驱动随访任务制定</div>
-                <div class="muted" style="font-size:12px;margin-top:3px">随访方案不是手动填表，而是基于患者画像与风险分层，从结构化知识库中智能推荐、选择、组合、预览并下发。</div>
+                <div class="card-title">随访任务下发</div>
               </div>
               <div class="panel-tools">
-                <button class="primary" type="button" @click="simulatePlanToFollowup">知识库方案推荐</button>
-                <select class="stage-select" v-model="planDay" :disabled="planState.loading || !!planState.error">
-                  <option v-for="d in planDayList" :key="d" :value="d">Day {{ d.replace('day','') }}</option>
-                </select>
-                <button class="btn-link-lite" type="button" @click="kbUi.managerOpen = true">知识库管理</button>
+                <button class="primary" type="button" @click="recommendForActive">推荐随访模板</button>
+                <button class="btn-link-lite" type="button" @click="goFollowupWorkflow">随访知识库与模板</button>
               </div>
             </div>
 
             <div class="pad pad-lg">
-              <div v-if="!activeTask" class="muted">请选择左侧一条随访任务。</div>
+              <div v-if="!activeTask" class="plan-empty">
+                <b>请选择左侧患者</b>
+                <span>选择后可在这里查看患者摘要、匹配模板并预览即将生成的任务。</span>
+              </div>
               <template v-else>
-                <section class="plan-patient-hero">
+                <section class="plan-step-strip">
+                  <div v-for="s in planDispatchSteps" :key="s.key" class="step-chip" :data-state="s.state">
+                    <span>{{ s.icon }}</span>
+                    <b>{{ s.title }}</b>
+                  </div>
+                </section>
+
+                <section class="detail-card patient-summary-card">
                   <div class="patient-avatar-sm">患</div>
-                  <div class="hero-info">
-                    <b>{{ activeTask.patientName }}</b>
-                    <span class="muted">（{{ activeTask.gender }}·{{ activeTask.age }}岁）</span>
-                    <span>{{ activeTask.nodules }}</span>
-                    <span class="pill mini" :data-tone="activeTask.riskTone">{{ activeTask.risk }}</span>
-                    <span>Day {{ planDay.replace('day','') }}</span>
-                    <span>{{ activeTask.phoneMasked }}</span>
-                    <span>{{ activeTask.owner || '未分派' }}</span>
+                  <div class="patient-summary-main">
+                    <div class="patient-summary-title">
+                      <b>{{ activeTask.patientName }}</b>
+                      <span class="muted">（{{ activeTask.gender }} · {{ activeTask.age }}岁）</span>
+                      <span class="pill mini" :data-tone="activeTask.riskTone">{{ activeTask.risk }}</span>
+                    </div>
+                    <div class="patient-summary-meta">
+                      <span>{{ activeTask.nodules }}</span>
+                      <span>{{ activeTask.phoneMasked }}</span>
+                      <span>负责人：{{ activeTask.owner || '未分派' }}</span>
+                    </div>
                   </div>
                 </section>
 
-                <section class="plan-flow-card">
-                  <div v-for="s in planPipelineSteps" :key="s.key" class="flow-node" :data-state="s.state">
-                    <div class="flow-node-dot">{{ s.icon }}</div>
-                    <div class="flow-node-title">{{ s.title }}</div>
-                  </div>
-                </section>
-
-                <div class="detail-grid">
-                  <section class="detail-card">
-                    <div class="detail-title">随访任务制定</div>
-                    <div class="detail-sub muted">{{ planState.title || '随访计划模板' }} · Day {{ planDay.replace('day','') }}</div>
-                    <div class="recommend-box">
-                      <div class="recommend-title">系统推荐：根据患者病种、年龄、风险等级、随访阶段，推荐以下知识内容。</div>
-                      <div class="recommend-tags">
-                        <span v-for="tag in planRecommendTags" :key="tag" class="kb-tag">{{ tag }}</span>
+                <div class="plan-editor-stack">
+                  <section class="detail-card template-section">
+                    <div class="detail-title-row">
+                      <div>
+                        <div class="detail-title">选择随访模板</div>
                       </div>
+                      <button class="btn-link-lite" type="button" @click="goFollowupWorkflow">维护模板</button>
                     </div>
 
-                    <div class="plan-form" style="margin-bottom:0">
-                      <div class="plan-flow-title" style="margin-bottom:8px">表单 / 知识库</div>
-                      <div class="pf-grid" style="grid-template-columns:1fr 1fr 1fr">
-                        <label class="pf">
-                          <span class="k">复查周期</span>
-                          <select class="pf-in" v-model="draft.cycle">
-                            <option value="3个月">3个月</option>
-                            <option value="6个月">6个月</option>
-                            <option value="12个月">12个月</option>
-                          </select>
-                        </label>
-                        <label class="pf">
-                          <span class="k">触达方式</span>
-                          <select class="pf-in" v-model="draft.channel">
-                            <option value="企微">企微</option>
-                            <option value="电话">电话</option>
-                            <option value="小程序">小程序</option>
-                            <option value="企微/电话/小程序">企微/电话/小程序</option>
-                          </select>
-                        </label>
-                        <label class="pf">
-                          <span class="k">提醒策略</span>
-                          <select class="pf-in" v-model="draft.reminder">
-                            <option value="到期前3天提醒">到期前3天提醒</option>
-                            <option value="到期前7天提醒">到期前7天提醒</option>
-                            <option value="逾期转人工">逾期转人工</option>
-                            <option value="异常优先转医生">异常优先转医生</option>
-                          </select>
-                        </label>
-
-                        <div class="pf" style="grid-column:1/-1">
-                          <div class="kb-head">
-                            <div>
-                              <div class="k">内容库（仅选用）</div>
-                              <div class="muted" style="font-size:12px;margin-top:4px">按分组选择条目；正文预览在右侧抽屉。修改/导入在“管理知识库”。</div>
-                            </div>
-                            <div class="kb-head-actions">
-                              <button class="btn-link-lite" type="button" @click="kbUi.managerOpen = true">管理知识库</button>
-                            </div>
-                          </div>
-
-                          <div class="kb-groups">
-                            <button v-for="g in KB_GROUPS" :key="g.key" type="button" class="kb-group" @click="openKbDrawer(g.key)">
-                              <div class="kb-group-title">{{ g.label }}</div>
-                              <div class="kb-group-sub muted">已选 {{ (kbSelectedByGroup[g.key] || []).length }} 项</div>
-                              <div class="kb-group-tags">
-                                <span v-for="it in (kbSelectedByGroup[g.key] || []).slice(0, 3)" :key="it.key" class="kb-tag">{{ it.label }}</span>
-                                <span v-if="(kbSelectedByGroup[g.key] || []).length > 3" class="kb-tag muted">+{{ (kbSelectedByGroup[g.key] || []).length - 3 }}</span>
-                              </div>
-                            </button>
-                          </div>
-
-                          <div class="kb-picked muted" style="font-size:12px">
-                            已选：<span v-if="kbSelected.length">{{ kbSelected.map(x=>x.label).slice(0, 8).join('、') }}<span v-if="kbSelected.length>8"> 等{{ kbSelected.length }}项</span></span>
-                            <span v-else>暂无</span>
-                          </div>
-                        </div>
-
-                        <label class="pf" style="grid-column:1/-1">
-                          <span class="k">备注</span>
-                          <textarea class="pf-in" v-model="draft.note" style="height:76px;padding:10px;resize:vertical"></textarea>
-                        </label>
-                      </div>
-                      <div class="plan-flow-actions" style="justify-content:flex-start;margin-top:10px">
-                        <button class="primary" type="button" @click="applyDraftToPlan">生成并保存任务</button>
-                        <button class="btn-link-lite" type="button" @click="savePlanForActive">保存计划</button>
-                        <button class="btn-link-lite" type="button" @click="startAiFollowup">开启 AI 随访</button>
-                      </div>
+                    <div class="template-choice-list">
+                      <button
+                        v-for="tpl in availableFollowupTemplates"
+                        :key="tpl.id"
+                        type="button"
+                        class="template-choice"
+                        :class="{ active: tpl.id === selectedFollowupTemplateId }"
+                        @click="selectFollowupTemplate(tpl)"
+                      >
+                        <span class="template-choice-head">
+                          <span class="template-choice-title">{{ tpl.name }}</span>
+                          <span class="preview-status">{{ templateStatusLabel(tpl.status) }}</span>
+                        </span>
+                        <span class="template-choice-meta">
+                          {{ noduleTypeLabel(tpl.nodule_type) }} · {{ riskLevelLabel(tpl.risk_level) }} · {{ tpl.cycle_days || 90 }}天 · {{ channelLabel(tpl.default_channel) }} · {{ (tpl.nodes || []).length }}个任务
+                        </span>
+                        <span v-if="tpl.description || tpl.default_reminder_strategy" class="template-choice-desc">{{ tpl.description || tpl.default_reminder_strategy }}</span>
+                      </button>
+                      <div v-if="!availableFollowupTemplates.length" class="muted" style="font-size:12px">暂无可用模板，请先到随访知识库与模板页面创建并启用模板。</div>
                     </div>
-                  </section>
 
-                  <section class="detail-card plan-preview-grid">
-                    <div>
-                      <div class="detail-title">方案组合与预览</div>
-                      <div class="preview-list">
-                        <div v-for="(row, idx) in selectedContentPreview" :key="row.key" class="preview-row">
-                          <span class="preview-no">{{ idx + 1 }}</span>
-                          <div class="preview-main">
-                            <b>{{ row.label }}</b>
-                            <span>{{ row.text }}</span>
-                          </div>
-                          <span class="preview-status">已选</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <div class="detail-title">下发配置</div>
-                      <div class="delivery-card">
-                        <div>触达方式：{{ draft.channel }}</div>
-                        <div>下发时间：今日 16:00</div>
-                        <div>内容包：图文 {{ selectedContentPreview.filter(x=>x.type==='article').length }}、问卷 {{ selectedContentPreview.filter(x=>x.type==='form').length }}、提醒 {{ selectedContentPreview.filter(x=>x.type==='reminder').length }}</div>
-                      </div>
-                    </div>
                   </section>
 
                   <section class="detail-card">
-                    <div class="detail-title">执行记录</div>
-                    <div class="exec-list">
-                      <div v-for="(e, idx) in activeTask.logs" :key="idx" class="exec-row">
-                        <div class="exec-at">{{ e.at }}</div>
-                        <div class="exec-main">
-                          <div class="exec-line"><b>{{ e.by }}</b> · {{ e.action }}</div>
-                          <div class="muted" style="white-space:pre-wrap">{{ e.note }}</div>
+                    <div class="detail-title-row">
+                      <div>
+                        <div class="detail-title">任务节点预览</div>
+                      </div>
+                      <select class="stage-select" v-model="planDay" :disabled="planState.loading || !!planState.error">
+                        <option v-for="d in planDayList" :key="d" :value="d">第 {{ d.replace('day','') }} 天</option>
+                      </select>
+                    </div>
+                    <div class="node-preview-list">
+                      <div v-for="node in activePlanNodePreviews" :key="node.key" class="node-preview-row">
+                        <div class="node-day">
+                          <b>第 {{ node.day }} 天</b>
+                          <span>{{ node.time }}</span>
+                        </div>
+                        <div class="node-main">
+                          <div class="node-title">{{ node.name }}</div>
+                          <div class="node-meta">
+                            <span>{{ node.type }}</span>
+                            <span>{{ node.patientAction }}</span>
+                            <span>{{ node.aiAction }}</span>
+                          </div>
+                          <p v-if="node.message" class="node-message">{{ node.message }}</p>
                         </div>
                       </div>
-                      <div v-if="!activeTask.logs?.length" class="muted" style="font-size:12px">暂无执行记录</div>
+                      <div v-if="!activePlanNodePreviews.length" class="muted" style="font-size:12px">当前模板暂无任务节点，请先维护模板节点。</div>
+                    </div>
+
+                    <div class="confirm-bar">
+                      <div>
+                        <b>{{ selectedWorkflowTemplate?.name || '未选择模板' }}</b>
+                      </div>
+                      <div class="confirm-actions">
+                        <button class="btn-link-lite" type="button" @click="savePlanForActiveAndBackend" :disabled="followupPlanSaving || !selectedWorkflowTemplate">
+                          {{ followupPlanSaving ? '保存中...' : '保存设置' }}
+                        </button>
+                        <button class="primary" type="button" @click="simulatePlanToFollowup" :disabled="followupPlanSaving || !selectedWorkflowTemplate">确认下发</button>
+                      </div>
                     </div>
                   </section>
+
                 </div>
 
-                <!-- 内容库抽屉：选择 + 预览 -->
-                <div v-if="kbUi.drawerOpen" class="kb-drawer" role="dialog" aria-modal="true">
-                  <div class="kb-drawer-card">
-                    <div class="kb-drawer-head">
-                      <div class="kb-drawer-title">选择内容 · {{ (KB_GROUPS.find(x=>x.key===kbUi.drawerGroup)?.label) || '内容库' }}</div>
-                      <button class="kb-x" type="button" @click="kbUi.drawerOpen=false">×</button>
-                    </div>
-                    <div class="kb-drawer-body">
-                      <div class="kb-drawer-left">
-                        <div class="kb-drawer-search">
-                          <input class="pf-in" v-model="kbUi.drawerQuery" placeholder="搜索条目标题" />
-                        </div>
-                        <div class="kb-drawer-list">
-                          <button
-                            v-for="it in kbDrawerItems"
-                            :key="it.key"
-                            type="button"
-                            class="kb-li"
-                            :data-on="kbUi.drawerActiveKey===it.key"
-                            @click="kbUi.drawerActiveKey=it.key"
-                          >
-                            <label class="kb-li-ck" @click.stop>
-                              <input
-                                type="checkbox"
-                                :checked="it.enabled"
-                                @change="it.isCustom ? setCustomEnabled(it.key, $event.target.checked) : setKbEnabled(it.key, $event.target.checked)"
-                              />
-                            </label>
-                            <div class="kb-li-main">
-                              <div class="kb-li-title">{{ it.label }}</div>
-                              <div class="kb-li-sub muted">{{ it.isCustom ? '自定义条目' : '模板条目' }}</div>
-                            </div>
-                          </button>
-                          <div v-if="!kbDrawerItems.length" class="muted" style="font-size:12px;padding:10px 12px">无匹配条目</div>
-                        </div>
-                      </div>
-                      <div class="kb-drawer-right">
-                        <div class="kb-prev-head">
-                          <div class="kb-prev-title">{{ kbDrawerActive?.label || '—' }}</div>
-                          <div class="kb-prev-actions">
-                            <button class="btn-link-lite" type="button" @click="kbUi.managerOpen=true">管理知识库</button>
-                            <button class="btn-link-lite" type="button" @click="openKbEditor({ key: kbDrawerActive?.key, label: kbDrawerActive?.label, text: kbDrawerActive?.isCustom ? kbDrawerActive?.text : getKbText(kbDrawerActive?.key) })">编辑此条</button>
-                          </div>
-                        </div>
-                        <div class="kb-prev-body">{{ kbDrawerActive ? (kbDrawerActive.isCustom ? (kbDrawerActive.text || '—') : (getKbText(kbDrawerActive.key) || '—')) : '—' }}</div>
-                      </div>
-                    </div>
-                    <div class="kb-drawer-actions">
-                      <button class="btn-link-lite" type="button" @click="kbUi.drawerOpen=false">完成</button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 知识库管理（独立弹窗） -->
-                <div v-if="kbUi.managerOpen" class="kb-modal" role="dialog" aria-modal="true">
-                  <div class="kb-modal-card">
-                    <div class="kb-modal-head">
-                      <div class="kb-modal-title">知识库管理</div>
-                      <button class="kb-x" type="button" @click="kbUi.managerOpen=false">×</button>
-                    </div>
-                    <div class="kb-modal-body">
-                      <div class="kb-toolbar">
-                        <button class="btn-link-lite" type="button" @click="openKbEditor({ key: (kbItems.find(x=>!x.isCustom)?.key || 'knowledgeCard') })">修改模板</button>
-                        <button class="btn-link-lite" type="button" @click="openKbEditor({})">添加条目</button>
-                        <button class="btn-link-lite" type="button" @click="kbUploadInputRef?.click()">上传</button>
-                        <button class="btn-link-lite" type="button" @click="kbImportInputRef?.click()">导入(JSON)</button>
-                      </div>
-
-                      <div class="kb-list" role="list" style="margin-top:10px">
-                        <div v-for="it in kbItems" :key="it.key" class="kb-row" role="listitem">
-                          <div class="kb-ck" style="cursor:default">
-                            <span class="kb-name">{{ it.label }}</span>
-                            <span class="muted" style="font-size:12px">{{ it.isCustom ? '自定义' : '模板' }}</span>
-                          </div>
-                          <div class="kb-actions">
-                            <button class="kb-act" type="button" @click="openKbEditor({ key: it.key, label: it.label, text: it.isCustom ? it.text : getKbText(it.key) })">编辑</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="kb-modal-actions">
-                      <button class="btn-link-lite" type="button" @click="kbUi.managerOpen=false">关闭</button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 条目编辑器（复用） -->
-                <div v-if="kbUi.editorOpen" class="kb-modal" role="dialog" aria-modal="true">
-                  <div class="kb-modal-card">
-                    <div class="kb-modal-head">
-                      <div class="kb-modal-title">知识库条目{{ kbUi.editorKey ? '修改' : '添加' }}</div>
-                      <button class="kb-x" type="button" @click="kbUi.editorOpen=false">×</button>
-                    </div>
-                    <div class="kb-modal-body">
-                      <label class="pf" style="gap:6px">
-                        <span class="k">标题</span>
-                        <input class="pf-in" v-model="kbUi.editorLabel" placeholder="例如：复查提醒 / 护理要点" />
-                      </label>
-                      <label class="pf" style="gap:6px;margin-top:10px">
-                        <span class="k">内容</span>
-                        <textarea class="pf-in" v-model="kbUi.editorText" style="height:180px;padding:10px;resize:vertical" placeholder="输入条目正文（支持换行）"></textarea>
-                      </label>
-                    </div>
-                    <div class="kb-modal-actions">
-                      <button class="btn-link-lite" type="button" @click="kbUi.editorOpen=false">取消</button>
-                      <button class="primary" type="button" @click="saveKbEditor">保存</button>
-                    </div>
-                  </div>
-                </div>
-
-                <input ref="kbImportInputRef" class="kb-file" type="file" accept="application/json" @change="onKbImport($event)" />
-                <input ref="kbUploadInputRef" class="kb-file" type="file" accept=".xlsx,.xls" @change="onKbUpload($event)" />
               </template>
             </div>
           </section>
@@ -946,7 +674,7 @@
         <!-- 顶部统计区 -->
         <div class="follow-stats-bar">
           <div class="follow-stat-item">
-            <div class="follow-stat-label">AI随访中</div>
+            <div class="follow-stat-label">任务执行中</div>
             <div class="follow-stat-value" style="color:#2563eb">{{ queue.filter(p=>statusKey(p)==='follow').length }}</div>
           </div>
           <div class="follow-stat-div"></div>
@@ -1042,7 +770,119 @@
           </div>
         </div>
 
-        <!-- 中：手机聊天记录预览 -->
+        <!-- 中：患者聊天记录 -->
+        <section class="tracking-list-col">
+          <div class="tracking-head">
+            <div>
+              <div class="card-title">患者聊天记录</div>
+              <div class="tracking-patient">企业微信 · {{ followPatient?.name || '未选择患者' }}</div>
+            </div>
+          </div>
+          <div class="tracking-chat-card as-main">
+            <div class="mini-phone">
+              <div class="mini-phone-head">
+                <span class="mini-back">‹</span>
+                <div>
+                  <b>企业微信</b>
+                  <span>{{ followPatient?.name || '患者' }}</span>
+                </div>
+                <span class="mini-more">···</span>
+              </div>
+              <div class="mini-chat">
+                <div class="mini-date">今天 {{ activeTrackingTask?.time || '09:00' }}</div>
+                <div v-for="msg in activeTrackingMessages" :key="msg.key" class="mini-msg" :class="msg.direction">
+                  <div class="mini-avatar">{{ msg.direction === 'inbound' ? '患' : '医' }}</div>
+                  <div class="mini-msg-main">
+                    <div class="mini-msg-name">{{ msg.sender }}</div>
+                    <div v-if="msg.type === 'image'" class="mini-image-card">
+                      <div class="mini-image-placeholder">餐饮图片</div>
+                      <span>{{ msg.content }}</span>
+                    </div>
+                    <div v-else class="mini-bubble">{{ msg.content }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右：任务执行表与详情 -->
+        <section class="tracking-detail-col">
+          <div class="tracking-head">
+            <div>
+              <div class="card-title">任务执行表</div>
+              <div class="tracking-patient">{{ followPatient?.name || '未选择患者' }} · {{ followPatient?.nodules || '—' }}</div>
+            </div>
+            <button class="btn" type="button" @click="loadFollowupTasks">刷新</button>
+          </div>
+
+          <div class="tracking-summary">
+            <div><b>{{ trackingStats.total }}</b><span>总任务</span></div>
+            <div><b>{{ trackingStats.waiting }}</b><span>待发送</span></div>
+            <div><b>{{ trackingStats.running }}</b><span>执行中</span></div>
+            <div><b>{{ trackingStats.alert }}</b><span>异常</span></div>
+          </div>
+
+          <div class="tracking-task-list compact">
+            <template v-for="group in trackingTaskGroups" :key="group.day">
+              <div class="tracking-day-title">第 {{ group.day }} 天</div>
+              <button
+                v-for="task in group.tasks"
+                :key="task.id"
+                type="button"
+                class="tracking-task-row"
+                :class="{ active: activeTrackingTask?.id === task.id }"
+                @click="selectTask(task.id)"
+              >
+                <div class="tracking-time">{{ task.time }}</div>
+                <div class="tracking-main">
+                  <b>{{ task.title }}</b>
+                  <span>{{ task.messageBrief }}</span>
+                </div>
+                <span class="tracking-status" :data-status="task.status">{{ trackingStatusLabel(task.status) }}</span>
+              </button>
+            </template>
+            <div v-if="!trackingTasksForPatient.length" class="tracking-empty">
+              暂无已生成任务。请先在“随访任务下发”中确认下发。
+            </div>
+          </div>
+
+          <template v-if="activeTrackingTask">
+            <div class="tracking-detail-card">
+              <div class="tracking-detail-head">
+                <div>
+                  <div class="card-title">{{ activeTrackingTask.title }}</div>
+                  <div class="tracking-patient">第 {{ activeTrackingTask.dayNum }} 天 · {{ activeTrackingTask.time }} · {{ activeTrackingTask.channel }}</div>
+                </div>
+                <span class="tracking-status big" :data-status="activeTrackingTask.status">{{ trackingStatusLabel(activeTrackingTask.status) }}</span>
+              </div>
+
+              <div class="tracking-kv-grid">
+                <div><span>计划发送</span><b>{{ activeTrackingTask.scheduledAt || '—' }}</b></div>
+                <div><span>实际发送</span><b>{{ activeTrackingTask.sentAt || '未发送' }}</b></div>
+                <div><span>患者动作</span><b>{{ activeTrackingTask.patientAction || '—' }}</b></div>
+                <div><span>AI处理</span><b>{{ activeTrackingTask.aiAction || '—' }}</b></div>
+              </div>
+
+              <div class="tracking-block">
+                <div class="tracking-block-title">执行过程</div>
+                <div class="tracking-timeline">
+                  <div v-for="event in activeTrackingEvents" :key="event.key" class="tracking-event">
+                    <span></span>
+                    <div>
+                      <b>{{ event.title }}</b>
+                      <em>{{ event.time }}</em>
+                      <p>{{ event.note }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div v-else class="tracking-empty detail">请选择任务查看执行详情</div>
+        </section>
+
+        <!-- 旧手机聊天记录预览：已隐藏，保留代码便于后续对照迁移 -->
         <div class="follow-phone-col">
           <div class="phone-preview-label">
             <span>Day {{ planDay.replace('day','') }} 随访内容预览</span>
@@ -1341,7 +1181,7 @@
                     <td>
                       <div class="rp-row-actions">
                         <button class="tbl-act" type="button" @click.stop="viewReport(r.id)">查看</button>
-                        <button class="tbl-act" type="button" @click.stop="openAudit(r)">{{ r.reportStatus === '已审核' ? '复审/编辑' : reportTerms.reviewAction }}</button>
+                        <button class="tbl-act" type="button" @click.stop="openReportRowPrimary(r)" :disabled="reportGeneratingIds.has(r.rawPatientId || r.id)">{{ reportGeneratingIds.has(r.rawPatientId || r.id) ? '生成中...' : (r.isReportPlaceholder ? '去生成' : (r.reportStatus === '已审核' ? '复审/编辑' : reportTerms.reviewAction)) }}</button>
                         <button class="tbl-act" type="button" @click.stop="downloadReport(r.id)">下载</button>
                       </div>
                     </td>
@@ -1350,7 +1190,7 @@
               </table>
             </div>
             <div class="pager">
-              <span class="muted">共 268 条</span>
+              <span class="muted">共 {{ rpFilteredList.length }} 条</span>
               <div class="pages">
                 <button class="page-btn" type="button">‹</button>
                 <button class="page-btn active" type="button">1</button>
@@ -1406,8 +1246,8 @@
               <section class="card">
                 <div class="card-head"><div class="card-title">快捷操作</div></div>
                 <div class="rp-actions">
-                  <button class="primary" type="button" @click="openAudit(rpActive)">
-                    {{ rpActive.reportStatus === '已审核' ? '复审/编辑报告' : reportTerms.auditAi }}
+                  <button class="primary" type="button" @click="openReportRowPrimary(rpActive)">
+                    {{ rpActive.isReportPlaceholder ? '去生成报告' : (rpActive.reportStatus === '已审核' ? '复审/编辑报告' : reportTerms.auditAi) }}
                   </button>
                   <button class="btn" type="button" @click="viewReport(rpActive.id)">查看报告</button>
                   <button class="btn" type="button" @click="downloadReport(rpActive.id)">下载报告</button>
@@ -1642,10 +1482,24 @@
           <span class="status-tag" :data-s="rpAuditStatus">{{ adviceStatusLabel(rpAuditStatus) }}</span>
           <span class="muted">当前版本：V{{ rpAuditVersion || 1 }} · 已审核报告也可重新编辑并再次写入最终报告</span>
         </div>
-        <div class="rp-audit-label">{{ reportTerms.summaryLabel }}</div>
-        <textarea class="rp-audit-ta" v-model="rpAuditPara1" rows="5"></textarea>
-        <div class="rp-audit-label" style="margin-top:14px">{{ reportTerms.adviceLabel }}</div>
-        <textarea class="rp-audit-ta" v-model="rpAuditPara2" rows="5"></textarea>
+        <div class="rp-audit-grid">
+          <div class="rp-audit-block">
+            <div class="rp-audit-label">影像报告建议</div>
+            <textarea class="rp-audit-ta" v-model="rpAuditImagingAdvice" rows="5"></textarea>
+          </div>
+          <div class="rp-audit-block">
+            <div class="rp-audit-label">总体评估建议</div>
+            <textarea class="rp-audit-ta" v-model="rpAuditOverallAdvice" rows="5"></textarea>
+          </div>
+          <div class="rp-audit-block">
+            <div class="rp-audit-label">风险评估建议</div>
+            <textarea class="rp-audit-ta" v-model="rpAuditRiskAdvice" rows="5"></textarea>
+          </div>
+          <div class="rp-audit-block">
+            <div class="rp-audit-label">中医舌诊插入内容</div>
+            <textarea class="rp-audit-ta" v-model="rpAuditTongueAdvice" rows="5" placeholder="舌诊完成后会从健康档案带入，也可以在这里编辑后写入最终报告。"></textarea>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;margin-top:16px">
           <button class="primary" type="button" @click="finalizeReport(rpAuditId)" :disabled="rpFinalizing">{{ rpFinalizing ? '处理中...' : (rpAuditWasReviewed ? '重新审核通过' : reportTerms.approveAction) }}</button>
           <button class="btn" type="button" @click="rpAuditId=''">取消</button>
@@ -1653,10 +1507,40 @@
       </div>
     </div>
   </div>
+
+  <!-- 企业微信身份绑定 -->
+  <div v-if="wecomModalOpen" class="rp-modal-mask" @click.self="wecomModalOpen=false">
+    <div class="rp-modal wecom-modal">
+      <div class="rp-modal-head">
+        <div>
+          <div class="rp-modal-title">绑定企业微信身份</div>
+          <div class="muted" style="font-size:12px;margin-top:3px">{{ wecomBindingPatient?.name || '当前患者' }}</div>
+        </div>
+        <button class="rp-modal-close" type="button" @click="wecomModalOpen=false">✕</button>
+      </div>
+      <div class="rp-modal-body">
+        <div class="wecom-form-grid">
+          <label class="profile-field wide">
+            <span>external_userid</span>
+            <input v-model.trim="wecomForm.external_userid" placeholder="企业微信客户 external_userid">
+          </label>
+          <label class="profile-field wide">
+            <span>userid</span>
+            <input v-model.trim="wecomForm.userid" placeholder="内部员工 userid，可选">
+          </label>
+        </div>
+        <div class="wecom-form-hint">真实企微回调拿到 external_userid 后，会用这个字段把消息、图片和打卡记录归属到患者。</div>
+        <div class="wecom-modal-actions">
+          <button class="btn" type="button" @click="wecomModalOpen=false">取消</button>
+          <button class="primary" type="button" @click="submitWecomBind" :disabled="wecomBindingSaving">{{ wecomBindingSaving ? '保存中...' : '保存绑定' }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import RecordView from './RecordView.vue'
 import { getStoredScenario } from '../config/scenarios'
@@ -1666,6 +1550,10 @@ const route = useRoute()
 const toast = { show: (msg) => window.alert(msg) }
 const scenario = computed(() => getStoredScenario())
 const isCheckupScenario = computed(() => scenario.value.key === 'checkup')
+function goFollowupWorkflow() {
+  router.push('/followup-workflow')
+}
+
 const reportTerms = computed(() => {
   if (isCheckupScenario.value) {
     return {
@@ -1705,7 +1593,7 @@ const reportTerms = computed(() => {
     reviewed: '已审核',
     reviewAction: '审核',
     auditAi: '审核AI建议',
-    createTask: '创建随访任务',
+    createTask: '创建任务',
     auditModalTitle: '审核AI生成内容',
     summaryLabel: '影像解读摘要',
     adviceLabel: 'AI健康建议',
@@ -1726,8 +1614,8 @@ const subTabs = [
   { key: 'detail', label: '患者详情' },
   { key: 'record', label: '档案与报告' },
   { key: 'review', label: isCheckupScenario.value ? '体检报告确认' : '健康报告审核' },
-  { key: 'followup-plan', label: '随访计划' },
-  { key: 'follow', label: 'AI助手随访' }
+  { key: 'followup-plan', label: '随访任务下发' },
+  { key: 'follow', label: '执行跟踪' }
 ]
 const allowedSubTabs = new Set(subTabs.map((t) => t.key))
 
@@ -1758,6 +1646,7 @@ function setSubTab(key) {
 
 const activeStage = ref('all')
 const activePatientId = ref('p1')
+const recordPatient = ref(null)
 const followPatientId = ref('p1')
 const followSearch = ref('')
 const followRiskFilter = ref('')
@@ -1768,9 +1657,17 @@ const patientEditMode = ref(false)
 const adviceGenerating = ref(false)
 const tongueSubmitting = ref(false)
 const tongueSyncing = ref(false)
+const reportGeneratingIds = ref(new Set())
 const imagingInputRef = ref(null)
 const activeAssistant = ref('hlp')
 const assistPlanZoneRef = ref(null)
+const wecomModalOpen = ref(false)
+const wecomBindingPatientId = ref('')
+const wecomBindingSaving = ref(false)
+const wecomForm = reactive({
+  external_userid: '',
+  userid: '',
+})
 
 const planState = ref({
   loading: true,
@@ -1780,11 +1677,16 @@ const planState = ref({
   days: {}
 })
 const planDay = ref('day1')
+const followupTemplates = ref([])
+const followupRecommendation = ref(null)
+const selectedFollowupTemplateId = ref(null)
+const followupPlanSaving = ref(false)
+const followupKnowledgeItems = ref([])
 
 // 患者队列（必须提前声明，避免 watcher immediate 引用 TDZ）
 const queue = ref([])
 
-// 随访任务工作台（筛选 + 列表 + 详情）
+// 健康管理任务工作台（筛选 + 列表 + 详情）
 const taskFilters = ref({
   q: '',
   risk: '',
@@ -1802,6 +1704,196 @@ const activeTaskId = ref('')
 const selectedTaskIds = ref(new Set())
 
 const activeTask = computed(() => (followTasks.value || []).find((t) => t.id === activeTaskId.value) || null)
+
+const MOCK_TRACKING_NODES = [
+  {
+    name: '早餐打卡',
+    send_time: '07:00',
+    task_type: 'diet_checkin',
+    patient_action: 'upload_image',
+    ai_action: 'diet_review',
+    message_template: '早上好，请上传今天早餐图片。系统会从主食、蛋白质、蔬菜和油脂搭配角度给出饮食建议。',
+  },
+  {
+    name: '午餐打卡',
+    send_time: '11:00',
+    task_type: 'diet_checkin',
+    patient_action: 'upload_image',
+    ai_action: 'diet_review',
+    message_template: '午餐前后请上传餐食图片，便于记录今天的饮食结构，并获得下一餐调整建议。',
+  },
+  {
+    name: '知识推送',
+    send_time: '12:30',
+    task_type: 'knowledge_push',
+    patient_action: 'read',
+    ai_action: 'send_message',
+    message_template: '今天的健康知识：甲状腺结节和肺结节管理重点是规律复查、稳定作息、减少焦虑，并持续记录身体变化。',
+  },
+  {
+    name: '晚餐打卡',
+    send_time: '17:30',
+    task_type: 'diet_checkin',
+    patient_action: 'upload_image',
+    ai_action: 'diet_review',
+    message_template: '请上传今天晚餐图片。建议晚餐清淡、不过量，注意优质蛋白和蔬菜搭配。',
+  },
+  {
+    name: '运动提醒',
+    send_time: '19:00',
+    task_type: 'exercise_reminder',
+    patient_action: 'reply_text',
+    ai_action: 'none',
+    message_template: '今天建议完成20-30分钟低到中等强度活动，如散步、拉伸或八段锦。量力而行，贵在坚持。',
+  },
+  {
+    name: '心理提醒',
+    send_time: '20:00',
+    task_type: 'psych_reminder',
+    patient_action: 'reply_text',
+    ai_action: 'reply',
+    message_template: '睡前可以做3分钟呼吸放松，记录今天的压力和睡眠准备情况。若持续焦虑或失眠，可以回复说明。',
+  },
+]
+
+function previewTasksFromPatient(p) {
+  if (!p) return []
+  const nodes = (p.planTask?.nodes || []).length ? p.planTask.nodes : MOCK_TRACKING_NODES
+  const day = p.planTask?.day || planDay.value || 'day1'
+  return nodes.slice(0, 6).map((node, idx) => {
+    const message = node.message_template || '请按计划完成今日健康管理任务。'
+    return {
+      id: `preview-${p.id}-${String(day).replace('day', '')}-${idx}`,
+      patientId: p.id,
+      patientName: p.name,
+      gender: p.gender,
+      age: p.age,
+      phoneMasked: p.phoneMasked,
+      nodules: p.nodules,
+      risk: p.risk,
+      riskTone: p.riskTone,
+      owner: p.owner || '',
+      channel: p.planTask?.channel || '企微',
+      cycle: p.planTask?.cycle || '90天',
+      reminder: p.planTask?.reminder || '',
+      day,
+      time: node.send_time || '09:00',
+      scheduledAt: '模拟排程',
+      status: idx === 0 ? 'scheduled' : 'pending',
+      node,
+      message,
+      patientAction: patientActionLabel(node.patient_action),
+      aiAction: aiActionLabel(node.ai_action),
+      logs: [{ at: '模拟', by: '系统', action: 'task_created_from_patient_plan', note: '模拟展示：真实企微接入后会写入实际发送与回调记录。' }],
+    }
+  })
+}
+
+const trackingTasksForPatient = computed(() => {
+  const p = followPatient.value
+  if (!p) return []
+  const tasks = (followTasks.value || []).filter((t) => String(t.patientId) === String(p.id))
+  if (!tasks.length) return previewTasksFromPatient(p)
+  if (tasks.length === 1 && !tasks[0].node?.message_template && !tasks[0].message) return previewTasksFromPatient(p)
+  return tasks
+})
+
+const activeTrackingTask = computed(() => {
+  const current = trackingTasksForPatient.value.find((t) => t.id === activeTaskId.value) || trackingTasksForPatient.value[0] || null
+  if (!current) return null
+  const node = current.node || current.taskPayload?.node || {}
+  const message = current.message || node.message_template || ''
+  return {
+    ...current,
+    dayNum: Number(String(current.day || 'day1').replace('day', '')) || 1,
+    time: current.time || current.scheduledAt?.slice(11, 16) || node.send_time || '09:00',
+    title: current.title || node.name || '健康管理任务',
+    message,
+    messageBrief: current.messageBrief || String(message || '暂无推送内容').replace(/\s+/g, ' ').slice(0, 48),
+    patientAction: current.patientAction || patientActionLabel(node.patient_action),
+    aiAction: current.aiAction || aiActionLabel(node.ai_action),
+  }
+})
+
+const trackingTaskGroups = computed(() => {
+  const groups = new Map()
+  trackingTasksForPatient.value.forEach((task) => {
+    const day = Number(String(task.day || 'day1').replace('day', '')) || 1
+    if (!groups.has(day)) groups.set(day, [])
+    const node = task.node || task.taskPayload?.node || {}
+    const message = task.message || node.message_template || ''
+    groups.get(day).push({
+      ...task,
+      dayNum: day,
+      time: task.time || task.scheduledAt?.slice(11, 16) || node.send_time || '09:00',
+      messageBrief: String(message || '暂无推送内容').replace(/\s+/g, ' ').slice(0, 48),
+    })
+  })
+  return Array.from(groups.entries())
+    .sort((a, b) => a[0] - b[0])
+    .slice(0, 7)
+    .map(([day, tasks]) => ({
+      day,
+      tasks: tasks.sort((a, b) => String(a.time).localeCompare(String(b.time))),
+    }))
+})
+
+const trackingStats = computed(() => {
+  const list = trackingTasksForPatient.value
+  return {
+    total: list.length,
+    waiting: list.filter((t) => ['draft', 'assigned', 'scheduled', 'pending'].includes(t.status)).length,
+    running: list.filter((t) => ['sent', 'replied', 'executing', 'review'].includes(t.status)).length,
+    alert: list.filter((t) => ['alert', 'manual_processing', 'failed'].includes(t.status)).length,
+  }
+})
+
+const activeTrackingEvents = computed(() => {
+  const t = activeTrackingTask.value
+  if (!t) return []
+  const logs = Array.isArray(t.logs) ? t.logs : []
+  const base = logs.map((log, idx) => ({
+    key: `log-${idx}`,
+    title: trackingEventTitle(log.action),
+    time: log.at || '现在',
+    note: log.note || '任务状态已更新',
+  }))
+  if (!base.length) {
+    base.push({
+      key: 'created',
+      title: '任务已创建',
+      time: t.createdAt || '现在',
+      note: '系统已根据随访模板生成该任务，等待到达计划发送时间。',
+    })
+  }
+  if (['sent', 'replied', 'done', 'completed'].includes(t.status)) {
+    base.push({ key: 'sent', title: '消息已发送', time: t.sentAt || '模拟时间', note: '企业微信发送结果会在接入真实接口后写入这里。' })
+  }
+  return base
+})
+
+const activeTrackingMessages = computed(() => {
+  const t = activeTrackingTask.value
+  if (!t) return []
+  const messages = Array.isArray(t.messages) ? t.messages : []
+  if (messages.length) {
+    return messages.map((msg, idx) => ({
+      key: `msg-${idx}`,
+      direction: msg.direction === 'inbound' ? 'inbound' : 'outbound',
+      sender: msg.direction === 'inbound' ? '患者' : '健康管理师',
+      type: msg.content_type || 'text',
+      content: msg.content || '',
+    }))
+  }
+  const needsImage = String(t.patientAction || '').includes('上传餐饮图片')
+  const needsAiReview = String(t.aiAction || '').includes('饮食点评')
+  return [
+    { key: 'preview-1', direction: 'outbound', sender: '健康管理师', type: 'text', content: t.message || '暂无推送内容' },
+    ...(needsImage ? [{ key: 'preview-2', direction: 'inbound', sender: '患者', type: 'image', content: '患者上传后显示真实图片' }] : []),
+    ...(needsAiReview ? [{ key: 'preview-3', direction: 'outbound', sender: 'AI饮食点评', type: 'text', content: '图片识别完成后，这里会显示AI饮食点评和下一餐建议。' }] : []),
+    ...(!needsImage && ['replied', 'done', 'completed'].includes(t.status) ? [{ key: 'preview-4', direction: 'inbound', sender: '患者', type: 'text', content: '患者回复内容会显示在这里。' }] : []),
+  ]
+})
 
 const filteredTasks = computed(() => {
   const q = String(taskFilters.value.q || '').trim()
@@ -1863,16 +1955,25 @@ watch(
     const seeded = (queue.value || [])
       .filter((p) => p?.planTask)
       .slice(0, 8)
-      .map((p) => makeTaskFromPatient(p))
+      .flatMap((p) => previewTasksFromPatient(p))
     followTasks.value = seeded
     if (seeded[0]) selectTask(seeded[0].id)
   },
   { immediate: true }
 )
 
+watch(
+  () => subTab.value,
+  (k) => {
+    if (k !== 'follow') return
+    loadFollowupTasks()
+  },
+  { immediate: true }
+)
+
 /**
  * @isdoc
- * @description 加载随访计划（从 public/plans 读取 JSON）
+ * @description 加载健康管理任务内容（从 public/plans 读取 JSON）
  * @returns {Promise<void>}
  */
 async function loadPlan() {
@@ -1896,6 +1997,19 @@ async function loadPlan() {
   } catch (e) {
     planState.value.loading = false
     planState.value.error = e?.message || '加载计划失败'
+  }
+}
+
+async function loadFollowupPlanningConfig() {
+  try {
+    const templates = await apiJson('/api/b/followup/templates?status=active&include_nodes=1')
+    followupTemplates.value = Array.isArray(templates) ? templates : []
+    if (!selectedFollowupTemplateId.value && followupTemplates.value[0]?.id) selectedFollowupTemplateId.value = followupTemplates.value[0].id
+    const knowledge = await apiJson('/api/b/followup/knowledge?per_page=100')
+    followupKnowledgeItems.value = knowledge?.items || []
+  } catch (e) {
+    followupTemplates.value = []
+    followupKnowledgeItems.value = []
   }
 }
 
@@ -1923,6 +2037,39 @@ function taskStatusLabel(s) {
   return '—'
 }
 
+function trackingStatusLabel(s) {
+  const map = {
+    draft: '待创建',
+    assigned: '待发送',
+    scheduled: '待发送',
+    pending: '待发送',
+    sent: '已发送',
+    replied: '患者已回复',
+    executing: '执行中',
+    review: '待复核',
+    completed: '已完成',
+    done: '已完成',
+    alert: '异常待处理',
+    manual_processing: '人工处理中',
+    failed: '发送失败',
+    cancelled: '已取消',
+  }
+  return map[s] || '待发送'
+}
+
+function trackingEventTitle(action) {
+  const text = String(action || '')
+  const map = {
+    task_created_from_patient_plan: '任务已创建',
+    message_sent: '消息已发送',
+    message_failed: '发送失败',
+    wecom_message_received: '收到患者消息',
+    checkin_submitted: '患者已打卡',
+    task_completed: '任务已完成',
+  }
+  return map[text] || text.replace(/_/g, ' ') || '任务状态更新'
+}
+
 /**
  * @isdoc
  * @description 选择任务并联动患者
@@ -1932,7 +2079,10 @@ function taskStatusLabel(s) {
 function selectTask(id) {
   activeTaskId.value = id
   const t = (followTasks.value || []).find((x) => x.id === id)
-  if (t?.patientId) activePatientId.value = t.patientId
+  if (t?.patientId) {
+    activePatientId.value = t.patientId
+    followPatientId.value = t.patientId
+  }
 }
 
 /**
@@ -1991,6 +2141,8 @@ function bulkAssignSelected() {
  */
 function makeTaskFromPatient(p) {
   const id = `t_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`
+  const planNode = (p.planTask?.nodes || [])[0] || {}
+  const message = planNode.message_template || p.planTask?.note || '请按计划完成今日健康管理任务。'
   return {
     id,
     patientId: p.id,
@@ -2006,9 +2158,15 @@ function makeTaskFromPatient(p) {
     cycle: draft.value.cycle,
     reminder: draft.value.reminder,
     day: planDay.value,
-    status: p.owner ? 'assigned' : 'draft',
+    time: planNode.send_time || '09:00',
+    scheduledAt: '模拟排程',
+    status: p.owner ? 'scheduled' : 'pending',
+    node: planNode,
+    message,
+    patientAction: patientActionLabel(planNode.patient_action),
+    aiAction: aiActionLabel(planNode.ai_action),
     kbSnapshot: JSON.parse(JSON.stringify(draft.value.kbEnabled || {})),
-    logs: [{ at: '现在', by: '医生/运营', action: '创建任务', note: `Day ${planDay.value.replace('day', '')} · ${draft.value.channel} · ${draft.value.cycle}` }],
+    logs: [{ at: '现在', by: '医生/运营', action: 'task_created_from_patient_plan', note: `Day ${planDay.value.replace('day', '')} · ${draft.value.channel} · ${draft.value.cycle}` }],
   }
 }
 
@@ -2018,7 +2176,7 @@ function makeTaskFromPatient(p) {
  * @returns {void}
  */
 function openNewTaskFromActive() {
-  // 已移除“新建随访任务”按钮入口：任务仅从患者行“制定任务”进入
+  // 已移除“新建任务”按钮入口：任务仅从患者行“任务下发”进入
 }
 
 /**
@@ -2033,6 +2191,11 @@ function createTaskForPatient(p) {
   const t = makeTaskFromPatient(p)
   followTasks.value = [t, ...(followTasks.value || [])]
   selectTask(t.id)
+  if (p._apiId) {
+    ensureFollowupRecommendation(p).catch((e) => {
+      toast?.show(e.message || '知识库推荐失败，已保留本地草稿')
+    })
+  }
   // 左侧固定展示患者列表
 }
 
@@ -2087,6 +2250,7 @@ function advanceTask(action) {
 
 onMounted(() => {
   loadPlan()
+  loadFollowupPlanningConfig()
   loadPatients()
   loadReports()
 })
@@ -2159,15 +2323,15 @@ const kbUi = ref({
   editorKey: '',
   editorLabel: '',
   editorText: '',
+  editorCategory: 'script',
+  editorTaskType: '',
+  editorRiskLevel: '',
   managerOpen: false,
   drawerOpen: false,
   drawerGroup: 'diet',
   drawerQuery: '',
   drawerActiveKey: '',
 })
-
-const kbImportInputRef = ref(null)
-const kbUploadInputRef = ref(null)
 
 /**
  * @isdoc
@@ -2201,7 +2365,7 @@ function applyDraftToPlan() {
       '4）是否按计划完成运动与饮食？（是/否）',
     ].join('\n')
     if (key === 'reminderScript') return [
-      `您好，已为您更新 Day ${planDay.value.replace('day', '')} 随访任务。`,
+      `您好，已为您更新 Day ${planDay.value.replace('day', '')} 健康管理任务。`,
       `请按“${draft.value.cycle}复查周期”执行，并完成饮食/运动/心理打卡。`,
       '如出现持续咳嗽、胸痛、咳血、明显吞咽困难等情况，请及时就医并联系医生。',
     ].join('\n')
@@ -2241,27 +2405,152 @@ function applyDraftToPlan() {
     },
     note: draft.value.note
   }
-  // 也同步写入 plan（用于后续开启 AI随访）
+  // 也同步写入 plan（用于后续下发任务）
   savePlanForActive()
   p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'b', text: `生成随访任务：Day ${planDay.value.replace('day','')}`, meta: '已保存' })
+  p.timeline.push({ at: '现在', tone: 'b', text: `生成健康管理任务：Day ${planDay.value.replace('day','')}`, meta: '已保存' })
 
-  // 同步生成/更新随访任务队列（工作台左侧列表）
+  // 同步生成/更新任务队列（工作台左侧列表）
   const newTask = makeTaskFromPatient(p)
   followTasks.value = [newTask, ...(followTasks.value || [])]
   selectTask(newTask.id)
 }
 
+async function ensureFollowupRecommendation(p) {
+  const patient = p || activePatient.value
+  if (!patient?._apiId) return null
+  const rec = await apiPostJson('/api/b/followup/plans/recommend', {
+    patient_id: patient._apiId,
+    record_id: patient.workspaceRecordId || patient.latestRecordId || null,
+    report_id: patient.latestReport?.id || patient.latestReportId || null,
+    nodule_type: patient.noduleType,
+    risk_level: patient.risk,
+  })
+  followupRecommendation.value = rec
+  if (rec?.template?.id) selectedFollowupTemplateId.value = rec.template.id
+  if (rec?.settings) {
+    draft.value.cycle = cycleLabelFromDays(rec.settings.cycle_days)
+    draft.value.channel = rec.settings.channel === 'wecom' ? '企微' : rec.settings.channel === 'phone' ? '电话' : rec.settings.channel === 'miniapp' ? '小程序' : draft.value.channel
+    draft.value.reminder = rec.settings.reminder_strategy || draft.value.reminder
+  }
+  if (rec?.nodes?.length) {
+    const firstNode = rec.nodes[0]
+    if (firstNode?.day_offset) planDay.value = `day${firstNode.day_offset}`
+    draft.value.kbCustom = rec.nodes.flatMap((node) => (node.matched_knowledge || []).map((item) => ({
+      key: `api_${item.id}`,
+      label: item.title,
+      text: item.content,
+      enabled: true,
+    })))
+  }
+  return rec
+}
+
+async function recommendForActive() {
+  const p = activePatient.value
+  if (!p?._apiId) {
+    toast?.show('演示患者已使用本地知识库推荐')
+    return
+  }
+  try {
+    await ensureFollowupRecommendation(p)
+    toast?.show('已按患者画像匹配任务模板和知识库内容')
+  } catch (e) {
+    toast?.show(e.message || '任务模板推荐失败')
+  }
+}
+
+async function saveBackendPatientPlan(p) {
+  const patient = p || activePatient.value
+  if (!patient?._apiId) return null
+  followupPlanSaving.value = true
+  try {
+    const rec = followupRecommendation.value || await ensureFollowupRecommendation(patient)
+    const template = selectedWorkflowTemplate.value || rec?.template || followupTemplates.value[0] || null
+    const templateId = template?.id
+    const nodes = template?.nodes || rec?.nodes || []
+    const selectedKnowledgeIds = [
+      ...(rec?.knowledge || []).map(item => item.id),
+      ...(nodes || []).flatMap(node => node.knowledge_item_ids || [])
+    ].filter(Boolean)
+    const plan = await apiPostJson('/api/b/followup/patient-plans', {
+      patient_id: patient._apiId,
+      record_id: rec?.record_id || patient.workspaceRecordId || null,
+      report_id: rec?.report_id || patient.latestReport?.id || null,
+      template_id: templateId,
+      name: `${patient.name}健康管理任务计划`,
+      nodule_type: patient.noduleType,
+      risk_level: patient.risk,
+      settings: {
+        cycle_days: template?.cycle_days || cycleDaysFromLabel(draft.value.cycle),
+        channel: template?.default_channel || channelToBackend(draft.value.channel),
+        reminder_strategy: template?.default_reminder_strategy || draft.value.reminder,
+      },
+      plan_content: {
+        template,
+        nodes,
+      },
+      selected_knowledge_ids: Array.from(new Set(selectedKnowledgeIds)),
+    })
+    patient._patientPlanId = plan.id
+    patient.planTask = {
+      ...(patient.planTask || {}),
+      backendPlanId: plan.id,
+      cycle: cycleLabelFromDays(template?.cycle_days),
+      channel: channelLabel(template?.default_channel),
+      reminder: template?.default_reminder_strategy || draft.value.reminder,
+      day: planDay.value,
+      kb: patient.planTask?.kb || {},
+      note: draft.value.note,
+    }
+    toast?.show('任务计划已保存')
+    return plan
+  } finally {
+    followupPlanSaving.value = false
+  }
+}
+
 /**
  * @isdoc
- * @description demo 一键闭环：生成随访任务并进入 AI 随访预览
+ * @description 保存并激活任务计划，生成后续提醒/打卡任务
  * @returns {void}
  */
-function simulatePlanToFollowup() {
+async function simulatePlanToFollowup() {
   const p = activePatient.value
   if (!p?.id) return
-  if (!p.planTask) applyDraftToPlan()
-  startAiFollowup()
+  if (p._apiId) {
+    try {
+      applySelectedTemplateToPatient()
+      const plan = p._patientPlanId ? { id: p._patientPlanId } : await saveBackendPatientPlan(p)
+      const activated = await apiPostJson(`/api/b/followup/patient-plans/${plan.id}/activate`, {})
+      const apiTasks = (activated?.tasks || []).map(normalizeBackendTask)
+      if (apiTasks.length) {
+        followTasks.value = [...apiTasks, ...(followTasks.value || [])]
+        selectTask(apiTasks[0].id)
+      }
+      p.stage = 'follow'
+      p.stageLabel = '任务执行中'
+      p.serviceStatus = '任务执行中'
+      p.nextStep = '按计划执行任务'
+      p.timeline = Array.isArray(p.timeline) ? p.timeline : []
+      p.timeline.push({ at: '现在', tone: 'g', text: '已下发健康管理任务', meta: `${apiTasks.length} 个任务` })
+      followPatientId.value = p.id
+      setSubTab('follow')
+      toast?.show('任务已下发，已生成后续提醒/打卡任务')
+      return
+    } catch (e) {
+      toast?.show(e.message || '随访任务下发失败')
+      return
+    }
+  }
+  applySelectedTemplateToPatient()
+  const t = makeTaskFromPatient(p)
+  followTasks.value = [t, ...(followTasks.value || [])]
+  selectTask(t.id)
+  p.stage = 'follow'
+  p.stageLabel = '任务执行中'
+  p.serviceStatus = '任务执行中'
+  toast?.show('任务已下发')
 }
 
 function pickRowLike(q) {
@@ -2344,7 +2633,7 @@ function getKbText(key) {
     '4）是否按计划完成运动与饮食？（是/否）',
   ].join('\n')
   if (key === 'reminderScript') return [
-    `您好，已为您更新 Day ${planDay.value.replace('day', '')} 随访任务。`,
+    `您好，已为您更新 Day ${planDay.value.replace('day', '')} 健康管理任务。`,
     `请按“${draft.value.cycle}复查周期”执行，并完成饮食/运动/心理打卡。`,
     '如出现持续咳嗽、胸痛、咳血、明显吞咽困难等情况，请及时就医并联系医生。',
   ].join('\n')
@@ -2382,47 +2671,6 @@ function setCustomEnabled(key, val) {
   if (hit) hit.enabled = !!val
 }
 
-/**
- * @isdoc
- * @description 打开编辑器（支持新增/修改）
- * @param {{ key?: string, label?: string, text?: string, isCustom?: boolean }=} opt
- * @returns {void}
- */
-function openKbEditor(opt = {}) {
-  const key = String(opt.key || '').trim()
-  const label = String(opt.label || '').trim()
-  kbUi.value.editorOpen = true
-  kbUi.value.editorKey = key
-  kbUi.value.editorLabel = label || (KB_DEFAULT_ITEMS.find((x) => x.key === key)?.label || '自定义条目')
-  kbUi.value.editorText = String(opt.text ?? (key ? getKbText(key) : '')).trim()
-}
-
-/**
- * @isdoc
- * @description 保存编辑内容到覆盖/自定义条目
- * @returns {void}
- */
-function saveKbEditor() {
-  const key = String(kbUi.value.editorKey || '').trim()
-  const label = String(kbUi.value.editorLabel || '').trim() || '自定义条目'
-  const text = String(kbUi.value.editorText || '').trim()
-
-  if (key && KB_DEFAULT_ITEMS.some((x) => x.key === key)) {
-    draft.value.kbOverrides = draft.value.kbOverrides || {}
-    draft.value.kbOverrides[key] = text
-    setKbEnabled(key, true)
-  } else {
-    const newKey = key || `custom_${Date.now()}`
-    draft.value.kbCustom = Array.isArray(draft.value.kbCustom) ? draft.value.kbCustom : []
-    const idx = draft.value.kbCustom.findIndex((x) => x.key === newKey)
-    const item = { key: newKey, label, text, enabled: true }
-    if (idx >= 0) draft.value.kbCustom.splice(idx, 1, item)
-    else draft.value.kbCustom.unshift(item)
-  }
-
-  kbUi.value.editorOpen = false
-}
-
 const kbItems = computed(() => {
   const base = KB_DEFAULT_ITEMS.map((x) => ({
     key: x.key,
@@ -2438,62 +2686,88 @@ const kbItems = computed(() => {
     text: String(x.text || '').trim(),
     isCustom: true,
   }))
-  return [...base, ...custom]
+  const backend = (followupKnowledgeItems.value || []).map((x) => ({
+    key: `api_${x.id}`,
+    apiId: x.id,
+    label: x.title,
+    enabled: true,
+    text: x.content,
+    isCustom: true,
+    category: x.category,
+    taskType: x.task_type,
+  }))
+  return [...backend, ...base, ...custom]
 })
-
-const KB_GROUPS = [
-  { key: 'diet', label: '饮食', items: ['breakfast', 'lunch', 'dinner'] },
-  { key: 'knowledge', label: '知识卡', items: ['knowledgeCard', 'medication'] },
-  { key: 'sport', label: '运动', items: ['sport'] },
-  { key: 'psych', label: '心理', items: ['psych'] },
-  { key: 'ops', label: '运营工具', items: ['questionnaire', 'reminderScript', 'escalationRule'] },
-  { key: 'custom', label: '自定义', items: [] },
-]
 
 const kbSelected = computed(() => kbItems.value.filter((x) => x.enabled))
 
-const kbSelectedByGroup = computed(() => {
-  const map = {}
-  for (const g of KB_GROUPS) map[g.key] = []
-  kbSelected.value.forEach((it) => {
-    const baseKey = it.isCustom ? 'custom' : (KB_GROUPS.find((g) => g.items.includes(it.key))?.key || 'ops')
-    map[baseKey] = map[baseKey] || []
-    map[baseKey].push(it)
-  })
-  return map
+const availableFollowupTemplates = computed(() => followupTemplates.value || [])
+
+const selectedWorkflowTemplate = computed(() => {
+  return availableFollowupTemplates.value.find((tpl) => tpl.id === selectedFollowupTemplateId.value) || availableFollowupTemplates.value[0] || null
 })
+
+function selectFollowupTemplate(tpl) {
+  if (!tpl?.id) return
+  selectedFollowupTemplateId.value = tpl.id
+  if (tpl.nodes?.[0]?.day_offset) planDay.value = `day${tpl.nodes[0].day_offset}`
+}
 
 const planRecommendTags = computed(() => {
   const p = activePatient.value || {}
+  const tpl = selectedWorkflowTemplate.value
   return [
     p.nodules || '结节随访',
     p.risk || '风险分层',
-    draft.value.cycle,
+    tpl?.name || '待选择模板',
+    cycleLabelFromDays(tpl?.cycle_days),
     `Day ${planDay.value.replace('day', '')}`,
-    '电话+企微+小程序',
+    channelLabel(tpl?.default_channel),
   ].filter(Boolean)
 })
 
-const selectedContentPreview = computed(() => {
-  return kbSelected.value.slice(0, 5).map((it) => {
-    const text = String(it.text || getKbText(it.key) || '已加入随访内容包').split('\n').map(x => x.trim()).filter(Boolean)[0] || '已加入随访内容包'
-    const type = it.key === 'questionnaire' ? 'form' : ['reminderScript', 'escalationRule'].includes(it.key) ? 'reminder' : 'article'
-    return { key: it.key, label: it.label, text, type }
-  })
+const activePlanNodes = computed(() => {
+  const nodes = selectedWorkflowTemplate.value?.nodes || followupRecommendation.value?.nodes || []
+  return Array.isArray(nodes) ? nodes : []
+})
+
+const activePlanNodePreviews = computed(() => {
+  const selectedDay = Number(String(planDay.value || 'day1').replace('day', '')) || 1
+  return activePlanNodes.value.filter((node) => {
+    return Number(node.day_offset || 1) === selectedDay
+  }).map((node, idx) => ({
+    key: node.node_code || node.id || idx,
+    day: Number(node.day_offset || 1),
+    time: node.send_time || '09:00',
+    name: node.name || `随访任务 ${idx + 1}`,
+    type: taskTypeLabel(node.task_type),
+    patientAction: patientActionLabel(node.patient_action),
+    aiAction: aiActionLabel(node.ai_action),
+    message: node.message_template || node.content || node.description || '',
+  }))
 })
 
 const planPipelineSteps = computed(() => {
-  const hasPatient = !!activePatient.value?.id
-  const hasKb = kbSelected.value.length > 0
+  const hasTemplate = !!selectedWorkflowTemplate.value
+  const hasPreview = activePlanNodes.value.length > 0
   const hasTask = !!activePatient.value?.planTask
   const isFollow = statusKey(activePatient.value) === 'follow'
+  const currentStatus = statusKey(activePatient.value)
+  const hasReviewed = ['plan', 'follow', 'push', 'abnormal'].includes(currentStatus) || !!activePatient.value?.finalReport?.content || !!activePatient.value?.latestReport
   return [
-    { key: 'patient', icon: '1', title: '患者信息', sub: activePatient.value?.name || '待选择', state: hasPatient ? 'done' : 'todo' },
-    { key: 'risk', icon: '2', title: '风险分层', sub: activePatient.value?.risk || '待评估', state: hasPatient ? 'done' : 'todo' },
-    { key: 'kb', icon: '3', title: '知识推荐', sub: `${kbSelected.value.length} 项内容`, state: hasKb ? 'done' : 'todo' },
-    { key: 'task', icon: '4', title: '任务生成', sub: hasTask ? '已生成' : '待生成', state: hasTask ? 'done' : 'doing' },
-    { key: 'send', icon: '5', title: '预览下发', sub: isFollow ? '已进入AI随访' : '待下发', state: isFollow ? 'done' : 'todo' },
+    { key: 'reviewed', icon: '1', title: '报告已审核', sub: hasReviewed ? '可下发任务' : '等待审核', state: hasReviewed ? 'done' : 'todo' },
+    { key: 'recommend', icon: '2', title: '推荐模板', sub: selectedWorkflowTemplate.value?.name || '待推荐', state: hasTemplate ? 'done' : 'doing' },
+    { key: 'preview', icon: '3', title: '预览任务', sub: hasPreview ? `${activePlanNodes.value.length} 个节点` : '待预览', state: hasPreview ? 'done' : 'todo' },
+    { key: 'confirm', icon: '4', title: '确认下发', sub: hasTask ? '已保存' : '待确认', state: hasTask ? 'done' : 'doing' },
+    { key: 'track', icon: '5', title: '执行跟踪', sub: isFollow ? '查看任务' : '待生成', state: isFollow ? 'done' : 'todo' },
   ]
+})
+
+const planDispatchSteps = computed(() => {
+  return planPipelineSteps.value.slice(1, 5).map((step, idx) => ({
+    ...step,
+    icon: String(idx + 1),
+  }))
 })
 
 const aiFollowFlowSteps = [
@@ -2503,86 +2777,6 @@ const aiFollowFlowSteps = [
   { icon: '文', title: '生成内容', sub: '摘要/任务/提醒' },
   { icon: '发', title: '患者预览', sub: '预览后下发' },
 ]
-
-/**
- * @isdoc
- * @description 打开知识库抽屉（分组选择/预览）
- * @param {string} groupKey
- * @returns {void}
- */
-function openKbDrawer(groupKey) {
-  kbUi.value.drawerOpen = true
-  kbUi.value.drawerGroup = groupKey || 'diet'
-  kbUi.value.drawerQuery = ''
-  const first = (kbDrawerItems.value || [])[0]
-  kbUi.value.drawerActiveKey = first?.key || ''
-}
-
-const kbDrawerItems = computed(() => {
-  const g = String(kbUi.value.drawerGroup || 'diet')
-  const q = String(kbUi.value.drawerQuery || '').trim().toLowerCase()
-
-  const group = KB_GROUPS.find((x) => x.key === g) || KB_GROUPS[0]
-  const inGroup = (it) => {
-    if (g === 'custom') return !!it.isCustom
-    if (it.isCustom) return false
-    return group.items.includes(it.key)
-  }
-  return kbItems.value
-    .filter(inGroup)
-    .filter((it) => (q ? `${it.label} ${it.key}`.toLowerCase().includes(q) : true))
-})
-
-const kbDrawerActive = computed(() => {
-  const key = String(kbUi.value.drawerActiveKey || '')
-  return kbDrawerItems.value.find((x) => x.key === key) || kbDrawerItems.value[0] || null
-})
-
-/**
- * @isdoc
- * @description 导入知识库条目（JSON）
- * @param {Event} e
- * @returns {void}
- */
-function onKbImport(e) {
-  const input = e?.target
-  const file = input?.files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    try {
-      const json = JSON.parse(String(reader.result || '{}'))
-      const items = Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : [])
-      const normalized = items
-        .map((x) => ({
-          key: String(x?.key || '').trim() || `custom_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
-          label: String(x?.label || '自定义条目').trim(),
-          text: String(x?.text || '').trim(),
-          enabled: x?.enabled !== false,
-        }))
-        .filter((x) => x.text || x.label)
-      draft.value.kbCustom = [...normalized, ...(draft.value.kbCustom || [])]
-    } catch (err) {
-      // 轻量 demo：忽略错误
-    }
-  }
-  reader.readAsText(file)
-  if (input) input.value = ''
-}
-
-/**
- * @isdoc
- * @description 上传原表（示意：仅记录文件名）
- * @param {Event} e
- * @returns {void}
- */
-function onKbUpload(e) {
-  const input = e?.target
-  const file = input?.files?.[0]
-  if (!file) return
-  draft.value.note = `${draft.value.note || ''}${draft.value.note ? '\n' : ''}已上传原表：${file.name}`.trim()
-  if (input) input.value = ''
-}
 
 const assistantPlanPanels = computed(() => {
   const meals = pickMeals()
@@ -2664,7 +2858,41 @@ function savePlanForActive() {
     psych: planQuick.value.psych,
   }
   p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'b', text: `更新随访计划：Day ${planDay.value.replace('day', '')}`, meta: '已保存' })
+  p.timeline.push({ at: '现在', tone: 'b', text: `更新任务计划：Day ${planDay.value.replace('day', '')}`, meta: '已保存' })
+}
+
+function applySelectedTemplateToPatient() {
+  const p = activePatient.value
+  const tpl = selectedWorkflowTemplate.value
+  if (!p || !tpl) return
+  const firstNode = (tpl.nodes || [])[0]
+  if (firstNode?.day_offset) planDay.value = `day${firstNode.day_offset}`
+  p.planTask = {
+    ...(p.planTask || {}),
+    title: tpl.name,
+    day: planDay.value,
+    cycle: cycleLabelFromDays(tpl.cycle_days),
+    channel: channelLabel(tpl.default_channel),
+    reminder: tpl.default_reminder_strategy,
+    templateId: tpl.id,
+    nodes: tpl.nodes || [],
+  }
+  savePlanForActive()
+}
+
+async function savePlanForActiveAndBackend() {
+  const p = activePatient.value
+  if (!p) return
+  applySelectedTemplateToPatient()
+  if (!p._apiId) {
+    toast?.show('任务计划已保存')
+    return
+  }
+  try {
+    await saveBackendPatientPlan(p)
+  } catch (e) {
+    toast?.show(e.message || '保存下发设置失败')
+  }
 }
 
 /**
@@ -2681,28 +2909,31 @@ function savePatientForm() {
 
 /**
  * @isdoc
- * @description 开启 AI 随访：状态切换为 follow，并跳转到 AI随访页展示
+ * @description 下发任务：状态切换为 follow，并进入执行跟踪页
  * @returns {void}
  */
-function startAiFollowup() {
+async function startAiFollowup() {
   const p = activePatient.value
   if (!p) return
+  if (p._apiId) {
+    await simulatePlanToFollowup()
+    return
+  }
   // 先保存一次，保证计划和内容包存在
-  if (!p.planTask) applyDraftToPlan()
-  else savePlanForActive()
+  applySelectedTemplateToPatient()
 
   p.stage = 'follow'
-  p.stageLabel = 'AI随访中'
-  p.serviceStatus = 'AI随访中'
-  p.nextStep = '按计划随访'
+  p.stageLabel = '任务执行中'
+  p.serviceStatus = '任务执行中'
+  p.nextStep = '按计划执行任务'
 
   p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'g', text: '开启 AI随访', meta: `Day ${planDay.value.replace('day', '')}` })
+  p.timeline.push({ at: '现在', tone: 'g', text: '下发健康管理任务', meta: `Day ${planDay.value.replace('day', '')}` })
 
-  // 在聊天里塞一条“AI随访建议”提示（若结构存在）
+  // 在聊天里保留一条任务提示（兼容原型预览数据）
   p.chat = Array.isArray(p.chat) ? p.chat : []
-  p.chat.push({ from: 'ai', text: `已开启AI随访（Day ${planDay.value.replace('day', '')}）。我将按随访任务向您推送摘要与打卡入口。` })
-  p.chat.push({ type: 'card', ico: '🧾', title: `查看随访任务（Day ${planDay.value.replace('day', '')}）`, sub: '随访任务已生成 · 点击查看' })
+  p.chat.push({ from: 'ai', text: `已下发健康管理任务（Day ${planDay.value.replace('day', '')}），将按任务模板推送提醒和打卡入口。` })
+  p.chat.push({ type: 'card', ico: '🧾', title: `查看健康管理任务（Day ${planDay.value.replace('day', '')}）`, sub: '任务已生成 · 点击查看' })
 
   followPatientId.value = p.id
   setSubTab('follow')
@@ -2735,12 +2966,12 @@ const aiAssistants = [
     key: 'health', name: 'AI健康管理师', shortName: '健康管理', ico: '健', bg: '#ecfff3', color: '#16a34a',
     image: '/images/ai-assistants/demo02.png',
     tagline: '随访提醒 · 复查计划 · 健康档案，全程陪伴患者健康管理',
-    capabilities: ['随访计划制定', '复查提醒推送', '健康档案管理', '症状自评问卷', '健康报告解读'],
-    workflow: ['档案建立', '随访计划', '定期提醒', '问卷收集', '报告更新'],
+    capabilities: ['任务模板下发', '复查提醒推送', '健康档案管理', '日常打卡', '健康报告解读'],
+    workflow: ['档案建立', '随访任务下发', '定期提醒', '打卡收集', '报告更新'],
     stats: { reach: 124, read: 108, reply: 67, transfer: 2 },
     desc: '随访提醒、复查计划、健康档案管理',
     scene: '结节随访 · 复查提醒',
-    tpl: '您好，您的随访计划已更新，请按时完成复查。如有不适请及时联系我们。',
+    tpl: '您好，您的健康管理任务已更新，请按时完成打卡和复查提醒。如有不适请及时联系我们。',
     execLog: [
       { at: '09:20', action: '发送复查提醒', note: '3个月复查胸部CT', state: '已送达', tone: 'g' },
       { at: '昨天 15:00', action: '发送随访问卷', note: '症状自评问卷', state: '已读', tone: 'g' }
@@ -2977,8 +3208,8 @@ const currentAssistant = computed(() => followAssistants.value.find(a => a.key =
 const followPatient = computed(() => queue.value.find(p => p.id === followPatientId.value) || queue.value[0])
 
 const followFilteredQueue = computed(() => {
-  // AI随访页：只展示 AI随访中的患者
-  return queue.value.filter((p) => statusKey(p) === 'follow').filter(p => {
+  const taskPatientIds = new Set((followTasks.value || []).map((t) => String(t.patientId)))
+  return queue.value.filter((p) => statusKey(p) === 'follow' || taskPatientIds.has(String(p.id))).filter(p => {
     const s = followSearch.value.trim().toLowerCase()
     if (s && !p.name.toLowerCase().includes(s) && !p.phoneMasked.includes(s)) return false
     if (followRiskFilter.value && p.risk !== followRiskFilter.value) return false
@@ -3001,14 +3232,14 @@ const followContentConfigRows = computed(() => {
   const kb = task?.kb || {}
   if (isCheckupScenario.value) {
     return [
-      { key: 'knowledgeCard', label: '体检报告解读卡', reason: kb.knowledgeCard ? '来自已保存随访任务' : '基于异常项与风险等级推荐', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
+      { key: 'knowledgeCard', label: '体检报告解读卡', reason: kb.knowledgeCard ? '来自已保存任务' : '基于异常项与风险等级推荐', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
       { key: 'sport', label: '生活方式干预建议', reason: kb.sport ? '来自方案组合' : '可作为检后改善模块加入', enabled: !!kb.sport || !!draft.value.kbEnabled?.sport },
       { key: 'questionnaire', label: '复查前症状自评', reason: kb.questionnaire ? '来自问卷库' : '用于判断是否需要提前就医', enabled: !!kb.questionnaire || !!draft.value.kbEnabled?.questionnaire },
       { key: 'reminderScript', label: '复查预约提醒', reason: kb.reminderScript ? '来自提醒话术模板' : '用于提升复查到检率', enabled: !!kb.reminderScript || !!draft.value.kbEnabled?.reminderScript },
     ]
   }
   return [
-    { key: 'knowledgeCard', label: '低碘饮食指导', reason: kb.knowledgeCard ? '来自已保存随访任务' : '基于病种与阶段推荐', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
+    { key: 'knowledgeCard', label: '低碘饮食指导', reason: kb.knowledgeCard ? '来自已保存任务' : '基于病种与阶段推荐', enabled: !!kb.knowledgeCard || !!draft.value.kbEnabled?.knowledgeCard },
     { key: 'sport', label: '术后/日常运动提醒', reason: kb.sport ? '来自方案组合' : '可作为生活方式模块加入', enabled: !!kb.sport || !!draft.value.kbEnabled?.sport },
     { key: 'questionnaire', label: '症状自评问卷', reason: kb.questionnaire ? '来自问卷库' : 'Day1 建议加入基线症状评估', enabled: !!kb.questionnaire || !!draft.value.kbEnabled?.questionnaire },
     { key: 'reminderScript', label: '晚间打卡提醒', reason: kb.reminderScript ? '来自提醒话术模板' : '用于提升依从性', enabled: !!kb.reminderScript || !!draft.value.kbEnabled?.reminderScript },
@@ -3046,9 +3277,9 @@ const simulatedAssistantChat = computed(() => {
     const kb = task.kb || {}
     const firstText = String(kb.knowledgeCard || kb.reminderScript || kb.sport || kb.psych || '').split('\n').map((x) => x.trim()).filter(Boolean)[0]
     return [
-      { from: 'ai', text: `您好，${patientName}。我是${assistantName}，已根据您的随访计划生成 Day ${dayNum} 内容。` },
+      { from: 'ai', text: `您好，${patientName}。我是${assistantName}，已根据您的任务计划生成 Day ${dayNum} 内容。` },
       ...(firstText ? [{ from: 'ai', text: `摘要：${firstText}` }] : []),
-      { type: 'card', ico: '随', title: `Day ${dayNum} 随访任务`, sub: `${task.channel || draft.value.channel} · ${task.cycle || draft.value.cycle} · 已配置内容包` },
+      { type: 'card', ico: '任', title: `Day ${dayNum} 健康管理任务`, sub: `${task.channel || draft.value.channel} · ${task.cycle || draft.value.cycle} · 已配置内容包` },
       { type: 'card', ico: '问', title: '症状自评与打卡', sub: kb.questionnaire ? '问卷已加入 · 点击填写' : '饮食/运动/心理打卡入口' },
       { from: 'ai', text: kb.reminderScript ? String(kb.reminderScript).split('\n')[0] : '请按计划完成今日打卡，如有明显不适请及时联系医生。' },
     ]
@@ -3067,9 +3298,9 @@ const simulatedAssistantChat = computed(() => {
   const firstText = String(firstSec?.p || '').trim().split('\n').map((x) => x.trim()).filter(Boolean)[0] || ''
 
   return [
-    { from: 'ai', text: `您好，${patientName}。我是${assistantName}，已为您生成 Day ${dayNum} 的随访建议摘要。` },
+    { from: 'ai', text: `您好，${patientName}。我是${assistantName}，已为您生成 Day ${dayNum} 的任务内容摘要。` },
     ...(firstText ? [{ from: 'ai', text: `摘要：${firstText}` }] : []),
-    { type: 'card', ico: '🧾', title: `查看并填写随访任务（Day ${dayNum}）`, sub: `${plan.name} · 点击在右侧完成制定` },
+    { type: 'card', ico: '🧾', title: `查看并填写健康管理任务（Day ${dayNum}）`, sub: `${plan.name} · 点击在右侧完成下发` },
     { from: 'ai', text: '提示：内容较长已折叠，请在右侧表单中选择知识库条目并保存。' },
   ]
 })
@@ -3079,6 +3310,10 @@ watch(
   () => {
     const d = followPatient.value?.planTask?.day
     if (typeof d === 'string' && d.startsWith('day')) planDay.value = d
+    const firstTask = trackingTasksForPatient.value[0]
+    if (firstTask && !trackingTasksForPatient.value.some((t) => t.id === activeTaskId.value)) {
+      activeTaskId.value = firstTask.id
+    }
   }
 )
 
@@ -3118,14 +3353,26 @@ function toScenarioReport(r, idx = 0) {
 }
 
 async function loadReports() {
-  if (!rpList.value.length) useMockReports()
   if (rpLoaded.value || rpLoading.value) return
   rpLoading.value = true
   try {
-      const res = await fetch('/api/b/reports?per_page=50', { credentials: 'include' })
-      const data = await res.json()
-      if (data.success) {
-        rpList.value = (data.data?.reports || [])
+      const allReports = []
+      let page = 1
+      let pages = 1
+      do {
+        const res = await fetch(`/api/b/reports?page=${page}&per_page=100&include_unreported=1`, { credentials: 'include' })
+        const data = await res.json()
+      if (!data.success) {
+        rpList.value = []
+        toast?.show(data.message || '加载真实报告列表失败')
+        return
+      }
+        allReports.push(...(data.data?.reports || []))
+        pages = data.data?.pages || 1
+        page += 1
+      } while (page <= pages)
+
+      rpList.value = allReports
         .map((r) => {
           const patient = r.patient || {}
           const record = r.record || {}
@@ -3140,6 +3387,9 @@ async function loadReports() {
 
           return ({
             id: r.id,
+            rawPatientId: r.patient_id,
+            rawRecordId: r.record_id,
+            isReportPlaceholder: !!r.is_report_placeholder,
             name: r.patient_name || '—',
             gender,
             age,
@@ -3149,13 +3399,13 @@ async function loadReports() {
             nodules: noduleTypeLabel(nType),
             noduleKey: nType,
             uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
-            aiStatus: r.status === 'finalized' || r.status === 'published' ? '已完成' : '待审核',
+            aiStatus: r.status === 'not_generated' ? '待生成' : r.status === 'finalized' || r.status === 'published' ? '已完成' : '待审核',
             risk: r.risk_level || '未评估',
             riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
             owner: r.created_by_name || scenario.value.defaultOwner,
             summary: r.report_summary || r.summary || '',
             aiReadSummary: r.imaging_conclusion || r.ai_read_summary || '',
-            reportStatus: r.status === 'finalized' || r.status === 'published' ? '已审核' : '待审核',
+            reportStatus: r.status === 'not_generated' ? '待生成' : r.status === 'finalized' || r.status === 'published' ? '已审核' : '待审核',
             reportHtml: '',
             flow: makeReportFlow(r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '', r.status === 'finalized')
           })
@@ -3163,9 +3413,10 @@ async function loadReports() {
         .map(toScenarioReport)
       if (rpList.value.length) rpActiveId.value = rpList.value[0].id
       rpLoaded.value = true
-    }
   } catch (e) {
     console.error('加载报告列表失败', e)
+    rpList.value = []
+    toast?.show('加载真实报告列表失败，请确认后端服务和登录状态')
   } finally {
     rpLoading.value = false
   }
@@ -3194,14 +3445,31 @@ const rpViewVisible = ref(false)
 const rpAuditId = ref('')
 const rpAuditPara1 = ref('')
 const rpAuditPara2 = ref('')
+const rpAuditImagingAdvice = ref('')
+const rpAuditOverallAdvice = ref('')
+const rpAuditRiskAdvice = ref('')
+const rpAuditTongueAdvice = ref('')
 const rpAuditStatus = ref('')
 const rpAuditVersion = ref(1)
 const rpAuditWasReviewed = ref(false)
+
+function currentAuditSections() {
+  return {
+    imaging_report_advice: rpAuditImagingAdvice.value,
+    overall_assessment: rpAuditOverallAdvice.value,
+    risk_assessment: rpAuditRiskAdvice.value,
+    tongue_conclusion: rpAuditTongueAdvice.value
+  }
+}
 
 async function openAudit(r) {
   rpAuditId.value = r.id
   rpAuditPara1.value = r.summary || `暂无${reportTerms.value.summaryLabel}`
   rpAuditPara2.value = r.aiReadSummary || `暂无${reportTerms.value.adviceLabel}`
+  rpAuditImagingAdvice.value = r.aiReadSummary || ''
+  rpAuditOverallAdvice.value = r.summary || ''
+  rpAuditRiskAdvice.value = r.risk ? `当前风险等级：${r.risk}` : ''
+  rpAuditTongueAdvice.value = ''
   rpAuditStatus.value = ''
   rpAuditVersion.value = 1
   rpAuditWasReviewed.value = r.reportStatus === '已审核'
@@ -3211,13 +3479,20 @@ async function openAudit(r) {
       const data = await apiJson(`/api/b/reports/${r.id}/advice`)
       const advice = normalizeAdvicePayload(data.advice, {})
       rpAuditPara2.value = advice.content || rpAuditPara2.value
+      rpAuditImagingAdvice.value = advice.sections.imaging_report_advice || rpAuditPara2.value
+      rpAuditOverallAdvice.value = advice.sections.overall_assessment || rpAuditPara1.value
+      rpAuditRiskAdvice.value = advice.sections.risk_assessment || rpAuditRiskAdvice.value
+      rpAuditTongueAdvice.value = advice.sections.tongue_conclusion || ''
       rpAuditStatus.value = advice.status || ''
       rpAuditVersion.value = advice.version || 1
 
       const detail = await apiJson(`/api/b/reports/${r.id}`)
       rpAuditPara1.value = detail.report_summary || detail.summary || rpAuditPara1.value
+      rpAuditOverallAdvice.value = rpAuditOverallAdvice.value || rpAuditPara1.value
+      rpAuditRiskAdvice.value = rpAuditRiskAdvice.value || detail.imaging_risk_warning || ''
+      rpAuditTongueAdvice.value = rpAuditTongueAdvice.value || detail.record?.tongue_result_summary || ''
       r.summary = rpAuditPara1.value
-      r.aiReadSummary = rpAuditPara2.value
+      r.aiReadSummary = rpAuditImagingAdvice.value || rpAuditPara2.value
     } catch (e) {
       console.error('加载报告建议失败', e)
     }
@@ -3232,19 +3507,27 @@ async function finalizeReport(reportId) {
       await apiJson(`/api/b/reports/${reportId}/advice`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: rpAuditPara2.value, preserve_history: true })
+        body: JSON.stringify({
+          content: rpAuditImagingAdvice.value,
+          sections: currentAuditSections(),
+          preserve_history: true
+        })
       })
       const data = await apiJson(`/api/b/reports/${reportId}/advice/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: rpAuditPara2.value, summary: rpAuditPara1.value })
+        body: JSON.stringify({
+          content: rpAuditImagingAdvice.value,
+          summary: rpAuditOverallAdvice.value,
+          sections: currentAuditSections()
+        })
       })
       const r = rpList.value.find(x => x.id === reportId)
       if (r) {
         r.reportStatus = '已审核'
         r.aiStatus = '已完成'
-        r.summary = rpAuditPara1.value
-        r.aiReadSummary = rpAuditPara2.value
+        r.summary = rpAuditOverallAdvice.value
+        r.aiReadSummary = rpAuditImagingAdvice.value
         r.flow = makeReportFlow(r.uploadAt, true)
       }
       rpAuditStatus.value = data.advice?.status || 'archived'
@@ -3300,6 +3583,10 @@ async function approveReport(reportId) {
 
 async function viewReport(reportId) {
   const mockR = rpList.value.find(x => x.id === reportId)
+  if (mockR?.isReportPlaceholder || String(reportId || '').startsWith('patient-')) {
+    toast?.show('该患者尚未生成健康报告，请先点击“去生成”')
+    return
+  }
   try {
     const res = await fetch(`/api/b/reports/${reportId}`, { credentials: 'include' })
     const data = await res.json()
@@ -3326,6 +3613,11 @@ async function viewReport(reportId) {
 }
 
 function downloadReport(reportId) {
+  const row = rpList.value.find(x => x.id === reportId)
+  if (row?.isReportPlaceholder || String(reportId || '').startsWith('patient-')) {
+    toast?.show('该患者尚未生成健康报告，暂不能下载')
+    return
+  }
   if (!reportId || String(reportId).startsWith('r')) {
     toast?.show('示例报告暂无可下载文件')
     return
@@ -3335,14 +3627,75 @@ function downloadReport(reportId) {
 
 const rpFilteredList = computed(() => {
   return rpList.value.filter(r => {
-    if (rpSearch.value && !r.name.includes(rpSearch.value) && !r.phone.includes(rpSearch.value)) return false
+    if (rpSearch.value && !String(r.name || '').includes(rpSearch.value) && !String(r.phone || '').includes(rpSearch.value)) return false
     if (rpSource.value && r.source !== rpSource.value) return false
+    if (rpNodule.value && r.nodules !== rpNodule.value) return false
     if (rpRisk.value && r.risk !== rpRisk.value) return false
     return true
   })
 })
 
 const rpActive = computed(() => rpList.value.find(r => r.id === rpActiveId.value) || rpList.value[0])
+
+async function openReportRowPrimary(r) {
+  if (!r) return
+  if (r.isReportPlaceholder) {
+    await generateReportForReportRow(r)
+    return
+  }
+  openAudit(r)
+}
+
+async function generateReportForReportRow(r) {
+  if (!r?.rawRecordId) {
+    toast?.show('该患者还没有健康档案，请先建档后再生成报告')
+    const patient = queue.value.find(p => p._apiId === r?.rawPatientId)
+    if (patient) goRecord(patient)
+    return
+  }
+
+  const generateKey = r.rawPatientId || r.id
+  if (reportGeneratingIds.value.has(generateKey)) return
+  reportGeneratingIds.value = new Set([...reportGeneratingIds.value, generateKey])
+
+  try {
+    const job = await apiJson('/api/b/reports/generate-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: r.rawRecordId })
+    })
+    const jobId = job.job_id
+    if (!jobId) throw new Error('报告生成任务未返回任务ID')
+    toast?.show('报告生成任务已提交，AI处理中...')
+
+    let completed = false
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      await sleep(attempt < 10 ? 2000 : 5000)
+      const statusData = await apiJson(`/api/b/reports/generate-jobs/${jobId}`)
+      if (statusData.status === 'completed') {
+        completed = true
+        break
+      }
+      if (statusData.status === 'failed') {
+        throw new Error(statusData.message || 'AI生成失败')
+      }
+    }
+
+    rpLoaded.value = false
+    await loadReports()
+    if (completed) {
+      toast?.show('健康报告已生成，请审核确认')
+    } else {
+      toast?.show('报告仍在生成中，请稍后刷新查看')
+    }
+  } catch (e) {
+    toast?.show(e.message || '生成健康报告失败')
+  } finally {
+    const next = new Set(reportGeneratingIds.value)
+    next.delete(generateKey)
+    reportGeneratingIds.value = next
+  }
+}
 
 /**
  * @isdoc
@@ -3388,9 +3741,9 @@ function nextHint(p) {
   const k = statusKey(p)
   if (k === 'new') return `请先完成患者建档信息，后续才能上传检查报告并生成${scenario.value.reportLabel}。`
   if (k === 'gen') return `请上传/补全检查报告，系统将自动解析并生成${scenario.value.reportLabel}草稿。`
-  if (k === 'review') return `${scenario.value.reportLabel}已生成，等待人工确认后进入随访计划制定。`
-  if (k === 'plan') return '请制定随访计划，明确复查周期与触达方式，随后进入 AI 随访执行。'
-  return '当前处于 AI 随访中，可查看随访记录与最近触达情况。'
+  if (k === 'review') return `${scenario.value.reportLabel}已生成，等待人工确认后进入随访任务下发。`
+  if (k === 'plan') return '请选择随访任务模板，预览任务节点并确认下发。'
+  return '当前处于任务执行中，可查看已下发任务与打卡记录。'
 }
 
 /**
@@ -3403,8 +3756,8 @@ function nextHintV2(p) {
   const k = statusKey(p)
   if (k === 'gen') return `系统将根据档案资料生成${scenario.value.reportLabel}草稿。`
   if (k === 'review') return `${scenario.value.reportLabel}已生成，建议优先完成确认。`
-  if (k === 'plan') return `${scenario.value.reportLabel}已确认，等待制定随访计划。`
-  if (k === 'follow') return '患者正在 AI随访中，可查看随访记录。'
+  if (k === 'plan') return `${scenario.value.reportLabel}已确认，等待下发随访任务。`
+  if (k === 'follow') return '患者任务执行中，可查看任务记录。'
   return `请先完成患者档案建立，后续才能生成${scenario.value.reportLabel}。`
 }
 
@@ -3420,15 +3773,15 @@ function flowNodes(p) {
     { k: 'a', label: '建立档案' },
     { k: 'b', label: `${scenario.value.reportLabel}生成` },
     { k: 'c', label: isCheckupScenario.value ? '总检确认' : '健康报告审核' },
-    { k: 'd', label: '随访计划制定' },
-    { k: 'e', label: 'AI随访' },
+    { k: 'd', label: '随访任务下发' },
+    { k: 'e', label: '任务执行' },
   ]
 
   // 当前节点：按“当前状态”定位到主流程节点
   // 健康报告待生成 → 当前=健康报告生成
   // 健康报告待审核 → 当前=健康报告审核
-  // 随访计划待制定 → 当前=随访计划制定
-  // AI随访中 → 当前=AI随访
+  // 任务待下发 → 当前=随访任务下发
+  // 任务执行中 → 当前=任务执行
   const curIdx = k === 'follow' ? 4 : k === 'plan' ? 3 : k === 'review' ? 2 : 1
 
   return labels.map((x, i) => {
@@ -3446,8 +3799,9 @@ function flowNodes(p) {
 function stageActions(p) {
   const k = statusKey(p)
   if (k === 'gen') {
+    const generating = reportGeneratingIds.value.has(p?.id)
     return [
-      { label: isCheckupScenario.value ? '生成解读' : '生成报告', primary: true, onClick: () => toast?.show(`生成${scenario.value.reportLabel}`) },
+      { label: generating ? '生成中...' : (isCheckupScenario.value ? '生成解读' : '生成报告'), primary: true, disabled: generating, onClick: () => generateReportForPatient(p) },
       { label: '全流程管理', primary: false, onClick: () => openPatientWorkspace(p) },
     ]
   }
@@ -3458,15 +3812,15 @@ function stageActions(p) {
     ]
   }
   if (k === 'plan') {
-    return [{ label: '制定随访计划', primary: true, onClick: () => openPatientWorkspace(p) }]
+    return [{ label: '随访任务下发', primary: true, onClick: () => openPatientWorkspace(p) }]
   }
   if (k === 'follow') {
     return [
       { label: '查看全流程', primary: true, onClick: () => openPatientWorkspace(p) },
-      { label: '人工接管', primary: false, onClick: () => toast?.show('人工接管') },
+      { label: '执行跟踪', primary: false, onClick: () => setSubTab('follow') },
     ]
   }
-  return [{ label: '建立档案', primary: true, onClick: () => goRecord() }]
+  return [{ label: '建立档案', primary: true, onClick: () => goRecord(p) }]
 }
 
 /**
@@ -3480,8 +3834,8 @@ function primaryLabel(p) {
   if (k === 'new') return '新建档案'
   if (k === 'gen') return '上传报告'
   if (k === 'review') return isCheckupScenario.value ? '总检确认' : '审核报告'
-  if (k === 'plan') return '制定随访计划'
-  return '查看随访详情'
+  if (k === 'plan') return '随访任务下发'
+  return '执行跟踪'
 }
 
 /**
@@ -3525,14 +3879,14 @@ function stageTimeline(p) {
     return [
       { at: baseAt, tone: 'g', text: `${scenario.value.reportLabel}已确认` },
       { at: '—', tone: 'b', text: '患者报告已推送' },
-      { at: '—', tone: 'o', text: '等待制定随访计划' },
+      { at: '—', tone: 'o', text: '等待下发随访任务' },
     ]
   }
   // follow
   return [
-    { at: baseAt, tone: 'b', text: 'AI已发送随访消息' },
-    { at: '—', tone: 'g', text: '患者已回复' },
-    { at: '—', tone: 'p', text: 'AI助手推送建议', meta: '待人工确认' },
+    { at: baseAt, tone: 'b', text: '任务已下发' },
+    { at: '—', tone: 'g', text: '等待用户打卡' },
+    { at: '—', tone: 'p', text: '可查看任务执行记录' },
   ]
 }
 
@@ -3590,9 +3944,9 @@ function statusKey(p) {
   if (['record', 'upload', 'aiGen', 'push', 'recall'].includes(stage)) return 'gen'
   // 健康报告待审核
   if (stage === 'review') return 'review'
-  // AI随访中
+  // 任务执行中
   if (stage === 'follow') return 'follow'
-  // 其它（包括 abnormal）统一归为“随访计划待制定”
+  // 其它（包括 abnormal）统一归为“任务待下发”
   return 'plan'
 }
 
@@ -3606,8 +3960,8 @@ function statusLabel(p) {
   const k = statusKey(p)
   if (k === 'gen') return `${scenario.value.reportLabel}待生成`
   if (k === 'review') return isCheckupScenario.value ? '待总检确认' : '健康报告待审核'
-  if (k === 'plan') return '随访计划待制定'
-  return 'AI随访中'
+  if (k === 'plan') return '任务待下发'
+  return '任务执行中'
 }
 
 const stageTabs = computed(() => {
@@ -3616,15 +3970,15 @@ const stageTabs = computed(() => {
     { key: 'all', label: '全部', count: queue.value.length },
     { key: 'gen', label: `${scenario.value.reportLabel}待生成`, count: count('gen') },
     { key: 'review', label: isCheckupScenario.value ? '待总检确认' : '健康报告待审核', count: count('review') },
-    { key: 'plan', label: '随访计划待制定', count: count('plan') },
-    { key: 'follow', label: 'AI随访中', count: count('follow') },
+    { key: 'plan', label: '任务待下发', count: count('plan') },
+    { key: 'follow', label: '任务执行中', count: count('follow') },
   ]
 })
 
 const nextActions = [
   '上传复查报告',
   `推送${scenario.value.reportLabel}`,
-  '开启AI随访',
+  '下发健康管理任务',
   '发送饮食建议',
   '发送运动计划',
   '创建电话随访',
@@ -3685,14 +4039,19 @@ async function loadPatients() {
         gender: p.gender || '—',
         age: p.age || '—',
         phoneMasked: p.phone ? p.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
+        phone: p.phone || '',
+        wecomExternalUserid: p.wecom_external_userid || '',
+        wecomUserid: p.wecom_userid || '',
+        wecomBindStatus: p.wecom_bind_status || ((p.wecom_external_userid || p.wecom_userid) ? 'bound' : 'unbound'),
+        wecomBoundAt: p.wecom_bound_at || '',
         source: p.source_channel === 'manual' ? scenario.value.sourceOptions[0] : (p.source_channel || scenario.value.sourceOptions[0]),
         owner: p.manager_name || scenario.value.defaultOwner,
         nodules: noduleTypeLabel(p.nodule_type),
         noduleType: p.nodule_type || 'breast',
         risk: p.risk_level || (p.reports?.[0]?.risk_level) || '—',
         riskTone: (p.risk_level || p.reports?.[0]?.risk_level) === '高风险' ? 'r' : (p.risk_level || p.reports?.[0]?.risk_level) === '中风险' ? 'o' : 'g',
-        stage: p.reports?.length ? 'review' : 'gen',
-        stageLabel: p.reports?.length ? statusLabel({ stage: 'review' }) : statusLabel({ stage: 'aiGen' }),
+        stage: p.risk_level ? 'plan' : (p.reports?.length ? 'review' : 'gen'),
+        stageLabel: p.risk_level ? statusLabel({ stage: 'plan' }) : (p.reports?.length ? statusLabel({ stage: 'review' }) : statusLabel({ stage: 'aiGen' })),
         nextStep: '',
         serviceStatus: '',
         report: { status: '—', summary: '' },
@@ -3722,10 +4081,10 @@ async function loadPatients() {
     abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
     reviewers: '', assistants: [], timeline: [],
   }))
-  // 始终追加 follow 阶段的 mock 患者（确保 AI随访 tab 有演示数据）
+  // 始终追加 follow 阶段的 mock 患者（确保任务执行列表有演示数据）
   const followMocks = adaptMockQueueByScenario(MOCK_QUEUE).filter(p => p.stage === 'follow').map(p => ({
     ...p,
-    stageLabel: 'AI随访中', nextStep: '', serviceStatus: 'AI随访中',
+    stageLabel: '任务执行中', nextStep: '', serviceStatus: '任务执行中',
     report: { status: '—', summary: '' }, rawReports: [],
     aiReadSummary: '', reportDoc: { title: '', sections: [] },
     auditTrail: [], chat: [], followTodos: [],
@@ -3743,6 +4102,69 @@ function noduleTypeLabel(t) {
     lung_thyroid: '肺部+甲状腺结节', triple: '三合并结节'
   }
   return map[t] || t || '—'
+}
+
+function riskLevelLabel(risk) {
+  const map = { high: '高风险', mid: '中风险', medium: '中风险', low: '低风险' }
+  return map[risk] || risk || '通用风险'
+}
+
+function channelLabel(channel) {
+  const map = { wecom: '企业微信', phone: '电话', miniapp: '小程序' }
+  return map[channel] || channel || '企业微信'
+}
+
+function templateStatusLabel(status) {
+  const map = { draft: '草稿', active: '启用', paused: '暂停', archived: '归档' }
+  return map[status] || status || '模板'
+}
+
+function taskTypeLabel(type) {
+  const map = {
+    knowledge: '知识推送',
+    knowledge_push: '知识推送',
+    daily_checkin: '每日打卡',
+    diet_checkin: '饮食打卡',
+    diet_image_checkin: '餐饮图片打卡',
+    breakfast_checkin: '早餐打卡',
+    lunch_checkin: '午餐打卡',
+    dinner_checkin: '晚餐打卡',
+    exercise_reminder: '运动提醒',
+    psych_reminder: '心理关怀',
+    review_reminder: '复查提醒',
+    manual: '人工处理',
+  }
+  return map[type] || type || '随访任务'
+}
+
+function patientActionLabel(action) {
+  const map = {
+    none: '无需患者操作',
+    read: '患者阅读',
+    checkin: '患者打卡',
+    fill_form: '填写表单',
+    upload_image: '上传餐饮图片',
+    upload_report: '上传报告',
+    reply: '患者回复',
+    reply_text: '文字回复',
+    confirm: '患者确认',
+  }
+  return map[action] || action || '无需患者操作'
+}
+
+function aiActionLabel(action) {
+  const map = {
+    none: '无自动处理',
+    send_message: '自动发送提醒',
+    reply: '自动回复',
+    analyze_image: '自动分析图片',
+    image_recognition: '图片识别',
+    diet_review: '饮食点评',
+    summarize: '自动汇总',
+    alert: '异常提醒',
+    route_manual: '转人工处理',
+  }
+  return map[action] || action || '无自动处理'
 }
 
 function noduleTags(p) {
@@ -3769,28 +4191,217 @@ const filteredQueue = computed(() => {
   return queue.value.filter((p) => statusKey(p) === activeStage.value)
 })
 
-// 随访计划页：只展示“随访计划待制定”的患者
+// 任务下发页：展示待下发与执行中的患者
 const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === 'plan'))
 
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
 })
 
+const wecomBindingPatient = computed(() => {
+  return queue.value.find((p) => p.id === wecomBindingPatientId.value) || activePatient.value || null
+})
+
+function isWecomBound(p) {
+  return p?.wecomBindStatus === 'bound' || !!p?.wecomExternalUserid || !!p?.wecomUserid
+}
+
+function wecomStatusText(p) {
+  return isWecomBound(p) ? '已绑定' : '未绑定'
+}
+
+function applyWecomBinding(patientData) {
+  const apiId = patientData?.id
+  const target = queue.value.find((p) => p._apiId === apiId || p.id === apiId)
+  if (!target) return
+  target.wecomExternalUserid = patientData.wecom_external_userid || ''
+  target.wecomUserid = patientData.wecom_userid || ''
+  target.wecomBindStatus = patientData.wecom_bind_status || (target.wecomExternalUserid || target.wecomUserid ? 'bound' : 'unbound')
+  target.wecomBoundAt = patientData.wecom_bound_at || ''
+}
+
+function openWecomBind(p = activePatient.value) {
+  if (!p?._apiId) {
+    toast?.show('演示患者暂不支持绑定企业微信身份')
+    return
+  }
+  wecomBindingPatientId.value = p.id
+  wecomForm.external_userid = p.wecomExternalUserid || ''
+  wecomForm.userid = p.wecomUserid || ''
+  wecomModalOpen.value = true
+}
+
+async function submitWecomBind() {
+  const p = wecomBindingPatient.value
+  if (!p?._apiId) return
+  const externalUserid = String(wecomForm.external_userid || '').trim()
+  const userid = String(wecomForm.userid || '').trim()
+  if (!externalUserid && !userid) {
+    toast?.show('请至少填写 external_userid 或 userid')
+    return
+  }
+  wecomBindingSaving.value = true
+  try {
+    const data = await apiJson(`/api/b/patients/${p._apiId}/wecom-bind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wecom_external_userid: externalUserid,
+        wecom_userid: userid,
+      }),
+    })
+    applyWecomBinding(data)
+    wecomModalOpen.value = false
+    toast?.show('企业微信身份已绑定')
+  } catch (e) {
+    toast?.show(e.message || '绑定企业微信身份失败')
+  } finally {
+    wecomBindingSaving.value = false
+  }
+}
+
+async function unbindWecom(p = activePatient.value) {
+  if (!p?._apiId) {
+    toast?.show('演示患者暂不支持解绑企业微信身份')
+    return
+  }
+  if (!window.confirm(`确认解绑 ${p.name || '该患者'} 的企业微信身份？`)) return
+  try {
+    const data = await apiJson(`/api/b/patients/${p._apiId}/wecom-bind`, { method: 'DELETE' })
+    applyWecomBinding(data)
+    toast?.show('企业微信身份已解绑')
+  } catch (e) {
+    toast?.show(e.message || '解绑企业微信身份失败')
+  }
+}
+
 function nowText() {
   return new Date().toLocaleString('zh-CN', { hour12: false })
 }
 
+function formatDateInput(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function nextFollowDateByCycle(cycle) {
+  const date = new Date()
+  const months = String(cycle || '').includes('3') ? 3 : String(cycle || '').includes('6') ? 6 : 12
+  date.setMonth(date.getMonth() + months)
+  return formatDateInput(date)
+}
+
+function cycleDaysFromLabel(cycle) {
+  if (String(cycle || '').includes('3')) return 90
+  if (String(cycle || '').includes('6')) return 180
+  return 365
+}
+
+function cycleLabelFromDays(days) {
+  const n = Number(days || 0)
+  if (n <= 100) return '3个月'
+  if (n <= 220) return '6个月'
+  return '12个月'
+}
+
+function channelToBackend(channel) {
+  const text = String(channel || '')
+  if (text.includes('企微')) return 'wecom'
+  if (text.includes('电话')) return 'phone'
+  if (text.includes('小程序')) return 'miniapp'
+  return 'wecom'
+}
+
+async function loadFollowupTasks() {
+  try {
+    const data = await apiJson('/api/b/followup/tasks?per_page=100')
+    const items = data.items || data || []
+    const apiTasks = items.map(normalizeBackendTask)
+    if (apiTasks.length) {
+      const localOnly = (followTasks.value || []).filter((t) => !t._apiTaskId)
+      followTasks.value = [...apiTasks, ...localOnly]
+      if (!activeTaskId.value || !followTasks.value.some((t) => t.id === activeTaskId.value)) {
+        const firstForPatient = followPatientId.value
+          ? followTasks.value.find((t) => String(t.patientId) === String(followPatientId.value))
+          : null
+        if (firstForPatient || followTasks.value[0]) selectTask((firstForPatient || followTasks.value[0]).id)
+      }
+    }
+  } catch (e) {
+    console.warn('加载随访任务失败', e)
+  }
+}
+
+function normalizeBackendTask(task) {
+  const patient = task.patient || {}
+  const node = task.task_payload?.node || {}
+  const messages = task.messages || []
+  const sentMessage = messages.find((m) => m.direction === 'outbound' && m.sent_at)
+  return {
+    id: `api-task-${task.id}`,
+    _apiTaskId: task.id,
+    patientId: patient.id || task.patient_id,
+    patientName: patient.name || '患者',
+    gender: patient.gender || '—',
+    age: patient.age || '—',
+    phoneMasked: patient.phone ? patient.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
+    nodules: noduleTypeLabel(task.nodule_type || patient.nodule_type),
+    risk: task.risk_level || '—',
+    riskTone: task.risk_level === '高风险' || task.risk_level === '高危' || task.risk_level === 'high' ? 'r' : task.risk_level === '中风险' || task.risk_level === '中危' || task.risk_level === 'mid' ? 'o' : 'g',
+    owner: task.manager_name || scenario.value.defaultOwner,
+    channel: task.channel === 'wecom' ? '企微' : task.channel === 'phone' ? '电话' : task.channel === 'miniapp' ? '小程序' : (task.channel || '企微'),
+    cycle: '—',
+    reminder: task.task_payload?.reminder_strategy || '',
+    day: `day${task.plan_day || 1}`,
+    time: String(task.scheduled_send_at || task.due_at || '').slice(11, 16) || node.send_time || '09:00',
+    scheduledAt: task.scheduled_send_at || task.due_at || '',
+    sentAt: sentMessage?.sent_at || '',
+    status: task.status === 'completed' ? 'completed' : (task.status || 'scheduled'),
+    node,
+    taskPayload: task.task_payload || {},
+    message: node.message_template || task.ai_summary || '',
+    patientAction: patientActionLabel(node.patient_action),
+    aiAction: aiActionLabel(node.ai_action),
+    messages,
+    kbSnapshot: {},
+    logs: (task.events || []).map(e => ({ at: e.created_at || '现在', by: e.actor_type || '系统', action: e.event_type, note: e.summary || '' })),
+    createdAt: task.created_at || '',
+  }
+}
+
+function reportDbStatusLabel(status) {
+  const map = {
+    draft: '草稿',
+    generated: '已生成待审核',
+    reviewing: '审核中',
+    finalized: '已审核',
+    published: '已发布',
+    archived: '已归档'
+  }
+  return map[status] || status || '未生成'
+}
+
 function normalizeAdvicePayload(advice, fallback = {}) {
+  const sections = advice?.sections || fallback.sections || {}
   return {
     version: advice?.version || fallback.version || 1,
     status: advice?.status || fallback.status || 'draft',
     updatedAt: advice?.updated_at || advice?.updatedAt || fallback.updatedAt || '',
     content: advice?.content || fallback.content || '',
+    sections: {
+      imaging_report_advice: sections.imaging_report_advice || advice?.content || fallback.content || '',
+      overall_assessment: sections.overall_assessment || '',
+      risk_assessment: sections.risk_assessment || '',
+      tongue_conclusion: sections.tongue_conclusion || ''
+    },
     history: (advice?.history || fallback.history || []).map((h, idx) => ({
       id: h.id || `${h.saved_at || h.savedAt || idx}-${h.version || idx}`,
       version: h.version || 1,
       status: h.status || 'draft',
       content: h.content || '',
+      sections: h.sections || {},
       savedAt: h.saved_at || h.savedAt || ''
     }))
   }
@@ -3815,6 +4426,18 @@ async function apiJson(url, options = {}) {
   return data.data ?? data
 }
 
+async function apiPostJson(url, payload = {}) {
+  return apiJson(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 function makeDefaultAdvice(p) {
   return {
     version: 1,
@@ -3833,6 +4456,7 @@ function ensurePatientWorkflow(p) {
   p.tongueTask = p.tongueTask || null
   p.tongueH5Url = p.tongueH5Url || p.tongueTask?.h5_url || ''
   p.tongueMobileOpenUrl = p.tongueMobileOpenUrl || ''
+  p.latestReport = p.latestReport || null
   p.adviceDraft = p.adviceDraft || makeDefaultAdvice(p)
   p.finalReport = p.finalReport || { content: '', archivedAt: '', version: '' }
   p.followPlan = p.followPlan || {
@@ -3870,6 +4494,7 @@ async function hydratePatientWorkspace(p) {
       .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
     if (latestRecord?.id) {
       p.workspaceRecordId = latestRecord.id
+      p.latestReport = latestRecord.latest_report || null
       const imaging = await apiJson(`/api/b/records/${latestRecord.id}/imaging-reports`)
       p.assets.imagingReports = (imaging.items || []).map(normalizeImagingReport)
       const tongue = await apiJson(`/api/b/tongue-diagnosis/tasks/by-record/${latestRecord.id}`)
@@ -3882,6 +4507,17 @@ async function hydratePatientWorkspace(p) {
     const latestReport = (reports.reports || [])[0]
     if (latestReport?.id) {
       p.workspaceReportId = latestReport.id
+      p.latestReport = {
+        id: latestReport.id,
+        report_code: latestReport.report_code,
+        status: latestReport.status,
+        risk_level: latestReport.risk_level,
+        report_summary: latestReport.report_summary,
+        imaging_conclusion: latestReport.imaging_conclusion,
+        reviewed_at: latestReport.reviewed_at,
+        created_at: latestReport.created_at,
+        updated_at: latestReport.updated_at
+      }
       p.risk = latestReport.risk_level || p.risk
       p.riskTone = latestReport.risk_level === '高风险' ? 'r' : latestReport.risk_level === '中风险' ? 'o' : latestReport.risk_level === '低风险' ? 'g' : p.riskTone
       const advice = await apiJson(`/api/b/reports/${latestReport.id}/advice`)
@@ -3899,6 +4535,66 @@ async function hydratePatientWorkspace(p) {
     console.error('加载患者工作台失败', e)
   } finally {
     p.workspaceLoading = false
+  }
+}
+
+async function generateReportForPatient(p) {
+  const patient = ensurePatientWorkflow(p || activePatient.value)
+  if (!patient?._apiId) {
+    toast?.show('请先保存患者信息后再生成报告')
+    return
+  }
+  if (reportGeneratingIds.value.has(patient.id)) return
+
+  reportGeneratingIds.value = new Set([...reportGeneratingIds.value, patient.id])
+  try {
+    if (!patient.workspaceRecordId) {
+      await hydratePatientWorkspace(patient)
+    }
+    if (!patient.workspaceRecordId) {
+      toast?.show('请先完成患者建档，再生成健康报告')
+      goRecord(patient)
+      return
+    }
+
+    const job = await apiJson('/api/b/reports/generate-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: patient.workspaceRecordId })
+    })
+    const jobId = job.job_id
+    if (!jobId) throw new Error('报告生成任务未返回任务ID')
+    toast?.show('报告生成任务已提交，AI处理中...')
+
+    let completed = false
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      await sleep(attempt < 10 ? 2000 : 5000)
+      const statusData = await apiJson(`/api/b/reports/generate-jobs/${jobId}`)
+      if (statusData.status === 'completed') {
+        completed = true
+        break
+      }
+      if (statusData.status === 'failed') {
+        throw new Error(statusData.message || 'AI生成失败')
+      }
+    }
+
+    rpLoaded.value = false
+    await hydratePatientWorkspace(patient)
+    await loadReports()
+    if (completed) {
+      patient.stage = 'review'
+      toast?.show('健康报告已生成，请到健康报告审核中确认')
+      setSubTab('review')
+    } else {
+      toast?.show('报告仍在生成中，请稍后到健康报告审核查看')
+    }
+  } catch (e) {
+    toast?.show(e.message || '生成健康报告失败')
+  } finally {
+    const next = new Set(reportGeneratingIds.value)
+    next.delete(patient.id)
+    reportGeneratingIds.value = next
   }
 }
 
@@ -4203,12 +4899,36 @@ async function approveAdviceToFinal() {
   }
   p.stage = 'plan'
   addManagementLog('审核通过并写入最终报告', `V${p.adviceDraft.version || 1}`)
+  rpLoaded.value = false
+  await hydratePatientWorkspace(p)
 }
 
-function saveFollowPlan() {
+async function saveFollowPlan() {
   const p = ensurePatientWorkflow(activePatient.value)
-  p.stage = p.finalReport?.content ? 'follow' : 'plan'
-  addManagementLog('保存随访计划', `${p.followPlan.cycle} · ${p.followPlan.channel}`)
+  if (!p?._apiId) {
+    toast?.show('请先保存患者信息后再保存任务配置')
+    return
+  }
+  try {
+    const data = await apiJson(`/api/b/patients/${p._apiId}/follow-ups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        follow_up_type: p.followPlan.channel || '小程序',
+        follow_up_date: formatDateInput(new Date()),
+        content: p.followPlan.note || '',
+        next_follow_up_date: nextFollowDateByCycle(p.followPlan.cycle),
+        next_follow_up_action: `${p.followPlan.cycle || '6个月'}复查；${p.followPlan.channel || '小程序'}触达`
+      })
+    })
+    p.followPlan.savedAt = data.created_at || nowText()
+    p.followPlan.backendId = data.id
+    p.stage = p.finalReport?.content ? 'follow' : 'plan'
+    addManagementLog('保存任务配置', `${p.followPlan.cycle} · ${p.followPlan.channel}`)
+    toast?.show('任务配置已保存')
+  } catch (e) {
+    toast?.show(e.message || '保存任务配置失败')
+  }
 }
 
 watch(
@@ -4219,7 +4939,7 @@ watch(
     if (!list.length) return
     if (!list.some((p) => p.id === activePatientId.value)) activePatientId.value = list[0].id
     if (!(followTasks.value || []).length) {
-      const seeded = list.filter((p) => p?.planTask).slice(0, 8).map((p) => makeTaskFromPatient(p))
+      const seeded = list.filter((p) => p?.planTask).slice(0, 8).flatMap((p) => previewTasksFromPatient(p))
       followTasks.value = seeded
       if (seeded[0]) selectTask(seeded[0].id)
     }
@@ -4274,6 +4994,10 @@ watch(
     if (tab === 'follow' && list.length && !list.some((p) => p.id === followPatientId.value)) {
       followPatientId.value = list[0].id
     }
+    if (tab === 'review') {
+      rpLoaded.value = false
+      loadReports()
+    }
   },
   { immediate: true }
 )
@@ -4283,7 +5007,7 @@ const midTitle = computed(() => {
     queue: '闭环处置工作台',
     record: '患者建档',
     review: isCheckupScenario.value ? '体检报告确认' : '健康报告审核',
-    follow: 'AI助手随访'
+    follow: '任务执行'
   }
   return map[subTab.value] || '患者管理'
 })
@@ -4293,7 +5017,7 @@ const midSub = computed(() => {
     queue: '选中患者后联动闭环时间线与操作区',
     record: '原始报告 / 历史报告 / AI解读摘要',
     review: isCheckupScenario.value ? 'AI体检解读内容经总检确认后推送患者' : 'AI健康管理报告审核通过后才能推送患者',
-    follow: '随访推送与聊天融合展示'
+    follow: '查看已下发任务与打卡记录'
   }
   return map[subTab.value] || ''
 })
@@ -4303,7 +5027,7 @@ const rightTitle = computed(() => {
     queue: '下一步动作',
     record: '处置与动作',
     review: '审核与推送',
-    follow: 'AI健康服务团队'
+    follow: '任务执行记录'
   }
   return map[subTab.value] || '操作区'
 })
@@ -4313,7 +5037,7 @@ const rightSub = computed(() => {
     queue: '快速跳转各功能区',
     record: '围绕档案与原始报告',
     review: '面向患者推送前最后一道关',
-    follow: '9类助手矩阵'
+    follow: '提醒与打卡'
   }
   return map[subTab.value] || ''
 })
@@ -4337,8 +5061,10 @@ function setStage(key) {
 /**
  * @description 跳转到「患者建档」页面
  */
-function goRecord() {
-  router.push({ path: '/patient', query: { ...route.query, tab: 'record' } })
+function goRecord(p = null) {
+  recordPatient.value = p?.id ? p : null
+  if (p?.id) activePatientId.value = p.id
+  setSubTab('record')
 }
 
 /**
@@ -4355,8 +5081,8 @@ function backToQueue() {
 .pm-shell{flex:1;min-height:0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
 .pm-record{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
 
-/* 随访计划页 */
-.plan-page{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;background:#f3f6fb;padding:12px}
+/* 任务下发页 */
+.plan-page{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#f3f6fb;padding:12px}
 .plan-filter{display:none}
 .plan-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .plan-filter-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
@@ -4373,7 +5099,7 @@ function backToQueue() {
 .chain-step-title{font-size:12px;color:#0f172a;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chain-step-sub{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.plan-workbench{flex:1;min-height:0;display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px;overflow:hidden}
+.plan-workbench{flex:1;min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr);gap:12px;overflow:hidden}
 .plan-task-list{min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .left-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:8px}
 .seg-tabs{display:flex;align-items:center;border:1px solid #e6edf7;border-radius:999px;overflow:hidden;background:#fff}
@@ -4382,16 +5108,16 @@ function backToQueue() {
 .seg-tab + .seg-tab{border-left:1px solid #e6edf7}
 
 .pat-table{padding:10px 12px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
-.pat-rows{display:grid;gap:10px;overflow:auto;min-height:0;flex:1;scrollbar-width:thin}
+.pat-rows{display:grid;gap:8px;overflow:auto;min-height:0;flex:1;scrollbar-width:thin}
 .pat-row{display:grid;grid-template-columns:1.1fr 1.6fr .7fr .8fr .7fr;gap:10px;align-items:center;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px}
 .pat-row[data-active="true"]{border-color:#155eef;background:#eef5ff}
-.plan-patient-card{grid-template-columns:1fr !important;gap:8px !important;align-items:stretch !important;padding:12px !important}
+.plan-patient-card{grid-template-columns:1fr !important;gap:0 !important;align-items:stretch !important;padding:10px !important}
 .pat-main{border:none;background:transparent;text-align:left;cursor:pointer;min-width:0}
 .pat-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pat-cell{font-size:12px;color:#334155;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .patient-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .patient-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;color:#475569;font-size:12px}
-.patient-card-actions{display:flex;justify-content:flex-end}
+.patient-card-actions{display:none}
 .task-rows{padding:10px 12px;display:grid;gap:10px;overflow:auto;min-height:0}
 .task-row{position:relative;border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 10px;text-align:left;cursor:pointer}
 .task-row.active{border-color:#155eef;background:#eef5ff}
@@ -4401,26 +5127,50 @@ function backToQueue() {
 .tr-ck{position:absolute;right:10px;bottom:10px}
 .plan-task-detail{min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .plan-task-detail .pad{overflow:auto;flex:1;min-height:0}
+.plan-editor-head{align-items:flex-start}
 .plan-detail-title{min-width:0;flex:1}
-.plan-breadcrumb{font-size:12px;color:#64748b;font-weight:850;margin-bottom:3px}
+.plan-empty{border:1px dashed #cbd5e1;background:#fff;border-radius:12px;padding:26px;display:grid;gap:6px;color:#64748b}
+.plan-empty b{color:#0f172a;font-size:15px}
 .plan-patient-hero{border:1px solid #cfe0ff;background:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .patient-avatar-sm{width:34px;height:34px;border-radius:999px;background:#eef5ff;color:#155eef;display:grid;place-items:center;font-weight:950;flex-shrink:0}
 .hero-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#334155}
 .hero-info b{font-size:14px;color:#0f172a}
+.plan-step-strip{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.step-chip{height:28px;border:1px solid #e6edf7;background:#fff;border-radius:999px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;color:#64748b;font-size:12px;font-weight:900}
+.step-chip span{width:18px;height:18px;border-radius:999px;background:#e2e8f0;color:#334155;display:grid;place-items:center;font-size:11px}
+.step-chip[data-state="done"]{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+.step-chip[data-state="done"] span{background:#16a34a;color:#fff}
+.step-chip[data-state="doing"]{border-color:#bfdbfe;background:#eff6ff;color:#155eef}
+.step-chip[data-state="doing"] span{background:#155eef;color:#fff}
 .plan-flow-card{border:1px solid #e6edf7;background:#fbfdff;border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:10px}
-.flow-node{display:flex;align-items:center;justify-content:center;gap:8px;min-height:36px;border-radius:10px;background:#fff;border:1px solid #eef2f7;color:#64748b;font-weight:950;font-size:12px}
+.flow-node{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:10px;background:#fff;border:1px solid #eef2f7;color:#64748b;font-weight:950;font-size:12px;padding:6px 8px;min-width:0}
 .flow-node[data-state="done"]{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
 .flow-node[data-state="doing"]{border-color:#bfdbfe;background:#eff6ff;color:#155eef}
 .flow-node-dot{width:20px;height:20px;border-radius:999px;background:currentColor;color:#fff;display:grid;place-items:center;font-size:11px}
+.flow-node-copy{min-width:0}
 .flow-node-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flow-node-sub{font-size:10px;font-weight:800;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.patient-summary-card{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.patient-summary-main{display:grid;gap:4px;min-width:0}
+.patient-summary-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.patient-summary-title b{font-size:15px;color:#0f172a}
+.patient-summary-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#64748b}
+.plan-editor-stack{display:grid;gap:12px}
 .detail-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:12px;align-items:start}
 .detail-grid .detail-card:nth-child(3){grid-column:1/-1}
 .detail-card{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:12px}
 .detail-title{font-weight:950;color:#0f172a;margin-bottom:6px}
+.detail-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
 .detail-sub{font-size:12px;margin-bottom:10px}
 .recommend-box{border:1px solid #cfe0ff;background:#f8fbff;border-radius:12px;padding:10px 12px;margin-bottom:10px}
 .recommend-title{font-size:12px;color:#334155;font-weight:850;line-height:1.5}
 .recommend-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.template-choice-list{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.template-choice{border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 12px;text-align:left;display:grid;gap:5px;cursor:pointer}
+.template-choice.active{border-color:#155eef;background:#eff6ff}
+.template-choice-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.template-choice-title{font-weight:950;color:#0f172a}
+.template-choice-meta,.template-choice-desc{font-size:12px;color:#64748b;line-height:1.5}
 .plan-preview-grid{display:grid;grid-template-columns:1fr;gap:12px}
 .preview-list{display:grid;gap:8px}
 .preview-row{display:grid;grid-template-columns:22px minmax(0,1fr) 44px;gap:8px;align-items:center;border:1px solid #eef2f7;background:#fbfdff;border-radius:10px;padding:8px 10px}
@@ -4429,15 +5179,25 @@ function backToQueue() {
 .preview-main b{font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .preview-main span{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .preview-status{font-size:11px;color:#16a34a;font-weight:950;text-align:right}
+.node-preview-list{display:grid;gap:8px}
+.node-preview-row{border:1px solid #eef2f7;background:#fbfdff;border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:82px minmax(0,1fr);gap:12px;align-items:start}
+.node-day{display:grid;gap:3px}
+.node-day b{font-size:12px;color:#0f172a}
+.node-day span{font-size:12px;color:#64748b;font-weight:850}
+.node-main{display:grid;gap:6px;min-width:0}
+.node-title{font-weight:950;color:#0f172a;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node-meta{display:flex;gap:6px;flex-wrap:wrap}
+.node-meta span{border:1px solid #e6edf7;background:#fff;border-radius:999px;padding:3px 8px;font-size:11px;color:#475569;font-weight:850}
+.node-message{margin:4px 0 0;color:#334155;font-size:13px;line-height:1.7;white-space:pre-wrap}
+.confirm-bar{margin-top:12px;border-top:1px solid #eef2f7;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.confirm-bar b{display:block;color:#0f172a;font-size:13px;margin-bottom:3px}
+.confirm-bar span{display:block;color:#64748b;font-size:12px}
+.confirm-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .delivery-card{border:1px solid #e6edf7;background:#fff;border-radius:12px;padding:10px 12px;display:grid;gap:8px;font-size:12px;color:#334155;font-weight:850}
 .detail-top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
 .detail-top-title{font-size:13px;color:#0f172a;font-weight:950;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .detail-top-sub{font-size:12px;margin-top:4px}
 .detail-top-actions{display:flex;gap:8px;align-items:center}
-.exec-list{display:grid;gap:10px}
-.exec-row{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:start}
-.exec-at{color:#64748b;font-weight:950;font-size:12px;white-space:nowrap;line-height:1.6}
-.exec-line{color:#0f172a;font-weight:800;font-size:12px}
 .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .pf{display:flex;flex-direction:column;gap:6px}
 .pf .k{color:#64748b;font-weight:850;font-size:12px}
@@ -4745,6 +5505,13 @@ function backToQueue() {
 .mini-kv2{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .kv2 .k{color:#94a3b8;font-size:12px;font-weight:850}
 .kv2 .v{margin-top:4px;font-weight:900;color:#0f172a;line-height:1.35}
+.wecom-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:900;background:#f8fafc;color:#64748b;white-space:nowrap}
+.wecom-badge[data-on="true"]{background:#ecfdf5;color:#047857}
+.wecom-bind-row{margin-top:12px;border:1px solid #eef2f7;border-radius:10px;background:#fbfdff;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wecom-bind-main{min-width:0;display:grid;gap:3px}
+.wecom-bind-main b{font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wecom-bind-main span{font-size:12px;color:#64748b;line-height:1.45}
+.wecom-bind-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
 
 .tag-grid{display:grid;gap:10px}
 .tagline{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -4780,6 +5547,8 @@ function backToQueue() {
 .ops{display:grid;gap:8px}
 .tbl-act{border:0;background:transparent;color:#155eef;font-size:12px;font-weight:700;padding:0;cursor:pointer}
 .tbl-act:hover{color:#0f4fd4;text-decoration:underline}
+.tbl-act.danger{color:#dc2626}
+.tbl-act.danger:hover{color:#b91c1c}
 .btn-link-lite{
   border:0;
   background:transparent;
@@ -4864,8 +5633,73 @@ function backToQueue() {
 .review-note:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.10)}
 .reject-box{border:1px solid #fecaca;background:#fff5f5;border-radius:10px;padding:12px}
 
-/* ── AI助手随访工作台 ── */
-.follow-workbench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(260px,300px) minmax(360px,.9fr) minmax(420px,1.1fr);grid-template-rows:auto 1fr;gap:10px;padding:12px;overflow:hidden}
+/* ── 旧任务预览工作台（当前主入口已隐藏） ── */
+.follow-workbench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(260px,300px) minmax(420px,.95fr) minmax(420px,1.05fr);gap:10px;padding:12px;overflow:hidden}
+.follow-workbench .follow-stats-bar,.follow-workbench .follow-compose-head,.follow-workbench .follow-phone-col,.follow-workbench .follow-ctrl-col{display:none}
+.tracking-list-col,.tracking-detail-col{min-width:0;min-height:0;background:#fff;border:1px solid #e6edf7;border-radius:10px;display:flex;flex-direction:column}
+.tracking-list-col{overflow:hidden}
+.tracking-detail-col{overflow:auto;scrollbar-width:thin}
+.tracking-head{min-height:54px;padding:12px 14px;border-bottom:1px solid #eef2f7;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.tracking-patient{font-size:12px;color:#64748b;font-weight:800;margin-top:4px}
+.tracking-summary{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #eef2f7}
+.tracking-summary div{padding:10px 8px;text-align:center;border-right:1px solid #eef2f7}
+.tracking-summary div:last-child{border-right:0}
+.tracking-summary b{display:block;font-size:18px;color:#0f172a;line-height:1.2}
+.tracking-summary span{display:block;font-size:11px;color:#64748b;font-weight:850;margin-top:3px}
+.tracking-task-list{padding:10px;display:grid;gap:8px;overflow:auto;min-height:0}
+.tracking-task-list.compact{flex:0 0 auto;max-height:340px;border-bottom:1px solid #eef2f7}
+.tracking-day-title{font-size:12px;color:#334155;font-weight:950;padding:6px 2px 2px}
+.tracking-task-row{border:1px solid #e6edf7;background:#fbfdff;border-radius:10px;padding:10px;display:grid;grid-template-columns:46px minmax(0,1fr) 82px;gap:10px;align-items:center;text-align:left;cursor:pointer}
+.tracking-task-row:hover,.tracking-task-row.active{border-color:#155eef;background:#eff6ff}
+.tracking-time{font-size:12px;color:#0f172a;font-weight:950}
+.tracking-main{display:grid;gap:4px;min-width:0}
+.tracking-main b{font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tracking-main span{font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tracking-status{justify-self:end;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:950;background:#f1f5f9;color:#475569;white-space:nowrap}
+.tracking-status[data-status="scheduled"],.tracking-status[data-status="pending"],.tracking-status[data-status="assigned"]{background:#eff6ff;color:#155eef}
+.tracking-status[data-status="sent"],.tracking-status[data-status="replied"],.tracking-status[data-status="executing"],.tracking-status[data-status="review"]{background:#f0fdf4;color:#15803d}
+.tracking-status[data-status="completed"],.tracking-status[data-status="done"]{background:#ecfdf5;color:#047857}
+.tracking-status[data-status="alert"],.tracking-status[data-status="manual_processing"],.tracking-status[data-status="failed"]{background:#fff1f2;color:#dc2626}
+.tracking-status.big{font-size:12px;padding:6px 10px}
+.tracking-empty{border:1px dashed #cbd5e1;border-radius:10px;padding:22px;text-align:center;color:#64748b;font-size:13px;font-weight:850;background:#fbfdff}
+.tracking-empty.detail{margin:12px}
+.tracking-detail-card,.tracking-chat-card{margin:10px;border:1px solid #eef2f7;border-radius:10px;background:#fff;overflow:hidden}
+.tracking-detail-card{display:grid;gap:12px;padding:12px}
+.tracking-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.tracking-kv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tracking-kv-grid div{border:1px solid #eef2f7;border-radius:9px;background:#fbfdff;padding:9px 10px;min-width:0}
+.tracking-kv-grid span{display:block;color:#64748b;font-size:11px;font-weight:850;margin-bottom:4px}
+.tracking-kv-grid b{display:block;color:#0f172a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tracking-block{display:grid;gap:8px}
+.tracking-block-title{font-size:13px;color:#0f172a;font-weight:950}
+.tracking-timeline{display:grid;gap:10px}
+.tracking-event{display:grid;grid-template-columns:16px minmax(0,1fr);gap:8px}
+.tracking-event>span{width:9px;height:9px;border-radius:999px;background:#155eef;margin-top:6px}
+.tracking-event b{display:block;color:#0f172a;font-size:12px}
+.tracking-event em{display:block;color:#64748b;font-size:11px;font-style:normal;margin-top:2px}
+.tracking-event p{margin:4px 0 0;color:#334155;font-size:12px;line-height:1.6}
+.tracking-chat-card{padding:12px;display:grid;gap:10px;min-height:0}
+.tracking-chat-card.as-main{flex:1;padding:12px;min-height:0;overflow:hidden;border:0;margin:0}
+.mini-phone{border:1px solid #e6edf7;border-radius:18px;background:#f3f6fb;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.06);display:flex;flex-direction:column;height:min(520px,58vh);min-height:320px}
+.tracking-chat-card.as-main .mini-phone{height:100%;min-height:0}
+.mini-phone-head{height:48px;background:#fff;border-bottom:1px solid #eef2f7;display:grid;grid-template-columns:32px minmax(0,1fr) 32px;align-items:center;color:#0f172a;padding:0 10px}
+.mini-phone-head b{display:block;font-size:13px;text-align:center}
+.mini-phone-head span:not(.mini-back):not(.mini-more){display:block;font-size:11px;color:#64748b;text-align:center;margin-top:2px}
+.mini-back,.mini-more{font-size:20px;color:#64748b;font-weight:900;text-align:center}
+.mini-chat{padding:14px;display:grid;gap:10px;overflow-y:auto;overflow-x:hidden;background:#f3f6fb;min-height:0;flex:1;scrollbar-width:thin;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.mini-date{text-align:center;color:#94a3b8;font-size:11px;font-weight:850;margin:2px 0 4px}
+.mini-msg{display:flex;align-items:flex-start;gap:8px}
+.mini-msg.inbound{flex-direction:row-reverse}
+.mini-avatar{width:28px;height:28px;border-radius:8px;background:#155eef;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:950;flex-shrink:0}
+.mini-msg.inbound .mini-avatar{background:#16a34a}
+.mini-msg-main{display:grid;gap:3px;max-width:78%}
+.mini-msg.inbound .mini-msg-main{justify-items:end}
+.mini-msg-name{font-size:11px;color:#94a3b8;font-weight:850}
+.mini-bubble{border-radius:12px 12px 12px 4px;background:#fff;padding:10px 12px;color:#334155;font-size:13px;line-height:1.65;box-shadow:0 1px 3px rgba(15,23,42,.06);white-space:pre-wrap}
+.mini-msg.inbound .mini-bubble{background:#d1fae5;color:#065f46;border-radius:12px 12px 4px 12px}
+.mini-image-card{width:168px;border-radius:12px 12px 4px 12px;background:#d1fae5;padding:8px;display:grid;gap:6px;color:#065f46;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.mini-image-placeholder{height:96px;border-radius:8px;background:linear-gradient(135deg,#fde68a,#fb923c);display:grid;place-items:center;color:#7c2d12;font-size:13px;font-weight:950}
+.mini-image-card span{font-size:11px;font-weight:850;color:#047857}
 .follow-stats-bar{display:none}
 .follow-stat-item{flex:1;text-align:center;min-width:0}
 .follow-stat-div{width:1px;height:32px;background:#e6edf7;flex-shrink:0;margin:0 4px}
@@ -5246,6 +6080,8 @@ function backToQueue() {
 .rp-actions{display:flex;gap:8px;padding:10px 12px;flex-wrap:wrap}
 .rp-audit-panel{}
 .rp-audit-body{padding:10px 12px}
+.rp-audit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.rp-audit-block{min-width:0}
 .rp-audit-label{font-size:12px;font-weight:750;color:#334155;margin-bottom:4px}
 .rp-audit-ta{width:100%;border:1px solid #d9e2ef;border-radius:6px;padding:8px 10px;font-size:13px;line-height:1.6;color:#1e293b;resize:vertical;outline:none;font-family:inherit}
 .rp-audit-ta:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.1)}
@@ -5262,6 +6098,11 @@ function backToQueue() {
 .rp-modal-body{padding:20px 24px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1e293b}
 .rp-modal-body h1,.rp-modal-body h2,.rp-modal-body h3{color:#111827;margin:16px 0 8px}
 .rp-modal-body p{margin:6px 0}
+.wecom-modal{width:min(560px,96vw)}
+.wecom-form-grid{display:grid;gap:12px}
+.wecom-form-hint{margin-top:12px;border:1px solid #eef2f7;border-radius:10px;background:#fbfdff;padding:10px 12px;color:#64748b;font-size:12px;line-height:1.7}
+.wecom-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+@media (max-width: 720px){.rp-audit-grid{grid-template-columns:1fr}}
 
 /* 患者全流程详情工作台 */
 .patient-workspace{height:100%;min-height:0;overflow:auto;background:#f6f8fb;padding:14px;display:flex;flex-direction:column;gap:12px;scroll-padding-top:14px}
@@ -5285,6 +6126,9 @@ function backToQueue() {
 .section-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .profile-note{margin-top:10px}
+.record-report-card{margin-top:10px;border:1px solid #dbeafe;background:#eff6ff;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.record-report-card b{display:block;color:#1e3a8a;font-size:12px;margin-bottom:3px}
+.record-report-card span{display:block;color:#334155;font-size:12px}
 .profile-field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#64748b;font-weight:850;min-width:0}
 .profile-field input,.profile-field select,.profile-field textarea{width:100%;box-sizing:border-box;border:1px solid #dbe5f2;border-radius:9px;background:#fff;padding:8px 10px;color:#0f172a;font-size:13px;font-weight:650}
 .profile-field input[readonly],.profile-field textarea[readonly]{background:#f8fafc;color:#334155}
