@@ -1359,7 +1359,12 @@ class CPatient(db.Model):
     manager = db.relationship('User', backref=db.backref('c_patients', lazy='dynamic'))
     records = db.relationship('CHealthRecord', backref='patient', lazy='dynamic')
     reports = db.relationship('CReport', backref='patient', lazy='dynamic')
-    conversations = db.relationship('CConversation', backref='patient', lazy='dynamic')
+    conversations = db.relationship(
+        'CConversation',
+        back_populates='patient',
+        lazy='dynamic',
+        foreign_keys='CConversation.lead_id'
+    )
 
     def to_dict(self):
         return {
@@ -1591,6 +1596,7 @@ class CConversation(db.Model):
     # 关系（不定义 backref，避免与数据库的 patient_id 字段冲突）
     messages = db.relationship('CMessage', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
     report = db.relationship('CReport', backref='conversation', uselist=False)
+    patient = db.relationship('CPatient', back_populates='conversations', foreign_keys=[lead_id])
     
     # 兼容属性（旧代码可能使用 patient_id）
     @property
@@ -1600,13 +1606,6 @@ class CConversation(db.Model):
     @patient_id.setter
     def patient_id(self, value):
         self.lead_id = value
-    
-    @property
-    def patient(self):
-        """获取关联的患者对象"""
-        if self.lead_id:
-            return CPatient.query.get(self.lead_id)
-        return None
     
     def to_dict(self):
         return {
