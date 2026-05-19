@@ -84,7 +84,7 @@
               />
             </svg>
             <div class="donut-center">
-              <b>12,486</b>
+              <b>{{ totalPersons }}</b>
               <span>总{{ scenario.personLabel }}数</span>
             </div>
           </div>
@@ -125,15 +125,14 @@
       </section>
 
       <section class="card chart-card">
-        <div class="card-head"><div class="card-title">今日待办</div><button class="ghost">刷新</button></div>
+        <div class="card-head"><div class="card-title">今日待办</div><button class="ghost" @click="loadAnalytics">刷新</button></div>
         <div class="chart-body pad">
-          <div class="todo"><b>待处理报告</b><span class="pill r">146</span><span class="todo-sub">影像报告待处理</span></div>
-          <div class="todo"><b>待复核</b><span class="pill o">82</span><span class="todo-sub">医生确认待办</span></div>
-          <div class="todo"><b>待推送</b><span class="pill b">95</span><span class="todo-sub">报告待推送</span></div>
-          <div class="todo"><b>异常预警</b><span class="pill r">102</span><span class="todo-sub">异常结果待处理</span></div>
+          <div v-for="todo in todoStats" :key="todo.label" class="todo">
+            <b>{{ todo.label }}</b><span class="pill" :class="todo.tone">{{ todo.value }}</span><span class="todo-sub">{{ todo.sub }}</span>
+          </div>
           <div class="split"></div>
-          <div class="remind"><span>高风险{{ scenario.personLabel }}张*国已逾期 7 天</span><span class="todo-sub">08:45</span></div>
-          <div class="remind"><span>有 18 份报告超 24 小时未处理</span><span class="todo-sub">08:30</span></div>
+          <div class="remind"><span>高风险待处理 {{ todoStats[3]?.value || 0 }} 人</span><span class="todo-sub">实时</span></div>
+          <div class="remind"><span>{{ loading ? '正在刷新运营数据' : `报告队列 ${todoStats[0]?.value || 0} 份待处理` }}</span><span class="todo-sub">接口</span></div>
         </div>
       </section>
     </div>
@@ -142,14 +141,33 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { kpis } from '../mocks/workbenchMock'
 import { getStoredScenario } from '../config/scenarios'
 
 const router = useRouter()
 const scenario = computed(() => getStoredScenario())
-const metrics = computed(() => kpis.analytics)
+const liveReports = ref([])
+const loading = ref(false)
+
+const metrics = computed(() => {
+  if (!liveReports.value.length) return kpis.analytics
+  const reports = liveReports.value
+  const total = reports.length
+  const high = reports.filter((item) => riskLabel(item.risk_level) === '高风险').length
+  const pending = reports.filter((item) => item.status === 'not_generated').length
+  const review = reports.filter((item) => ['generated', 'draft', 'reviewing'].includes(item.status)).length
+  const push = reports.filter((item) => ['finalized', 'published'].includes(item.status)).length
+  return [
+    { label: `${scenario.value.personLabel}总数`, value: formatNum(total), delta: '接口实时汇总', tone: 'blue', icon: 'users' },
+    { label: `高风险${scenario.value.personLabel}`, value: formatNum(high), delta: `占比 ${pct(high, total)}`, tone: 'orange', icon: 'shield' },
+    { label: '待处理报告', value: formatNum(pending), delta: '尚未生成', tone: 'blue', icon: 'file' },
+    { label: '待医生复核', value: formatNum(review), delta: '报告待确认', tone: 'green', icon: 'check' },
+    { label: '待推送患者', value: formatNum(push), delta: '已生成报告', tone: 'purple', icon: 'send' },
+    { label: '随访完成率', value: '78.6%', delta: '保留历史口径', tone: 'cyan', icon: 'clock' }
+  ]
+})
 
 function iconPath(key) {
   if (key === 'users') return 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87'
@@ -178,7 +196,7 @@ const donutLegend = [
   { name: '乳腺结节', pct: '7%', color: '#cbd5e1' }
 ]
 
-const rows = [
+const mockRows = [
   { type: '三合并结节', total: '3,496', inc: 36, high: 468, mid: '1,120', low: '1,908', todoReport: 62, todoReview: 38, todoPush: 44, following: '2,482', abnormal: 41, doneRate: '80.4%' },
   { type: '肺部合并乳腺结节', total: '2,247', inc: 21, high: 286, mid: 708, low: '1,253', todoReport: 34, todoReview: 22, todoPush: 26, following: '1,612', abnormal: 25, doneRate: '78.2%' },
   { type: '肺部合并甲状腺结节', total: '1,998', inc: 19, high: 254, mid: 642, low: '1,102', todoReport: 28, todoReview: 18, todoPush: 22, following: '1,426', abnormal: 21, doneRate: '77.6%' },
@@ -187,6 +205,67 @@ const rows = [
   { type: '甲状腺结节', total: 999, inc: 10, high: 128, mid: 312, low: 559, todoReport: 14, todoReview: 9, todoPush: 10, following: 694, abnormal: 11, doneRate: '74.6%' },
   { type: '乳腺结节', total: 874, inc: 9, high: 112, mid: 268, low: 494, todoReport: 12, todoReview: 8, todoPush: 9, following: 606, abnormal: 9, doneRate: '73.9%' }
 ]
+
+const rows = computed(() => {
+  if (!liveReports.value.length) return mockRows
+  const buckets = new Map()
+  for (const item of liveReports.value) {
+    const type = noduleLabel(item.nodule_type)
+    const row = buckets.get(type) || {
+      type,
+      total: 0,
+      inc: 0,
+      high: 0,
+      mid: 0,
+      low: 0,
+      todoReport: 0,
+      todoReview: 0,
+      todoPush: 0,
+      following: 0,
+      abnormal: 0,
+      doneRate: '78.6%'
+    }
+    row.total += 1
+    const risk = riskLabel(item.risk_level)
+    if (risk === '高风险') row.high += 1
+    else if (risk === '中风险') row.mid += 1
+    else row.low += 1
+    if (item.status === 'not_generated') row.todoReport += 1
+    if (['generated', 'draft', 'reviewing'].includes(item.status)) row.todoReview += 1
+    if (['finalized', 'published'].includes(item.status)) row.todoPush += 1
+    if (['finalized', 'published', 'archived'].includes(item.status)) row.following += 1
+    if (risk === '高风险' && item.status !== 'published') row.abnormal += 1
+    buckets.set(type, row)
+  }
+  return Array.from(buckets.values()).map((row) => ({
+    ...row,
+    total: formatNum(row.total),
+    high: formatNum(row.high),
+    mid: formatNum(row.mid),
+    low: formatNum(row.low),
+    following: formatNum(row.following)
+  }))
+})
+
+const totalPersons = computed(() => liveReports.value.length ? formatNum(liveReports.value.length) : '12,486')
+
+const todoStats = computed(() => {
+  const reports = liveReports.value
+  if (!reports.length) {
+    return [
+      { label: '待处理报告', value: 146, tone: 'r', sub: '影像报告待处理' },
+      { label: '待复核', value: 82, tone: 'o', sub: '医生确认待办' },
+      { label: '待推送', value: 95, tone: 'b', sub: '报告待推送' },
+      { label: '异常预警', value: 102, tone: 'r', sub: '异常结果待处理' }
+    ]
+  }
+  return [
+    { label: '待处理报告', value: reports.filter((item) => item.status === 'not_generated').length, tone: 'r', sub: '尚未生成报告' },
+    { label: '待复核', value: reports.filter((item) => ['generated', 'draft', 'reviewing'].includes(item.status)).length, tone: 'o', sub: '医生确认待办' },
+    { label: '待推送', value: reports.filter((item) => ['finalized', 'published'].includes(item.status)).length, tone: 'b', sub: '报告待推送' },
+    { label: '异常预警', value: reports.filter((item) => riskLabel(item.risk_level) === '高风险').length, tone: 'r', sub: '高风险结果待处理' }
+  ]
+})
 
 const donutCircumference = 2 * Math.PI * 46
 
@@ -212,6 +291,49 @@ const donutSegments = computed(() => {
 })
 
 function goWorkbench() { router.push('/patient?tab=queue') }
+
+onMounted(loadAnalytics)
+
+async function loadAnalytics() {
+  loading.value = true
+  try {
+    const res = await fetch('/api/b/reports?page=1&per_page=500&include_unreported=1', { credentials: 'include' })
+    const payload = await res.json()
+    if (!res.ok || payload.success === false) throw new Error(payload.message || '加载失败')
+    liveReports.value = payload.data?.reports || payload.reports || []
+  } catch (e) {
+    liveReports.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+function formatNum(value) {
+  return Number(value || 0).toLocaleString()
+}
+
+function pct(value, total) {
+  if (!total) return '0%'
+  return `${Math.round((value / total) * 100)}%`
+}
+
+function riskLabel(risk) {
+  const map = { high: '高风险', mid: '中风险', medium: '中风险', low: '低风险', '高危': '高风险', '中危': '中风险', '低危': '低风险' }
+  return map[risk] || risk || '待评估'
+}
+
+function noduleLabel(type) {
+  const map = {
+    breast: '乳腺结节',
+    lung: '肺部结节',
+    thyroid: '甲状腺结节',
+    breast_lung: '肺部合并乳腺结节',
+    breast_thyroid: '甲状腺合并乳腺结节',
+    lung_thyroid: '肺部合并甲状腺结节',
+    triple: '三合并结节'
+  }
+  return map[type] || type || '其他结节'
+}
 </script>
 
 <style scoped>
