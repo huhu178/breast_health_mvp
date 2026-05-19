@@ -6,10 +6,19 @@ LLM辅助函数
 import re
 import json
 import os
+import logging
 from datetime import datetime
+from flask import current_app, has_app_context
 from services.llm_service import llm_generator
 from models import KnowledgeItem
 from prompt_config import get_prompt_template, format_prompt
+
+
+logger = logging.getLogger(__name__)
+
+
+def _log():
+    return current_app.logger if has_app_context() else logger
 
 
 def parse_json_response(response: str) -> dict:
@@ -26,13 +35,7 @@ def parse_json_response(response: str) -> dict:
         Exception: 如果解析失败
     """
     original_response = response
-
-    # 调试：打印原始响应（完整响应，用于诊断）
-    print(f"\n[DEBUG] LLM原始响应（完整）：")
-    print("="*60)
-    print(original_response)
-    print("="*60)
-    print(f"[DEBUG] 响应总长度: {len(original_response)} 字符\n")
+    _log().debug('LLM response received: length=%s', len(original_response or ''))
 
     try:
         # 去除markdown代码块标记
@@ -126,9 +129,9 @@ def parse_json_response(response: str) -> dict:
             conclusion_text = re.sub(r'^[\s\u3000\u00A0]*尊敬的', '尊敬的', conclusion_text)
             conclusion_text = conclusion_text.lstrip()  # 移除开头所有空格
             result['conclusion'] = conclusion_text
-            print(f"✅ 成功提取conclusion字段（{len(conclusion_text)}字符）")
+            _log().debug('extracted conclusion from LLM response: length=%s', len(conclusion_text))
         else:
-            print(f"⚠️ 未能提取conclusion字段")
+            _log().warning('failed to extract conclusion from LLM response')
 
         # 提取risk_warning字段（改进正则表达式，支持多种格式）
         warning_match = re.search(
@@ -139,7 +142,7 @@ def parse_json_response(response: str) -> dict:
 
         if not warning_match:
             # 尝试更宽松的匹配（可能JSON不规范）
-            print(f"⚠️ 标准正则匹配失败，尝试宽松匹配...")
+            _log().debug('standard risk_warning extraction failed, trying loose pattern')
             warning_match = re.search(
                 r'"risk_warning"\s*:\s*"([^"]*(?:\\"[^"]*)*)"',
                 response,
@@ -151,10 +154,10 @@ def parse_json_response(response: str) -> dict:
             # 处理转义字符
             warning_text = warning_text.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
             result['risk_warning'] = warning_text
-            print(f"✅ 成功提取risk_warning字段（{len(warning_text)}字符）")
+            _log().debug('extracted risk_warning from LLM response: length=%s', len(warning_text))
         else:
             # 尝试提取被截断的risk_warning（在句子边界截断）
-            print(f"⚠️ 未能提取risk_warning字段，尝试提取被截断的内容...")
+            _log().warning('failed to extract risk_warning, trying truncated content')
             if '"risk_warning"' in response:
                 idx = response.find('"risk_warning"')
                 # 查找冒号后的引号
@@ -176,13 +179,13 @@ def parse_json_response(response: str) -> dict:
                         # 处理转义字符
                         warning_text = warning_text.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
                         result['risk_warning'] = warning_text
-                        print(f"✅ 从被截断的响应中提取risk_warning（{len(warning_text)}字符，在句子边界截断）")
+                        _log().debug('extracted truncated risk_warning: length=%s', len(warning_text))
                     else:
-                        print(f"⚠️ 被截断的内容太短（{last_sentence_end}字符），无法提取")
+                        _log().warning('truncated risk_warning content too short: length=%s', last_sentence_end)
                 else:
-                    print(f"⚠️ 未找到risk_warning的起始引号")
+                    _log().warning('risk_warning opening quote not found')
             else:
-                print(f"[DEBUG] 响应中不包含risk_warning字段")
+                _log().debug('LLM response does not contain risk_warning field')
 
         # 提取risk_score字段
         score_match = re.search(r'"risk_score"\s*:\s*(\d+)', response)
@@ -213,15 +216,13 @@ def parse_json_response(response: str) -> dict:
             return result
 
         # 所有方法都失败了
-        print(f"❌ JSON解析失败，无法提取字段")
-        print(f"原始响应前500字符: {original_response[:500]}")
+        _log().warning('failed to parse LLM JSON response: length=%s', len(original_response or ''))
         raise Exception(f"JSON解析失败")
 
     except Exception as e:
         if 'JSON解析失败' in str(e):
             raise
-        print(f"❌ JSON解析失败: {e}")
-        print(f"原始响应前500字符: {original_response[:500]}")
+        _log().warning('failed to parse LLM JSON response: %s', e)
         raise Exception(f"JSON解析失败: {e}")
 
 
@@ -463,21 +464,20 @@ def generate_comprehensive_conclusion_with_llm(patient_data: dict, decision_resu
             template = get_prompt_template(nodule_type, 'western_medical')
         prompt = format_prompt(template, **prompt_vars)
 
-        # 调用LLM
-        print(f"🤖 调用LLM生成{nodule_type}类型的综合分析结论...")
+        _log().info('generating comprehensive LLM conclusion: nodule_type=%s', nodule_type)
         conclusion = llm_generator._call_llm_api(prompt)
 
         if conclusion and isinstance(conclusion, str):
             conclusion = conclusion.strip()
             # 清理markdown格式标记
             conclusion = clean_markdown_formatting(conclusion)
-            print(f"✅ 综合分析结论生成成功: {conclusion[:50]}...")
+            _log().info('comprehensive LLM conclusion generated: length=%s', len(conclusion))
             return conclusion
         else:
             raise Exception("LLM未能生成有效的综合分析结论")
 
     except Exception as e:
-        print(f"生成综合结论失败: {str(e)}")
+        _log().warning('failed to generate comprehensive LLM conclusion: %s', e)
         # 返回基于决策树的默认结论
         return generate_fallback_conclusion(patient_data, decision_result, matched_knowledge)
 
@@ -503,14 +503,14 @@ def generate_imaging_conclusion_with_llm(patient_data: dict, decision_result: di
         # 构建prompt_vars：只添加有值的字段
         prompt_vars = {}
 
-        print(f"\n[LLM数据] ========== 上传到LLM的字段（只包含有值字段） ==========")
         uploaded_count = 0
+        uploaded_field_names = []
 
         # ⚠️ 强制添加gender字段（必需字段，不能被过滤）
         if 'gender' in patient_data:
             gender_value = patient_data['gender'] if patient_data['gender'] else '未知'
             prompt_vars['gender'] = gender_value
-            print(f"  🔴 gender: {gender_value} （必需字段）")
+            uploaded_field_names.append('gender')
             uploaded_count += 1
 
         for key, value in patient_data.items():
@@ -529,15 +529,15 @@ def generate_imaging_conclusion_with_llm(patient_data: dict, decision_result: di
             if value is not None and value != '' and value != []:
                 prompt_vars[key] = value
                 uploaded_count += 1
-                # 打印上传的字段（限制打印前30个字符）
-                value_str = str(value)[:30] + ('...' if len(str(value)) > 30 else '')
-                print(f"  ✅ {key}: {value_str}")
+                uploaded_field_names.append(key)
 
         # 添加知识库（始终需要）
         prompt_vars['knowledge_items'] = format_knowledge_for_prompt(matched_knowledge[:20], focus='imaging')
-
-        print(f"[LLM数据] 共上传 {uploaded_count} 个有值字段")
-        print(f"[LLM数据] ==========================================\n")
+        _log().debug(
+            'prepared imaging LLM prompt fields: count=%s fields=%s',
+            uploaded_count,
+            ','.join(uploaded_field_names),
+        )
 
         # 获取对应结节类型的提示词模板
         template = get_prompt_template(nodule_type, 'imaging')
@@ -549,8 +549,7 @@ def generate_imaging_conclusion_with_llm(patient_data: dict, decision_result: di
             print_full_llm_data(patient_data, prompt_vars, nodule_type, 'imaging')
             save_llm_prompt_to_file(prompt, f"imaging_{nodule_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
-        # 调用LLM
-        print(f"🤖 调用LLM生成{nodule_type}类型的影像学分析结论...")
+        _log().info('generating imaging LLM conclusion: nodule_type=%s', nodule_type)
         response = llm_generator._call_llm_api(prompt)
 
         if response and isinstance(response, str):
@@ -573,13 +572,17 @@ def generate_imaging_conclusion_with_llm(patient_data: dict, decision_result: di
                 # 同样清理risk_warning
                 result['risk_warning'] = result['risk_warning'].lstrip()
 
-            print(f"✅ 影像学分析结论生成成功: conclusion={len(result['conclusion'])}字, risk_warning={len(result['risk_warning'])}字")
+            _log().info(
+                'imaging LLM conclusion generated: conclusion_length=%s risk_warning_length=%s',
+                len(result['conclusion']),
+                len(result['risk_warning']),
+            )
             return result
         else:
             raise Exception("LLM未能生成有效的影像学分析结论")
 
     except Exception as e:
-        print(f"生成影像学结论失败: {str(e)}")
+        _log().warning('failed to generate imaging LLM conclusion: %s', e)
         # 返回基于数据的默认结论
         fallback_conclusion = generate_fallback_imaging_conclusion(patient_data, decision_result)
         return {
