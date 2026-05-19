@@ -361,6 +361,29 @@
                 </button>
               </div>
 
+              <div class="workspace-summary-grid">
+                <div class="workspace-summary-card">
+                  <span>档案记录</span>
+                  <b>{{ activePatient.workspaceRecords?.length || 0 }}</b>
+                  <em>{{ latestRecordLabel }}</em>
+                </div>
+                <div class="workspace-summary-card">
+                  <span>健康报告</span>
+                  <b>{{ activePatient.workspaceReports?.length || 0 }}</b>
+                  <em>{{ activePatient.latestReport?.status ? reportDbStatusLabel(activePatient.latestReport.status) : '未生成' }}</em>
+                </div>
+                <div class="workspace-summary-card">
+                  <span>随访计划</span>
+                  <b>{{ activePatient.workspacePlans?.length || 0 }}</b>
+                  <em>{{ activePlanLabel }}</em>
+                </div>
+                <div class="workspace-summary-card">
+                  <span>执行任务</span>
+                  <b>{{ activePatient.workspaceTasks?.length || 0 }}</b>
+                  <em>{{ taskExecutionSummary }}</em>
+                </div>
+              </div>
+
               <div class="upload-grid">
                 <section class="upload-panel">
                   <div class="upload-title">影像报告</div>
@@ -502,9 +525,48 @@
             </section>
 
             <section class="card side-flow-card">
-              <div class="section-title">舌诊 H5 接入位</div>
-              <div class="integration-note">
-                当前流程：B端生成 H5 单点登录链接 → 患者手机或健康管理师手机打开 → 在手机 H5 内拍照采集 → 结果通过报告回调或报告检索回流。
+              <div class="section-title">随访计划</div>
+              <div class="chain-list">
+                <div v-for="plan in activePatient.workspacePlans || []" :key="plan.id" class="chain-row">
+                  <div>
+                    <b>{{ plan.name }}</b>
+                    <span>{{ planStatusLabel(plan.status) }} · {{ cycleLabelFromDays(plan.cycle_days) }} · {{ channelLabel(plan.channel) }}</span>
+                  </div>
+                  <em>{{ plan.activated_at || plan.created_at || '未启用' }}</em>
+                </div>
+                <div v-if="!(activePatient.workspacePlans || []).length" class="empty-line">暂无随访计划</div>
+              </div>
+            </section>
+
+            <section class="card side-flow-card">
+              <div class="section-title">任务执行记录</div>
+              <div class="chain-list">
+                <div v-for="task in activePatient.workspaceTasks || []" :key="task.id" class="chain-row" :data-alert="task.abnormal_flag">
+                  <div>
+                    <b>{{ task.title || taskTypeLabel(task.task_payload?.node?.task_type) }}</b>
+                    <span>{{ trackingStatusLabel(task.status) }} · {{ channelLabel(task.channel) }} · {{ task.scheduled_send_at || task.due_at || '未排期' }}</span>
+                  </div>
+                  <em>{{ task.abnormal_flag ? '异常' : task.priority || 'normal' }}</em>
+                </div>
+                <div v-if="!(activePatient.workspaceTasks || []).length" class="empty-line">暂无执行任务</div>
+              </div>
+              <button class="btn full" type="button" @click="setSubTab('follow')" style="margin-top:10px">进入执行跟踪</button>
+            </section>
+
+            <section class="card side-flow-card">
+              <div class="section-title">报告与舌诊链路</div>
+              <div class="chain-list">
+                <div v-for="report in activePatient.workspaceReports || []" :key="report.id" class="chain-row">
+                  <div>
+                    <b>{{ report.report_code || `报告 #${report.id}` }}</b>
+                    <span>{{ reportDbStatusLabel(report.status) }} · {{ report.risk_level || '未评估' }}</span>
+                  </div>
+                  <button class="btn-link-lite" type="button" @click="viewReport(report.id)">查看</button>
+                </div>
+                <div v-if="!(activePatient.workspaceReports || []).length" class="empty-line">暂无健康报告</div>
+                <div class="integration-note">
+                  舌诊流程：B端生成 H5 单点登录链接 → 患者手机采集 → 结果回流到档案和报告。
+                </div>
               </div>
             </section>
           </aside>
@@ -1704,6 +1766,29 @@ const activeTaskId = ref('')
 const selectedTaskIds = ref(new Set())
 
 const activeTask = computed(() => (followTasks.value || []).find((t) => t.id === activeTaskId.value) || null)
+
+const latestRecordLabel = computed(() => {
+  const records = activePatient.value?.workspaceRecords || []
+  const latest = records[0]
+  if (!latest) return '暂无档案'
+  return latest.record_code || latest.created_at || `档案 #${latest.id}`
+})
+
+const activePlanLabel = computed(() => {
+  const plans = activePatient.value?.workspacePlans || []
+  const active = plans.find((plan) => plan.status === 'active') || plans[0]
+  if (!active) return '待下发'
+  return `${planStatusLabel(active.status)} · ${cycleLabelFromDays(active.cycle_days)}`
+})
+
+const taskExecutionSummary = computed(() => {
+  const tasks = activePatient.value?.workspaceTasks || []
+  if (!tasks.length) return '暂无任务'
+  const open = tasks.filter((task) => !['completed', 'cancelled'].includes(task.status)).length
+  const alert = tasks.filter((task) => task.abnormal_flag || task.status === 'alert').length
+  if (alert) return `${alert} 个异常待处理`
+  return open ? `${open} 个进行中` : '全部完成'
+})
 
 const MOCK_TRACKING_NODES = [
   {
@@ -3588,28 +3673,73 @@ async function viewReport(reportId) {
     return
   }
   try {
-    const res = await fetch(`/api/b/reports/${reportId}`, { credentials: 'include' })
-    const data = await res.json()
-    if (data.success && data.data?.report_html) {
-      rpViewHtml.value = data.data.report_html
+    const data = await apiJson(`/api/b/reports/${reportId}`)
+    const html = data.report_html || data.final_report_html || ''
+    if (html) {
+      rpViewHtml.value = html
       rpViewVisible.value = true
       return
     }
-    if (data.success && (data.data?.imaging_conclusion || data.data?.report_summary || data.data?.summary)) {
-      const summary = data.data?.report_summary || data.data?.summary || '暂无'
-      const advice = data.data?.imaging_conclusion || data.data?.ai_read_summary || '暂无'
-      rpViewHtml.value = `<h2>${scenario.value.reportLabel}（报告内容预览）</h2><p><b>报告编号：</b>${data.data?.report_code || reportId} &nbsp; <b>状态：</b>${data.data?.status || '—'}</p><h3>${reportTerms.value.summaryLabel}</h3><p>${summary}</p><h3>${reportTerms.value.adviceLabel}</h3><p>${advice}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">最后审核时间：${data.data?.reviewed_at || data.data?.updated_at || '—'}</p>`
+    if (data.imaging_conclusion || data.report_summary || data.summary || data.advice_draft) {
+      rpViewHtml.value = buildReportPreviewHtml(data, reportId)
       rpViewVisible.value = true
       return
     }
+    toast?.show('报告详情暂未生成可查看内容')
   } catch (e) {
-    // fall through to mock
+    if (!mockR) {
+      toast?.show(e.message || '查看报告失败')
+      return
+    }
   }
   // mock fallback: build simple HTML from local data
   if (mockR) {
-    rpViewHtml.value = `<h2>${scenario.value.reportLabel}</h2><p><b>患者：</b>${mockR.name} &nbsp; <b>结节类型：</b>${mockR.nodules} &nbsp; <b>风险等级：</b>${mockR.risk}</p><h3>${reportTerms.value.summaryLabel}</h3><p>${rpAuditPara1.value || mockR.summary || '暂无'}</p><h3>${reportTerms.value.adviceLabel}</h3><p>${rpAuditPara2.value || mockR.aiReadSummary || '暂无'}</p><p style="color:#94a3b8;font-size:12px;margin-top:20px">报告生成时间：${mockR.uploadAt}</p>`
+    rpViewHtml.value = buildReportPreviewHtml({
+      report_code: mockR.reportNo || mockR.id,
+      status: mockR.reportStatus,
+      patient: { name: mockR.name },
+      nodule_type: mockR.noduleType,
+      risk_level: mockR.risk,
+      report_summary: rpAuditPara1.value || mockR.summary || '',
+      imaging_conclusion: rpAuditPara2.value || mockR.aiReadSummary || '',
+      created_at: mockR.uploadAt
+    }, reportId)
     rpViewVisible.value = true
   }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function paragraphHtml(value) {
+  const text = escapeHtml(value || '暂无')
+  return text.replace(/\n/g, '<br>')
+}
+
+function buildReportPreviewHtml(report, reportId) {
+  const advice = report.advice_draft?.content || report.imaging_conclusion || report.ai_read_summary || ''
+  const sections = report.advice_draft?.sections || {}
+  const patientName = report.patient?.name || report.patient_name || '—'
+  const nodule = noduleTypeLabel(report.nodule_type || report.record?.nodule_type)
+  const reviewedAt = report.reviewed_at || report.updated_at || report.created_at || '—'
+  return `
+    <h2>${escapeHtml(scenario.value.reportLabel)}（报告内容预览）</h2>
+    <p><b>报告编号：</b>${escapeHtml(report.report_code || reportId)} &nbsp; <b>状态：</b>${escapeHtml(reportDbStatusLabel(report.status))}</p>
+    <p><b>患者：</b>${escapeHtml(patientName)} &nbsp; <b>结节类型：</b>${escapeHtml(nodule)} &nbsp; <b>风险等级：</b>${escapeHtml(report.risk_level || '未评估')}</p>
+    <h3>${escapeHtml(reportTerms.value.summaryLabel)}</h3>
+    <p>${paragraphHtml(report.report_summary || report.summary || sections.overall_assessment)}</p>
+    <h3>${escapeHtml(reportTerms.value.adviceLabel)}</h3>
+    <p>${paragraphHtml(advice || sections.imaging_report_advice)}</p>
+    ${sections.risk_assessment ? `<h3>风险提示</h3><p>${paragraphHtml(sections.risk_assessment)}</p>` : ''}
+    ${sections.tongue_conclusion ? `<h3>舌诊结论</h3><p>${paragraphHtml(sections.tongue_conclusion)}</p>` : ''}
+    <p style="color:#94a3b8;font-size:12px;margin-top:20px">最后更新时间：${escapeHtml(reviewedAt)}</p>
+  `
 }
 
 function downloadReport(reportId) {
@@ -4119,6 +4249,11 @@ function templateStatusLabel(status) {
   return map[status] || status || '模板'
 }
 
+function planStatusLabel(status) {
+  const map = { draft: '草稿', active: '执行中', paused: '已暂停', completed: '已完成', cancelled: '已取消' }
+  return map[status] || status || '计划'
+}
+
 function taskTypeLabel(type) {
   const map = {
     knowledge: '知识推送',
@@ -4456,6 +4591,10 @@ function ensurePatientWorkflow(p) {
   p.tongueTask = p.tongueTask || null
   p.tongueH5Url = p.tongueH5Url || p.tongueTask?.h5_url || ''
   p.tongueMobileOpenUrl = p.tongueMobileOpenUrl || ''
+  p.workspaceRecords = Array.isArray(p.workspaceRecords) ? p.workspaceRecords : []
+  p.workspaceReports = Array.isArray(p.workspaceReports) ? p.workspaceReports : []
+  p.workspacePlans = Array.isArray(p.workspacePlans) ? p.workspacePlans : []
+  p.workspaceTasks = Array.isArray(p.workspaceTasks) ? p.workspaceTasks : []
   p.latestReport = p.latestReport || null
   p.adviceDraft = p.adviceDraft || makeDefaultAdvice(p)
   p.finalReport = p.finalReport || { content: '', archivedAt: '', version: '' }
@@ -4484,14 +4623,64 @@ async function openPatientWorkspace(p) {
   await hydratePatientWorkspace(current)
 }
 
+function buildProfileNote(records, fallback = '') {
+  const list = Array.isArray(records) ? records : []
+  const latest = list
+    .slice()
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
+  if (!latest) return fallback || '既往史、家族史、症状、体征信息待完善。'
+  const fields = [
+    latest.main_complaint,
+    latest.medical_history,
+    latest.past_history,
+    latest.family_history,
+    latest.symptoms,
+    latest.physical_exam,
+    latest.health_condition
+  ].filter(Boolean)
+  if (fields.length) return fields.join('\n')
+  return fallback || `最近档案：${latest.record_code || latest.created_at || `#${latest.id}`}`
+}
+
 async function hydratePatientWorkspace(p) {
   if (!p?._apiId) return
   p.workspaceLoading = true
   try {
-    const records = await apiJson(`/api/b/patients/${p._apiId}/records`)
-    const latestRecord = (Array.isArray(records) ? records : [])
+    const [detail, records, reports, plans, tasks] = await Promise.all([
+      apiJson(`/api/b/patients/${p._apiId}`),
+      apiJson(`/api/b/patients/${p._apiId}/records`),
+      apiJson(`/api/b/reports?patient_id=${p._apiId}&per_page=20`),
+      apiJson(`/api/b/followup/patient-plans?patient_id=${p._apiId}`),
+      apiJson(`/api/b/followup/tasks?patient_id=${p._apiId}&per_page=50`)
+    ])
+    if (detail?.name) {
+      p.name = detail.name || p.name
+      p.gender = detail.gender || p.gender
+      p.age = detail.age || p.age
+      p.phone = detail.phone || p.phone
+      p.phoneMasked = detail.phone ? detail.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : p.phoneMasked
+      p.nodules = noduleTypeLabel(detail.nodule_type || p.noduleType)
+      p.noduleType = detail.nodule_type || p.noduleType
+      p.source = detail.source_channel || p.source
+      p.wecomExternalUserid = detail.wecom_external_userid || p.wecomExternalUserid
+      p.wecomUserid = detail.wecom_userid || p.wecomUserid
+      p.wecomBindStatus = detail.wecom_bind_status || p.wecomBindStatus
+      p.profileNote = buildProfileNote(detail.health_records || records, p.profileNote)
+    }
+    p.workspaceRecords = (Array.isArray(records) ? records : [])
       .slice()
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+    p.workspaceReports = (reports.reports || reports.items || [])
+      .slice()
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+    p.workspacePlans = (Array.isArray(plans) ? plans : [])
+      .slice()
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+    p.workspaceTasks = (tasks.items || tasks || [])
+      .slice()
+      .sort((a, b) => String(b.scheduled_send_at || b.due_at || b.created_at || '').localeCompare(String(a.scheduled_send_at || a.due_at || a.created_at || '')))
+
+    const latestRecord = p.workspaceRecords[0]
     if (latestRecord?.id) {
       p.workspaceRecordId = latestRecord.id
       p.latestReport = latestRecord.latest_report || null
@@ -4503,8 +4692,7 @@ async function hydratePatientWorkspace(p) {
       p.tongueMobileOpenUrl = p.tongueTask?.mobile_open_url || p.tongueMobileOpenUrl || ''
     }
 
-    const reports = await apiJson(`/api/b/reports?patient_id=${p._apiId}&per_page=20`)
-    const latestReport = (reports.reports || [])[0]
+    const latestReport = p.workspaceReports[0]
     if (latestReport?.id) {
       p.workspaceReportId = latestReport.id
       p.latestReport = {
@@ -6129,6 +6317,11 @@ function backToQueue() {
 .record-report-card{margin-top:10px;border:1px solid #dbeafe;background:#eff6ff;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .record-report-card b{display:block;color:#1e3a8a;font-size:12px;margin-bottom:3px}
 .record-report-card span{display:block;color:#334155;font-size:12px}
+.workspace-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
+.workspace-summary-card{border:1px solid #e6edf7;border-radius:10px;background:#fff;padding:10px 12px;min-width:0}
+.workspace-summary-card span{display:block;font-size:12px;color:#64748b;font-weight:850}
+.workspace-summary-card b{display:block;font-size:22px;color:#0f172a;line-height:1.1;margin-top:4px}
+.workspace-summary-card em{display:block;font-style:normal;font-size:11px;color:#94a3b8;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#64748b;font-weight:850;min-width:0}
 .profile-field input,.profile-field select,.profile-field textarea{width:100%;box-sizing:border-box;border:1px solid #dbe5f2;border-radius:9px;background:#fff;padding:8px 10px;color:#0f172a;font-size:13px;font-weight:650}
 .profile-field input[readonly],.profile-field textarea[readonly]{background:#f8fafc;color:#334155}
@@ -6178,12 +6371,20 @@ function backToQueue() {
 .mgmt-log-row span{display:block;font-size:11px;color:#94a3b8;margin-top:2px}
 .mgmt-log-row p{margin:5px 0 0;font-size:12px;color:#64748b;line-height:1.5}
 .integration-note{font-size:12px;color:#64748b;line-height:1.7;margin-top:8px;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:10px}
+.chain-list{display:grid;gap:8px;margin-top:10px}
+.chain-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border:1px solid #eef2f7;border-radius:10px;background:#fff;padding:9px 10px;min-width:0}
+.chain-row[data-alert="true"]{background:#fff1f2;border-color:#fecdd3}
+.chain-row b{display:block;font-size:12px;color:#0f172a;line-height:1.35}
+.chain-row span{display:block;font-size:11px;color:#64748b;margin-top:3px;line-height:1.4}
+.chain-row em{font-style:normal;font-size:11px;color:#94a3b8;white-space:nowrap}
+.btn.full{width:100%}
 .status-tag[data-s="draft"]{background:#f8fafc;color:#475569}
 .status-tag[data-s="reviewing"]{background:#eff6ff;color:#1d4ed8}
 .status-tag[data-s="approved"],.status-tag[data-s="archived"]{background:#ecfdf5;color:#047857}
 @media (max-width: 1180px){
   .workspace-grid{grid-template-columns:1fr}
   .workspace-flow{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .workspace-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .risk-layers{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 </style>

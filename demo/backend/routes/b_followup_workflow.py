@@ -1234,6 +1234,7 @@ def create_checkin():
 @login_required
 def list_tasks():
     """随访任务列表"""
+    patient_id = request.args.get('patient_id', type=int)
     status = request.args.get('status', '').strip()
     search = request.args.get('search', '').strip()
     risk_level = request.args.get('risk_level', '').strip()
@@ -1243,6 +1244,8 @@ def list_tasks():
     per_page = min(request.args.get('per_page', 20, type=int), 100)
 
     query = BFollowUpTask.query.join(BPatient)
+    if patient_id:
+        query = query.filter(BFollowUpTask.patient_id == patient_id)
     if status and status != 'all':
         query = query.filter(BFollowUpTask.status == status)
     if risk_level and risk_level != 'all':
