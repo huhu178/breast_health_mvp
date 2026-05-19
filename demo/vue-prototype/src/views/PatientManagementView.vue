@@ -1607,12 +1607,20 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import RecordView from './RecordView.vue'
 import { getStoredScenario } from '../config/scenarios'
+import { usePatientDisplay } from '../composables/usePatientDisplay'
 
 const router = useRouter()
 const route = useRoute()
 const toast = { show: (msg) => window.alert(msg) }
 const scenario = computed(() => getStoredScenario())
 const isCheckupScenario = computed(() => scenario.value.key === 'checkup')
+const {
+  riskLevelLabel,
+  riskToneFromLevel,
+  statusKey,
+  statusLabel
+} = usePatientDisplay({ scenario, isCheckupScenario })
+
 function goFollowupWorkflow() {
   router.push('/followup-workflow')
 }
@@ -4063,38 +4071,6 @@ const steps = computed(() => ([
 
 // subTabs/allowedSubTabs/setSubTab 已提前定义（由路由 query.tab 驱动）
 
-/**
- * @isdoc
- * @description 将旧阶段映射为5个“对外状态”
- * @param {any} p 患者对象
- * @returns {'new'|'gen'|'review'|'plan'|'follow'}
- */
-function statusKey(p) {
-  const stage = String(p?.stage || '')
-  // 健康报告待生成：包含“待生成/上传/推送/建档/复查回收”等都归到生成链路前
-  if (['record', 'upload', 'aiGen', 'push', 'recall'].includes(stage)) return 'gen'
-  // 健康报告待审核
-  if (stage === 'review') return 'review'
-  // 任务执行中
-  if (stage === 'follow') return 'follow'
-  // 其它（包括 abnormal）统一归为“任务待下发”
-  return 'plan'
-}
-
-/**
- * @isdoc
- * @description 获取4状态的展示文案
- * @param {any} p 患者对象
- * @returns {string}
- */
-function statusLabel(p) {
-  const k = statusKey(p)
-  if (k === 'gen') return `${scenario.value.reportLabel}待生成`
-  if (k === 'review') return isCheckupScenario.value ? '待总检确认' : '健康报告待审核'
-  if (k === 'plan') return '任务待下发'
-  return '任务执行中'
-}
-
 const stageTabs = computed(() => {
   const count = (k) => queue.value.filter((p) => statusKey(p) === k).length
   return [
@@ -4233,19 +4209,6 @@ function noduleTypeLabel(t) {
     lung_thyroid: '肺部+甲状腺结节', triple: '三合并结节'
   }
   return map[t] || t || '—'
-}
-
-function riskLevelLabel(risk) {
-  const map = { high: '高风险', mid: '中风险', medium: '中风险', low: '低风险', '高危': '高风险', '中危': '中风险', '低危': '低风险' }
-  return map[risk] || risk || '通用风险'
-}
-
-function riskToneFromLevel(risk) {
-  const label = riskLevelLabel(risk)
-  if (label === '高风险') return 'r'
-  if (label === '中风险') return 'o'
-  if (label === '低风险') return 'g'
-  return 'g'
 }
 
 function channelLabel(channel) {
