@@ -12,7 +12,7 @@
    - 返回 `risk_level`、`risk_score`、`risk_basis`。
 
 2. 没有中医健康指数时，使用影像分级兜底。
-   - 入口：`demo/backend/routes/b_report_management.py::_derive_report_risk_level`
+   - 入口：`demo/backend/services/risk_assessment_service.py::derive_report_risk_level`
    - 乳腺：BI-RADS 1/2 为低风险，3 为中风险，4/5/6 为高风险。
    - 肺部：Lung-RADS 1/2 为低风险，3 为中风险，4 为高风险。
    - 甲状腺：TI-RADS 1/2 为低风险，3 为中风险，4/5/6 为高风险。
@@ -44,4 +44,4 @@ B 端报告接口会返回：
 
 短期继续保持三档风险，避免引入过细等级导致模板、队列、随访规则不一致。
 
-中期可以把分层逻辑从 `b_report_management.py` 抽到独立服务，例如 `services/risk_assessment_service.py`，同时保留当前接口字段，减少迁移成本。
+风险分层逻辑已集中到 `services/risk_assessment_service.py`。后续新增入口应复用该服务，避免在路由、前端或随访模块内重复实现风险规则。

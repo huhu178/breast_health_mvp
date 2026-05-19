@@ -8,6 +8,7 @@ from models import db, BPatient, BHealthRecord, BReport, KnowledgeItem, CPatient
 from utils.decorators import login_required
 from utils.response import Response
 from services.llm_service import llm_generator
+from services.risk_assessment_service import append_risk_metadata, derive_report_risk_level
 from config import Config
 from datetime import datetime
 import random
@@ -131,7 +132,7 @@ def _generate_report_for_record(record_id, generated_by_user_id):
     report_html = render_template(template_path, **template_fields)
     print(f"✅ 使用模板: {template_path} 生成 {patient.nodule_type} 报告")
 
-    risk_level, risk_score, risk_basis = _derive_report_risk_level(record, nodule_type, patient_data)
+    risk_level, risk_score, risk_basis = derive_report_risk_level(record, nodule_type, patient_data)
     report_summary = f"{risk_level} · {risk_basis}"
 
     report = BReport(
@@ -180,102 +181,6 @@ def _run_report_job(app, job_id, record_id, generated_by_user_id):
             _set_report_job(job_id, status='failed', message=str(e) or '生成报告失败')
 
 
-def _normalize_level(value):
-    text = str(value or '').strip().upper().replace('类', '').replace('级', '')
-    if not text or text in {'不清楚', '未知', '未填写', 'NONE'}:
-        return ''
-    return text
-
-
-def _risk_from_level(system_name, value):
-    level = _normalize_level(value)
-    if not level:
-        return None
-    if system_name == 'breast':
-        if level.startswith(('4', '5', '6')):
-            return '高风险'
-        if level.startswith('3'):
-            return '中风险'
-        if level.startswith(('1', '2', '0')):
-            return '低风险'
-    if system_name == 'lung':
-        if level.startswith('4'):
-            return '高风险'
-        if level.startswith('3'):
-            return '中风险'
-        if level.startswith(('1', '2')):
-            return '低风险'
-    if system_name == 'thyroid':
-        if level.startswith(('4', '5', '6')):
-            return '高风险'
-        if level.startswith('3'):
-            return '中风险'
-        if level.startswith(('1', '2')):
-            return '低风险'
-    return None
-
-
-def _derive_report_risk_level(record, nodule_type, patient_data):
-    """
-    基于已填结构化分级做初步低/中/高风险分层。
-    说明：这是报告工作台展示和流转用的初筛分层，不替代医生审核结论。
-    """
-    from utils.report_manager import derive_tcm_risk_level
-    tcm_risk = derive_tcm_risk_level(record)
-    if tcm_risk:
-        return tcm_risk
-
-    candidates = []
-    if nodule_type == 'triple' or 'breast' in nodule_type:
-        candidates.append(('乳腺BI-RADS', _risk_from_level('breast', getattr(record, 'birads_level', None))))
-    if nodule_type == 'triple' or 'lung' in nodule_type:
-        candidates.append(('肺部Lung-RADS', _risk_from_level('lung', getattr(record, 'lung_rads_level', None))))
-    if nodule_type == 'triple' or 'thyroid' in nodule_type:
-        candidates.append(('甲状腺TI-RADS', _risk_from_level('thyroid', getattr(record, 'tirads_level', None))))
-
-    rank = {'低风险': 1, '中风险': 2, '高风险': 3}
-    known = [(label, risk) for label, risk in candidates if risk]
-
-    if not known:
-        return '中风险', 50, '分级不清，按资料缺口进入中风险复核'
-
-    top_label, top_risk = max(known, key=lambda item: rank[item[1]])
-    score = {'低风险': 25, '中风险': 55, '高风险': 85}[top_risk]
-
-    if not patient_data.get('has_imaging_upload') and top_risk == '低风险':
-        # 缺原始报告时不把风险升档，但在摘要里明确提示资料缺口。
-        return top_risk, score, f'{top_label}提示{top_risk}，未上传原始影像报告'
-    return top_risk, score, f'{top_label}提示{top_risk}'
-
-
-def _append_risk_metadata(report_dict):
-    """补充风险分层解释字段。该分层用于工作流，不替代医生诊断。"""
-    summary = str(report_dict.get('report_summary') or '')
-    risk_level = report_dict.get('risk_level') or '未评估'
-    basis = ''
-    if ' · ' in summary:
-        prefix, basis = summary.split(' · ', 1)
-        if not risk_level or risk_level == '未评估':
-            risk_level = prefix
-    elif summary and summary != risk_level:
-        basis = summary
-
-    source = 'unknown'
-    if '中医健康指数' in basis:
-        source = 'tcm_health_index'
-    elif 'BI-RADS' in basis or 'Lung-RADS' in basis or 'TI-RADS' in basis:
-        source = 'imaging_grade'
-    elif '资料缺口' in basis or '分级不清' in basis:
-        source = 'data_gap'
-
-    report_dict['risk_level'] = risk_level
-    report_dict['risk_basis'] = basis
-    report_dict['risk_source'] = source
-    report_dict['risk_scope'] = 'workflow_triage'
-    report_dict['risk_disclaimer'] = '该风险分层用于健康管理工作流排序和随访模板匹配，不替代医生诊断或治疗决策。'
-    return report_dict
-
-
 @b_report_bp.route('', methods=['GET'])
 @login_required
 def get_all_reports(current_user):
@@ -304,7 +209,7 @@ def get_all_reports(current_user):
                     report_dict = report.to_dict()
                     report_dict.pop('report_html', None)
                     report_dict.pop('recommendations_draft', None)
-                    _append_risk_metadata(report_dict)
+                    append_risk_metadata(report_dict)
                 else:
                     from utils.report_manager import derive_tcm_risk_level
                     tcm_risk = derive_tcm_risk_level(record)
@@ -324,7 +229,7 @@ def get_all_reports(current_user):
                         'imaging_conclusion': '',
                         'is_report_placeholder': True
                     }
-                    _append_risk_metadata(report_dict)
+                    append_risk_metadata(report_dict)
 
                 report_dict.update({
                     'patient_id': patient.id,
@@ -377,7 +282,7 @@ def get_all_reports(current_user):
         reports_data = []
         for report in pagination.items:
             report_dict = report.to_dict()
-            _append_risk_metadata(report_dict)
+            append_risk_metadata(report_dict)
             # 列表页只需要摘要字段。完整HTML体量很大，刷新报告页时批量返回会拖慢甚至卡住前端。
             report_dict.pop('report_html', None)
             report_dict.pop('recommendations_draft', None)
@@ -458,7 +363,7 @@ def get_report_detail(current_user, report_id):
             return Response.error('报告不存在', 404)
 
         report_dict = report.to_dict()
-        _append_risk_metadata(report_dict)
+        append_risk_metadata(report_dict)
         patient = BPatient.query.get(report.patient_id)
         if patient:
             report_dict['patient'] = patient.to_dict()
