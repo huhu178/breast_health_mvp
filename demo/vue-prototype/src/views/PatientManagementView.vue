@@ -465,19 +465,20 @@
               <div class="section-head">
                 <div>
                   <div class="section-title">三、健康报告意见</div>
-                  <div class="section-sub">AI意见作为可迭代草稿，支持再次生成、人工编辑、提交审核和历史版本留痕。</div>
+                  <div class="section-sub">{{ adviceLocked ? '最终报告已归档，建议内容已锁定。' : 'AI意见作为可迭代草稿，支持再次生成、人工编辑、提交审核和历史版本留痕。' }}</div>
                 </div>
                 <div class="section-actions">
-                  <button class="btn" type="button" @click="regenerateAdviceForActive" :disabled="adviceGenerating">{{ adviceGenerating ? '生成中...' : '再次生成建议' }}</button>
-                  <button class="primary" type="button" @click="saveAdviceDraft">保存草稿</button>
-                  <button class="primary" type="button" @click="submitAdviceReview">提交审核</button>
+                  <button class="btn" type="button" @click="regenerateAdviceForActive" :disabled="adviceGenerating || adviceLocked">{{ adviceGenerating ? '生成中...' : '再次生成建议' }}</button>
+                  <button class="primary" type="button" @click="saveAdviceDraft" :disabled="adviceLocked">保存草稿</button>
+                  <button class="primary" type="button" @click="submitAdviceReview" :disabled="adviceLocked || activeAdvice.status === 'reviewing'">提交审核</button>
                 </div>
               </div>
               <div class="advice-status-row">
                 <span class="status-tag" :data-s="activeAdvice.status">{{ adviceStatusLabel(activeAdvice.status) }}</span>
                 <span class="muted">当前版本：V{{ activeAdvice.version || 1 }} · {{ activeAdvice.updatedAt || '未保存' }}</span>
+                <span v-if="adviceLocked" class="lock-chip">已锁定</span>
               </div>
-              <textarea class="advice-editor" v-model="activeAdvice.content" placeholder="生成后的建议会出现在这里，也可以人工编辑。"></textarea>
+              <textarea class="advice-editor" v-model="activeAdvice.content" :readonly="adviceLocked" placeholder="生成后的建议会出现在这里，也可以人工编辑。"></textarea>
               <div class="version-list">
                 <div v-for="v in activeAdvice.history || []" :key="v.id" class="version-row">
                   <span>V{{ v.version }}</span><b>{{ adviceStatusLabel(v.status) }}</b><span>{{ v.savedAt }}</span>
@@ -492,7 +493,7 @@
                   <div class="section-title">四、最终健康报告</div>
                   <div class="section-sub">只有审核通过的建议才能写入最终报告，与草稿意见明确区分。</div>
                 </div>
-                <button class="primary" type="button" @click="approveAdviceToFinal" :disabled="activeAdvice.status !== 'reviewing'">审核通过并写入最终报告</button>
+                <button class="primary" type="button" @click="approveAdviceToFinal" :disabled="activeAdvice.status !== 'reviewing' || adviceLocked">审核通过并写入最终报告</button>
               </div>
               <div v-if="activePatient.finalReport?.content" class="final-report-box">
                 <div class="final-report-meta">已归档 · {{ activePatient.finalReport.archivedAt }} · 来源 V{{ activePatient.finalReport.version }}</div>
@@ -4791,6 +4792,13 @@ const activeAdvice = computed(() => {
   return p?.adviceDraft || makeDefaultAdvice(p)
 })
 
+const adviceLocked = computed(() => {
+  const p = ensurePatientWorkflow(activePatient.value)
+  const status = p?.adviceDraft?.status
+  const reportStatus = p?.latestReport?.status
+  return !!p?.finalReport?.content || ['archived', 'approved'].includes(status) || ['finalized', 'published', 'archived'].includes(reportStatus)
+})
+
 const workspaceTongueActionLabel = computed(() => {
   const task = activePatient.value?.tongueTask
   if (task?.status === 'h5_sso_created') return '重新打开舌诊 H5'
@@ -4982,6 +4990,10 @@ async function removeAsset(type, id) {
 
 async function regenerateAdviceForActive() {
   const p = ensurePatientWorkflow(activePatient.value)
+  if (adviceLocked.value) {
+    toast?.show('最终报告已归档，不能再次生成建议')
+    return
+  }
   adviceGenerating.value = true
   try {
     const previous = p.adviceDraft.content
@@ -5017,6 +5029,10 @@ async function regenerateAdviceForActive() {
 
 async function saveAdviceDraft() {
   const p = ensurePatientWorkflow(activePatient.value)
+  if (adviceLocked.value) {
+    toast?.show('最终报告已归档，不能编辑建议')
+    return false
+  }
   if (!String(p.adviceDraft.content || '').trim()) {
     toast?.show('请先生成或填写建议内容')
     return false
@@ -5042,6 +5058,10 @@ async function saveAdviceDraft() {
 
 async function submitAdviceReview() {
   const p = ensurePatientWorkflow(activePatient.value)
+  if (adviceLocked.value) {
+    toast?.show('最终报告已归档，不能再次提交审核')
+    return
+  }
   if (!String(p.adviceDraft.content || '').trim()) {
     toast?.show('请先生成或填写建议内容')
     return
@@ -5065,6 +5085,10 @@ async function submitAdviceReview() {
 
 async function approveAdviceToFinal() {
   const p = ensurePatientWorkflow(activePatient.value)
+  if (adviceLocked.value) {
+    toast?.show('最终报告已归档')
+    return
+  }
   if (p.adviceDraft.status !== 'reviewing') return
   if (p.workspaceReportId) {
     try {
@@ -6357,6 +6381,8 @@ function backToQueue() {
 .risk-layer p{font-size:12px;color:#64748b;line-height:1.55;margin:8px 0 0}
 .advice-status-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .advice-editor{width:100%;box-sizing:border-box;min-height:160px;border:1px solid #dbe5f2;border-radius:12px;padding:12px;font-size:13px;line-height:1.7;resize:vertical;color:#0f172a}
+.advice-editor[readonly]{background:#f8fafc;color:#475569}
+.lock-chip{display:inline-flex;align-items:center;border-radius:6px;background:#ecfdf5;color:#047857;padding:2px 8px;font-size:11px;font-weight:850}
 .version-list{display:grid;gap:6px;margin-top:10px}
 .version-row{display:grid;grid-template-columns:52px 90px 1fr;gap:8px;align-items:center;border:1px solid #eef2f7;border-radius:9px;background:#fff;padding:8px 10px;font-size:12px;color:#64748b}
 .version-row b{color:#0f172a}

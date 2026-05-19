@@ -698,6 +698,15 @@ def _save_advice_payload(report, advice):
     flag_modified(report, 'recommendations_draft')
 
 
+def _report_advice_is_locked(report, advice=None):
+    advice = advice or _default_advice_payload(report)
+    return report.status in ('finalized', 'published', 'archived') or advice.get('status') in ('archived', 'approved')
+
+
+def _locked_advice_error():
+    return Response.error('建议已审核写入最终报告，不能再次生成或编辑', 409)
+
+
 @b_report_bp.route('/<int:report_id>/advice', methods=['GET'])
 @login_required
 def get_report_advice(current_user, report_id):
@@ -723,6 +732,8 @@ def save_report_advice(current_user, report_id):
     data = request.get_json(silent=True) or {}
 
     advice = _default_advice_payload(report)
+    if _report_advice_is_locked(report, advice):
+        return _locked_advice_error()
     sections = _normalize_advice_sections(report, advice, data)
     content = str(data.get('content') or sections.get('imaging_report_advice') or '').strip()
     if not any(sections.values()) and not content:
@@ -762,6 +773,8 @@ def submit_report_advice_review(current_user, report_id):
     if not report:
         return Response.error('报告不存在', 404)
     advice = _default_advice_payload(report)
+    if _report_advice_is_locked(report, advice):
+        return _locked_advice_error()
     if not str(advice.get('content') or '').strip():
         return Response.error('建议内容不能为空', 400)
     advice['status'] = 'reviewing'
@@ -781,6 +794,15 @@ def approve_report_advice(current_user, report_id):
         return Response.error('报告不存在', 404)
     data = request.get_json(silent=True) or {}
     advice = _default_advice_payload(report)
+    if _report_advice_is_locked(report, advice):
+        return Response.success({
+            'report_id': report.id,
+            'report_code': report.report_code,
+            'status': report.status,
+            'advice': advice
+        }, '建议已写入最终报告')
+    if advice.get('status') != 'reviewing' and report.status != 'reviewing':
+        return Response.error('建议尚未提交审核，不能直接写入最终报告', 409)
     sections = _normalize_advice_sections(report, advice, data)
     if data.get('content'):
         sections['imaging_report_advice'] = str(data.get('content')).strip()
