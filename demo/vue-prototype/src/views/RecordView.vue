@@ -615,7 +615,8 @@ import ToastMsg from '../components/ToastMsg.vue'
 import { getStoredScenario } from '../config/scenarios'
 
 const props = defineProps({
-  embedded: { type: Boolean, default: false }
+  embedded: { type: Boolean, default: false },
+  patient: { type: Object, default: null }
 })
 const emit = defineEmits(['back'])
 
@@ -699,6 +700,18 @@ const tagToNoduleType = {
   'triple': 'triple',
 }
 
+const noduleTypeToTag = {
+  lung: '肺部结节',
+  thyroid: '甲状腺结节',
+  breast: '乳腺结节',
+  lung_thyroid: 'lung_thyroid',
+  breast_lung: 'lung_breast',
+  lung_breast: 'lung_breast',
+  breast_thyroid: 'thyroid_breast',
+  thyroid_breast: 'thyroid_breast',
+  triple: 'triple',
+}
+
 const visibleNodules = computed(() => tagToOrgans[selectedTag.value] || [])
 
 const recordSubtitle = computed(() => {
@@ -724,7 +737,7 @@ const ownerOptions = computed(() => {
 const form = ref({
   // 基础信息
   age: '',
-  name: '', gender: '女', birthDate: '',
+  name: '', gender: '', birthDate: '',
   phone: '', idNo: '', addr: '',
   height: '', weight: '',
   diabetes_history: '无',
@@ -801,6 +814,34 @@ watch(
   (birthDate) => {
     form.value.age = calculateAge(birthDate) || ''
   }
+)
+
+watch(
+  () => props.patient,
+  (patient) => {
+    if (!props.embedded) return
+    if (!patient?.id) {
+      form.value.name = ''
+      form.value.gender = ''
+      form.value.age = ''
+      form.value.phone = ''
+      savedPatientId.value = ''
+      savedRecordId.value = ''
+      savedSnapshot.value = ''
+      return
+    }
+    selectedTag.value = noduleTypeToTag[patient.noduleType] || noduleTypeToTag[patient.nodule_type] || '乳腺结节'
+    form.value.name = patient.name || ''
+    form.value.gender = patient.gender || ''
+    form.value.age = patient.age && patient.age !== '—' ? patient.age : ''
+    form.value.phone = patient.phone || ''
+    form.value.source = patient.source || scenario.value.sourceOptions[0] || ''
+    form.value.doctor = patient.owner || ownerOptions.value[0] || ''
+    savedPatientId.value = patient._apiId || patient.rawPatientId || patient.id || ''
+    savedRecordId.value = patient.workspaceRecordId || patient.rawRecordId || ''
+    savedSnapshot.value = ''
+  },
+  { immediate: true }
 )
 
 function calculateAge(birthDate) {
@@ -1147,6 +1188,26 @@ async function saveRecordIfNeeded() {
       recordId: savedRecordId.value,
       reused: true
     }
+  }
+
+  if (props.embedded && savedPatientId.value) {
+    const recPayload = { ...buildRecordPayload(), patient_id: savedPatientId.value }
+    const recRes = await fetch(`/api/b/patients/${savedPatientId.value}/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(recPayload)
+    })
+    const recData = await recRes.json()
+    if (!recData.success) throw new Error('保存档案失败：' + (recData.message || ''))
+    const recordId = recData.data?.id || recData.data?.record_id
+
+    savedRecordId.value = recordId
+    savedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
+    savedSnapshot.value = snapshot
+    await uploadRecordAssets(recordId)
+
+    return { patientId: savedPatientId.value, recordId, reused: false }
   }
 
   const patRes = await fetch('/api/b/patients', {

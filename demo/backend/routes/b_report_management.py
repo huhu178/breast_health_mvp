@@ -17,6 +17,7 @@ import threading
 import time
 import uuid
 import traceback
+from html import escape
 
 b_report_bp = Blueprint('b_report', __name__, url_prefix='/api/b/reports')
 
@@ -137,6 +138,7 @@ def _generate_report_for_record(record_id, generated_by_user_id):
         patient_id=patient.id,
         record_id=record.id,
         report_code=report_code_generated,
+        status='generated',
         recommendations_draft=recommendations_draft,
         report_html=report_html,
         report_summary=report_summary,
@@ -218,6 +220,11 @@ def _derive_report_risk_level(record, nodule_type, patient_data):
     基于已填结构化分级做初步低/中/高风险分层。
     说明：这是报告工作台展示和流转用的初筛分层，不替代医生审核结论。
     """
+    from utils.report_manager import derive_tcm_risk_level
+    tcm_risk = derive_tcm_risk_level(record)
+    if tcm_risk:
+        return tcm_risk
+
     candidates = []
     if nodule_type == 'triple' or 'breast' in nodule_type:
         candidates.append(('乳腺BI-RADS', _risk_from_level('breast', getattr(record, 'birads_level', None))))
@@ -250,6 +257,78 @@ def get_all_reports(current_user):
         per_page = request.args.get('per_page', 20, type=int)
         patient_id = request.args.get('patient_id', type=int)
         risk_level = request.args.get('risk_level')
+        include_unreported = request.args.get('include_unreported', '').lower() in ('1', 'true', 'yes')
+
+        if include_unreported and not patient_id and not risk_level:
+            patient_query = BPatient.query.order_by(BPatient.created_at.desc())
+            patient_pagination = patient_query.paginate(page=page, per_page=per_page, error_out=False)
+            reports_data = []
+
+            for patient in patient_pagination.items:
+                report = BReport.query.filter_by(patient_id=patient.id).order_by(BReport.created_at.desc()).first()
+                record = None
+                if report and report.record_id:
+                    record = BHealthRecord.query.get(report.record_id)
+                if not record:
+                    record = BHealthRecord.query.filter_by(patient_id=patient.id).order_by(BHealthRecord.created_at.desc()).first()
+
+                if report:
+                    report_dict = report.to_dict()
+                    report_dict.pop('report_html', None)
+                    report_dict.pop('recommendations_draft', None)
+                else:
+                    from utils.report_manager import derive_tcm_risk_level
+                    tcm_risk = derive_tcm_risk_level(record)
+                    if tcm_risk:
+                        placeholder_risk_level, placeholder_risk_score, placeholder_risk_basis = tcm_risk
+                        placeholder_summary = f'{placeholder_risk_level} · {placeholder_risk_basis}'
+                    else:
+                        placeholder_risk_level, placeholder_risk_score = '未评估', None
+                        placeholder_summary = '尚未生成健康报告'
+                    report_dict = {
+                        'id': f'patient-{patient.id}',
+                        'report_code': None,
+                        'status': 'not_generated',
+                        'risk_level': placeholder_risk_level,
+                        'risk_score': placeholder_risk_score,
+                        'report_summary': placeholder_summary,
+                        'imaging_conclusion': '',
+                        'is_report_placeholder': True
+                    }
+
+                report_dict.update({
+                    'patient_id': patient.id,
+                    'record_id': record.id if record else None,
+                    'patient_name': patient.name,
+                    'patient_code': patient.patient_code,
+                    'patient': patient.to_dict(),
+                    'nodule_type': getattr(patient, 'nodule_type', None) or 'breast',
+                    'patient_gender': getattr(patient, 'gender', None),
+                    'patient_phone': getattr(patient, 'phone', None),
+                    'patient_source': getattr(patient, 'source_channel', None),
+                    'patient_age': getattr(record, 'age', None) if record else getattr(patient, 'age', None),
+                    'record': record.to_dict() if record else None,
+                    'report_type': 'b_end',
+                    'created_at': (
+                        report.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                        if report and report.created_at
+                        else patient.created_at.strftime('%Y-%m-%d %H:%M:%S') if patient.created_at else None
+                    ),
+                    'updated_at': (
+                        report.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                        if report and report.updated_at
+                        else patient.updated_at.strftime('%Y-%m-%d %H:%M:%S') if patient.updated_at else None
+                    )
+                })
+                reports_data.append(report_dict)
+
+            return Response.success({
+                'reports': reports_data,
+                'total': patient_pagination.total,
+                'page': page,
+                'per_page': per_page,
+                'pages': patient_pagination.pages
+            })
         
         query = BReport.query
         
@@ -268,6 +347,9 @@ def get_all_reports(current_user):
         reports_data = []
         for report in pagination.items:
             report_dict = report.to_dict()
+            # 列表页只需要摘要字段。完整HTML体量很大，刷新报告页时批量返回会拖慢甚至卡住前端。
+            report_dict.pop('report_html', None)
+            report_dict.pop('recommendations_draft', None)
             # 添加患者信息
             patient = BPatient.query.get(report.patient_id)
             if patient:
@@ -293,7 +375,7 @@ def get_all_reports(current_user):
             # 添加报告类型
             report_dict['report_type'] = 'b_end'
             reports_data.append(report_dict)
-        
+
         return Response.success({
             'reports': reports_data,
             'total': pagination.total,
@@ -335,6 +417,8 @@ def get_report_detail(current_user, report_id):
                 record = CHealthRecord.query.get(report.record_id)
                 if record:
                     report_dict['record'] = record.to_dict()
+                    from utils.report_manager import inject_tcm_report_html
+                    report_dict['report_html'] = inject_tcm_report_html(report_dict.get('report_html'), record)
             report_dict['report_type'] = 'c_end'
             return Response.success(report_dict)
 
@@ -354,6 +438,8 @@ def get_report_detail(current_user, report_id):
             record = BHealthRecord.query.get(report.record_id)
             if record:
                 report_dict['record'] = record.to_dict()
+                from utils.report_manager import inject_tcm_report_html
+                report_dict['report_html'] = inject_tcm_report_html(report_dict.get('report_html'), record)
         report_dict['report_type'] = 'b_end'
         
         return Response.success(report_dict)
@@ -511,14 +597,94 @@ def get_recommendations(current_user, report_id):
         return Response.error(f'获取建议失败: {str(e)}')
 
 
+def _get_report_tcm_summary(report):
+    if not report or not report.record_id:
+        return ''
+    record = BHealthRecord.query.get(report.record_id)
+    if not record:
+        return ''
+    from utils.report_manager import build_tcm_report_text
+    return build_tcm_report_text(record)
+
+
+def _normalize_advice_sections(report, advice=None, incoming=None):
+    advice = advice or {}
+    incoming = incoming or {}
+    saved_sections = advice.get('sections') or {}
+    incoming_sections = incoming.get('sections') if isinstance(incoming.get('sections'), dict) else {}
+    tcm_summary = _get_report_tcm_summary(report)
+
+    return {
+        'imaging_report_advice': str(
+            incoming_sections.get('imaging_report_advice')
+            if 'imaging_report_advice' in incoming_sections
+            else saved_sections.get('imaging_report_advice') or advice.get('content') or report.imaging_conclusion or ''
+        ).strip(),
+        'overall_assessment': str(
+            incoming_sections.get('overall_assessment')
+            if 'overall_assessment' in incoming_sections
+            else saved_sections.get('overall_assessment') or report.report_summary or ''
+        ).strip(),
+        'risk_assessment': str(
+            incoming_sections.get('risk_assessment')
+            if 'risk_assessment' in incoming_sections
+            else saved_sections.get('risk_assessment') or report.imaging_risk_warning or ''
+        ).strip(),
+        'tongue_conclusion': str(
+            incoming_sections.get('tongue_conclusion')
+            if 'tongue_conclusion' in incoming_sections
+            else saved_sections.get('tongue_conclusion') or tcm_summary
+        ).strip()
+    }
+
+
+def _review_section_html(title, content):
+    text = escape(content or '').replace('\n', '<br>')
+    return (
+        '<div style="margin-bottom:18px;">'
+        f'<h5 style="font-size:14px;margin:0 0 8px;color:#2c3e50;">{escape(title)}</h5>'
+        f'<div style="line-height:1.8;color:#555;white-space:normal;font-size:14px;">{text or "暂无"}</div>'
+        '</div>'
+    )
+
+
+def _inject_review_sections_into_report_html(report, sections):
+    if not report.report_html:
+        return
+    start_marker = '<!-- reviewed-advice-sections:start -->'
+    end_marker = '<!-- reviewed-advice-sections:end -->'
+    html = report.report_html
+    start = html.find(start_marker)
+    end = html.find(end_marker)
+    if start != -1 and end != -1 and end > start:
+        html = html[:start] + html[end + len(end_marker):]
+
+    block = (
+        f'{start_marker}'
+        '<section class="reviewed-advice-sections" style="margin-top:30px;padding:20px;border:1px solid #dbe5f2;border-radius:6px;background:#f8fafc;">'
+        '<h3 style="margin-top:0;color:#1f2937;">审核确认内容</h3>'
+        + _review_section_html('影像报告建议', sections.get('imaging_report_advice'))
+        + _review_section_html('总体评估建议', sections.get('overall_assessment'))
+        + _review_section_html('风险评估建议', sections.get('risk_assessment'))
+        + '</section>'
+        f'{end_marker}'
+    )
+    if '</body>' in html:
+        report.report_html = html.replace('</body>', f'{block}</body>')
+    else:
+        report.report_html = html + block
+
+
 def _default_advice_payload(report):
-    content = report.imaging_conclusion or report.report_summary or ''
     draft = report.recommendations_draft or {}
     advice = draft.get('advice') or {}
+    sections = _normalize_advice_sections(report, advice)
+    content = sections.get('imaging_report_advice') or report.imaging_conclusion or report.report_summary or ''
     return {
         'version': advice.get('version') or 1,
         'status': advice.get('status') or ('archived' if report.status in ('finalized', 'published') else 'draft'),
         'content': advice.get('content') or content,
+        'sections': sections,
         'updated_at': advice.get('updated_at') or (report.updated_at.strftime('%Y-%m-%d %H:%M:%S') if report.updated_at else None),
         'history': advice.get('history') or []
     }
@@ -555,17 +721,19 @@ def save_report_advice(current_user, report_id):
     if not report:
         return Response.error('报告不存在', 404)
     data = request.get_json(silent=True) or {}
-    content = str(data.get('content') or '').strip()
-    if not content:
-        return Response.error('建议内容不能为空', 400)
 
     advice = _default_advice_payload(report)
+    sections = _normalize_advice_sections(report, advice, data)
+    content = str(data.get('content') or sections.get('imaging_report_advice') or '').strip()
+    if not any(sections.values()) and not content:
+        return Response.error('建议内容不能为空', 400)
     if data.get('preserve_history', True) and advice.get('content') and advice.get('content') != content:
         history = advice.get('history') or []
         history.insert(0, {
             'version': advice.get('version') or 1,
             'status': advice.get('status') or 'draft',
             'content': advice.get('content'),
+            'sections': advice.get('sections') or {},
             'saved_at': advice.get('updated_at') or datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
             'by': current_user.id
         })
@@ -573,10 +741,15 @@ def save_report_advice(current_user, report_id):
         advice['version'] = (advice.get('version') or 1) + 1
 
     advice['content'] = content
+    advice['sections'] = sections
     advice['status'] = 'draft'
     advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     _save_advice_payload(report, advice)
-    report.imaging_conclusion = content
+    report.imaging_conclusion = sections.get('imaging_report_advice') or content
+    report.report_summary = sections.get('overall_assessment') or report.report_summary
+    report.imaging_risk_warning = sections.get('risk_assessment') or report.imaging_risk_warning
+    if report.status in ('draft', None):
+        report.status = 'generated'
     db.session.commit()
     return Response.success({'advice': advice}, '建议草稿已保存')
 
@@ -594,7 +767,7 @@ def submit_report_advice_review(current_user, report_id):
     advice['status'] = 'reviewing'
     advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     _save_advice_payload(report, advice)
-    report.status = 'draft'
+    report.status = 'reviewing'
     db.session.commit()
     return Response.success({'advice': advice}, '建议已提交审核')
 
@@ -608,16 +781,21 @@ def approve_report_advice(current_user, report_id):
         return Response.error('报告不存在', 404)
     data = request.get_json(silent=True) or {}
     advice = _default_advice_payload(report)
+    sections = _normalize_advice_sections(report, advice, data)
     if data.get('content'):
-        advice['content'] = str(data.get('content')).strip()
-    if not advice.get('content'):
+        sections['imaging_report_advice'] = str(data.get('content')).strip()
+    advice['content'] = sections.get('imaging_report_advice') or advice.get('content') or ''
+    advice['sections'] = sections
+    if not any(sections.values()) and not advice.get('content'):
         return Response.error('建议内容不能为空', 400)
 
     advice['status'] = 'archived'
     advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     _save_advice_payload(report, advice)
-    report.imaging_conclusion = advice['content']
-    report.report_summary = data.get('summary') or report.report_summary
+    report.imaging_conclusion = sections.get('imaging_report_advice') or advice['content']
+    report.report_summary = sections.get('overall_assessment') or data.get('summary') or report.report_summary
+    report.imaging_risk_warning = sections.get('risk_assessment') or report.imaging_risk_warning
+    _inject_review_sections_into_report_html(report, sections)
     report.status = 'finalized'
     report.reviewed_by = current_user.id
     report.reviewed_at = datetime.utcnow()
@@ -935,7 +1113,9 @@ def export_report_pdf(current_user, report_id):
                 print(f"❌ C端报告 #{report_id} 的HTML内容为空")
                 return Response.error('报告HTML内容为空，无法导出PDF', 400)
             
-            report_html = report.report_html
+            from utils.report_manager import inject_tcm_report_html
+            record = CHealthRecord.query.get(report.record_id) if report.record_id else None
+            report_html = inject_tcm_report_html(report.report_html, record)
             report_code = report.report_code
             print(f"✅ 使用C端报告HTML（长度: {len(report_html)} 字符）")
         else:
@@ -977,7 +1157,6 @@ def export_report_pdf(current_user, report_id):
                         'imaging_risk_warning': imaging_warning,
                         'risk_warning': imaging_warning,  # 兼容旧变量名
                         'comprehensive_conclusion': report.medical_conclusion or report.imaging_conclusion or '',
-                        'tcm_analysis': '（中医分析接口数据待接入）',
                         'risk_score': report.risk_score,
                         'risk_level': report.risk_level,
                         'report_code': report.report_code,
@@ -1011,7 +1190,9 @@ def export_report_pdf(current_user, report_id):
                 
                 print(f"✅ B端报告HTML已生成并保存（长度: {len(report_html)} 字符）")
             else:
-                report_html = report.report_html
+                from utils.report_manager import inject_tcm_report_html
+                record = BHealthRecord.query.get(report.record_id) if report.record_id else None
+                report_html = inject_tcm_report_html(report.report_html, record)
                 print(f"✅ 使用已保存的B端报告HTML（长度: {len(report_html)} 字符）")
         
         # 在导入 Playwright 之前设置环境变量
@@ -1301,7 +1482,6 @@ def generate_comprehensive_report(current_user, report_id):
                 'imaging_risk_warning': imaging_warning,
                 'risk_warning': imaging_warning,  # 兼容旧变量名
                 'comprehensive_conclusion': report.medical_conclusion or report.imaging_conclusion or '',
-                'tcm_analysis': '（中医分析接口数据待接入）',
                 'risk_score': report.risk_score,
                 'risk_level': report.risk_level,
                 'report_code': report.report_code,

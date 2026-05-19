@@ -1,5 +1,5 @@
 <template>
-  <RouterView v-if="isLogin" />
+  <RouterView v-if="isPublicPage" />
   <AppShell v-else>
     <RouterView />
   </AppShell>
@@ -11,5 +11,5 @@ import { RouterView, useRoute } from 'vue-router'
 import { computed } from 'vue'
 
 const route = useRoute()
-const isLogin = computed(() => route.name === 'login')
+const isPublicPage = computed(() => ['login', 'followup-checkin'].includes(route.name))
 </script>

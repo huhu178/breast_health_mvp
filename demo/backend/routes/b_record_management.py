@@ -3,7 +3,7 @@ B端档案管理路由
 处理健康档案的创建、查看、编辑
 """
 from flask import Blueprint, request, jsonify
-from models import db, BPatient, BHealthRecord, BImagingReport, CPatient, CHealthRecord
+from models import db, BPatient, BHealthRecord, BImagingReport, BReport, CPatient, CHealthRecord
 from utils.decorators import login_required
 from utils.response import Response
 from datetime import datetime
@@ -15,6 +15,24 @@ from services.pdf_parser import pdf_parser
 from services.imaging_report_service import imaging_report_service
 
 b_record_bp = Blueprint('b_record', __name__, url_prefix='/api/b/records')
+
+
+def _latest_report_for_record(record_id):
+    report = BReport.query.filter_by(record_id=record_id).order_by(BReport.created_at.desc()).first()
+    if not report:
+        return None
+    return {
+        'id': report.id,
+        'report_code': report.report_code,
+        'status': report.status,
+        'risk_level': report.risk_level,
+        'risk_score': report.risk_score,
+        'report_summary': report.report_summary,
+        'imaging_conclusion': report.imaging_conclusion,
+        'reviewed_at': report.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if report.reviewed_at else None,
+        'created_at': report.created_at.strftime('%Y-%m-%d %H:%M:%S') if report.created_at else None,
+        'updated_at': report.updated_at.strftime('%Y-%m-%d %H:%M:%S') if report.updated_at else None,
+    }
 
 
 @b_record_bp.route('', methods=['GET'])
@@ -49,6 +67,7 @@ def get_all_records(current_user):
             if patient:
                 record_dict['patient_name'] = patient.name
                 record_dict['patient_code'] = patient.patient_code
+            record_dict['latest_report'] = _latest_report_for_record(record.id)
             # 添加档案类型
             record_dict['record_type'] = 'b_end'
             records_data.append(record_dict)
@@ -98,6 +117,7 @@ def get_record_detail(current_user, record_id):
         patient = BPatient.query.get(record.patient_id)
         if patient:
             record_dict['patient'] = patient.to_dict()
+        record_dict['latest_report'] = _latest_report_for_record(record.id)
         record_dict['record_type'] = 'b_end'
         
         return Response.success(record_dict)

@@ -7,7 +7,6 @@ import os
 import json
 import uuid
 from datetime import datetime
-from html import escape
 
 from flask import Blueprint, request, Response as FlaskResponse, redirect
 from werkzeug.utils import secure_filename
@@ -71,15 +70,164 @@ def _get_int_value(data, key):
         return None
 
 
+def _stringify_tongue_value(value):
+    if value is None or value == '':
+        return ''
+    if isinstance(value, (list, tuple, set)):
+        return '、'.join(str(v) for v in value if v not in (None, ''))
+    if isinstance(value, dict):
+        return '；'.join(
+            f'{k}: {_stringify_tongue_value(v)}'
+            for k, v in value.items()
+            if v not in (None, '', [], {})
+        )
+    return str(value)
+
+
+def _pick_nested(payload, *keys):
+    for key in keys:
+        current = payload
+        ok = True
+        for part in key.split('.'):
+            if isinstance(current, dict) and part in current:
+                current = current.get(part)
+            else:
+                ok = False
+                break
+        if ok and current not in (None, '', [], {}):
+            return current
+    return None
+
+
+def _collect_readable_tongue_fields(payload):
+    lines = []
+    seen = set()
+
+    def add(label, value):
+        text = _stringify_tongue_value(value).strip()
+        if not text:
+            return
+        pair = (label, text)
+        if pair in seen:
+            return
+        seen.add(pair)
+        lines.append(f'{label}：{text}')
+
+    def build_overall_assessment():
+        health_index = _stringify_tongue_value(
+            _pick_nested(payload, 'healthIndex', 'health_index')
+        ).strip()
+        constitution = _stringify_tongue_value(
+            _pick_nested(payload, 'constitutionNames', 'constitutionName', 'constitution_names')
+        ).strip()
+        symptom = _stringify_tongue_value(
+            _pick_nested(payload, 'symptomName', 'symptomNames', 'symptom_name')
+        ).strip()
+        tongue_feature = _stringify_tongue_value(
+            _pick_nested(payload, 'tongueFeature', 'tongue_feature', 'result.characterMap.tongue.feature')
+        ).strip()
+        parts = []
+        if health_index:
+            parts.append(f'本次中医检测健康指数为{health_index}')
+        if constitution:
+            parts.append(f'体质倾向为{constitution}')
+        if symptom:
+            parts.append(f'证型提示为{symptom}')
+        if tongue_feature:
+            parts.append(f'舌象提示：{tongue_feature}')
+        text = '，'.join(parts)
+        return text if text.endswith(('。', '！', '？')) else f'{text}。'
+
+    direct_fields = [
+        ('综合评估', 'conclusion', 'result.conclusion'),
+        ('舌象特征', 'tongueFeature', 'tongue_feature', 'result.characterMap.tongue.feature'),
+        ('舌色', 'colorOfTongueNames', 'colorOfTongueName', 'tongueColorNames', 'tongueColorName'),
+        ('苔色', 'colorOfMossNames', 'colorOfMossName', 'mossColorNames', 'mossColorName'),
+        ('舌苔', 'mossNames', 'mossName', 'tongueCoatingNames', 'tongueCoatingName'),
+        ('津液', 'bodyfluidNames', 'bodyfluidName', 'bodyFluidNames', 'bodyFluidName'),
+        ('舌形', 'shapeOfTongueNames', 'shapeOfTongueName', 'tongueShapeNames', 'tongueShapeName'),
+        ('舌下络脉', 'veinNames', 'veinName', 'sublingualVeinNames', 'sublingualVeinName'),
+        ('面象特征', 'faceFeature', 'face_feature'),
+        ('面色', 'mianse', 'faceColorNames', 'faceColorName'),
+        ('主色', 'zhuse'),
+        ('光泽', 'guangze'),
+        ('左侧黑眼圈', 'heiyanquanLeft'),
+        ('右侧黑眼圈', 'heiyanquanRight'),
+        ('唇色', 'chunse'),
+        ('眼神', 'yanshen'),
+        ('左目色', 'museLeft'),
+        ('右目色', 'museRight'),
+        ('两颧红', 'liangquanhong'),
+        ('鼻褶', 'bizhe'),
+        ('眉间青', 'meijianqing'),
+        ('面部皮损', 'mianbuPiSun'),
+        ('左耳色', 'erseLeft'),
+        ('右耳色', 'erseRight'),
+        ('左耳褶', 'erzheLeft'),
+        ('右耳褶', 'erzheRight'),
+        ('健康指数', 'healthIndex', 'health_index'),
+        ('体质类型', 'constitutionNames', 'constitutionName', 'constitution_names'),
+        ('证型提示', 'symptomName', 'symptomNames', 'symptom_name'),
+        ('调理建议', 'suggest', 'suggestion', 'advice', 'result.suggest', 'result.suggestion'),
+        ('检测时间', 'time', 'reportTime', 'createdTime'),
+    ]
+    for label, *keys in direct_fields:
+        add(label, _pick_nested(payload, *keys))
+    if '综合评估' not in {line.split('：', 1)[0] for line in lines}:
+        overall_assessment = build_overall_assessment()
+        if overall_assessment:
+            lines.insert(0, f'综合评估：{overall_assessment}')
+            seen.add(('综合评估', overall_assessment))
+
+    disease_risks = payload.get('diseaseRisksJson') if isinstance(payload, dict) else None
+    if isinstance(disease_risks, str):
+        try:
+            disease_risks = json.loads(disease_risks)
+        except Exception:
+            disease_risks = None
+    if isinstance(disease_risks, list):
+        risk_lines = []
+        for item in disease_risks:
+            if not isinstance(item, dict):
+                continue
+            name = item.get('diseaseName')
+            level = item.get('riskLevel') or item.get('riskName')
+            explain = item.get('explain')
+            tip = item.get('tip')
+            if not str(name or '').strip():
+                continue
+            risk_text = str(name).strip()
+            if str(level or '').strip():
+                risk_text += f'｜风险等级：{str(level).strip()}'
+            if str(explain or '').strip():
+                risk_text += f'｜风险说明：{str(explain).strip()}'
+            if str(tip or '').strip():
+                risk_text += f'｜建议：{str(tip).strip()}'
+            risk_lines.append(risk_text)
+        if risk_lines:
+            add('相关风险提示', '\n'.join(risk_lines))
+
+    return '\n'.join(lines).strip()
+
+
+def _extract_full_tongue_report_text(payload):
+    summary = _collect_readable_tongue_fields(payload)
+    feature = tongue_diagnosis_service.extract_tongue_feature(payload)
+    if feature and '舌象特征' not in summary:
+        summary = f'舌象特征：{feature}' + (f'\n{summary}' if summary else '')
+    return summary or feature or '（舌诊报告已回流，原始报告已保存）'
+
+
 def _write_tongue_result_to_record_and_report(task, payload):
-    if not task.record_id or not task.tongue_feature:
+    if not task.record_id:
         return
+    full_report_text = _extract_full_tongue_report_text(payload)
 
     record = BHealthRecord.query.get(task.record_id)
     if record:
         record.tongue_check_result_id = task.out_id
         record.tongue_result_raw = json.dumps(payload, ensure_ascii=False)
-        record.tongue_result_summary = task.tongue_feature
+        record.tongue_result_summary = full_report_text
         record.tongue_checked_at = datetime.utcnow()
 
     report = None
@@ -90,25 +238,77 @@ def _write_tongue_result_to_record_and_report(task, payload):
     if not report:
         return
 
-    tongue_block_text = f'舌象特征分析：{task.tongue_feature}'
-    if report.report_summary:
-        if '舌象特征分析：' not in report.report_summary:
-            report.report_summary = f'{report.report_summary}\n{tongue_block_text}'
-    else:
-        report.report_summary = tongue_block_text
-
+    from sqlalchemy.orm.attributes import flag_modified
+    draft = report.recommendations_draft or {}
+    advice = draft.get('advice') or {}
+    sections = advice.get('sections') or {}
+    sections['tongue_conclusion'] = full_report_text
+    advice['sections'] = sections
+    advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    draft['advice'] = advice
+    report.recommendations_draft = draft
+    flag_modified(report, 'recommendations_draft')
+    from utils.report_manager import derive_tcm_risk_level
+    tcm_risk = derive_tcm_risk_level(record)
+    if tcm_risk:
+        risk_level, risk_score, risk_basis = tcm_risk
+        report.risk_level = risk_level
+        report.risk_score = risk_score
+        report.report_summary = f'{risk_level} · {risk_basis}'
     if report.report_html:
-        summary_html = (
-            '<section class="tongue-diagnosis-section" style="margin-top:16px;line-height:1.7;">'
-            '<h3 style="font-size:16px;margin:0 0 8px;">舌象特征分析</h3>'
-            f'<div style="white-space:pre-line;">{escape(task.tongue_feature)}</div>'
-            '</section>'
-        )
-        if 'tongue-diagnosis-section' not in report.report_html:
-            if '</body>' in report.report_html:
-                report.report_html = report.report_html.replace('</body>', f'{summary_html}</body>')
-            else:
-                report.report_html = report.report_html + summary_html
+        from utils.report_manager import inject_tcm_report_html
+        report.report_html = inject_tcm_report_html(report.report_html, record)
+
+
+def _parse_record_id_from_third_id(third_id):
+    parts = str(third_id or '').split('-')
+    if len(parts) >= 4 and parts[0] == 'BH' and parts[1] == 'B':
+        try:
+            return int(parts[3])
+        except Exception:
+            return None
+    return None
+
+
+def _write_hand_result_to_record_and_report(third_id, payload):
+    record_id = _parse_record_id_from_third_id(third_id)
+    if not record_id:
+        return False
+
+    record = BHealthRecord.query.get(record_id)
+    if not record:
+        return False
+
+    full_report_text = _extract_full_tongue_report_text(payload)
+    record.hand_check_result_id = third_id
+    record.hand_result_raw = json.dumps(payload, ensure_ascii=False)
+    record.hand_result_summary = full_report_text
+    record.hand_checked_at = datetime.utcnow()
+
+    report = BReport.query.filter_by(record_id=record.id).order_by(BReport.created_at.desc()).first()
+    if report:
+        from sqlalchemy.orm.attributes import flag_modified
+        from utils.report_manager import build_tcm_report_text, derive_tcm_risk_level, inject_tcm_report_html
+
+        draft = report.recommendations_draft or {}
+        advice = draft.get('advice') or {}
+        sections = advice.get('sections') or {}
+        sections['tongue_conclusion'] = build_tcm_report_text(record)
+        advice['sections'] = sections
+        advice['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        draft['advice'] = advice
+        report.recommendations_draft = draft
+        flag_modified(report, 'recommendations_draft')
+        tcm_risk = derive_tcm_risk_level(record)
+        if tcm_risk:
+            risk_level, risk_score, risk_basis = tcm_risk
+            report.risk_level = risk_level
+            report.risk_score = risk_score
+            report.report_summary = f'{risk_level} · {risk_basis}'
+        if report.report_html:
+            report.report_html = inject_tcm_report_html(report.report_html, record)
+
+    return True
 
 
 def _apply_tongue_report_payload(task, payload, *, source):
@@ -120,7 +320,7 @@ def _apply_tongue_report_payload(task, payload, *, source):
         task.status = 'completed'
         task.result_status = 'pdf_generated' if return_type == 3 else 'completed'
         task.result_json = payload
-        task.tongue_feature = tongue_diagnosis_service.extract_tongue_feature(payload)
+        task.tongue_feature = _extract_full_tongue_report_text(payload)
         _write_tongue_result_to_record_and_report(task, payload)
     elif return_type == 2:
         task.status = 'failed'
@@ -133,6 +333,39 @@ def _apply_tongue_report_payload(task, payload, *, source):
     else:
         task.status = 'callback_unknown' if source == 'callback' else 'sync_unknown'
         task.result_status = f'unknown_return_type_{return_type}'
+
+
+def _read_callback_payload():
+    json_body = request.get_json(silent=True) if request.is_json else {}
+    out_id = request.form.get('outId') or (json_body or {}).get('outId')
+    signature = request.form.get('signature') or (json_body or {}).get('signature')
+    encrypt_data = request.form.get('encryptData') or (json_body or {}).get('encryptData')
+    encrypted_json = request.form.get('encryptedJson') or (json_body or {}).get('encryptedJson')
+    sign_encrypted_json = request.form.get('signEncryptedJson') or (json_body or {}).get('signEncryptedJson')
+
+    if encrypted_json:
+        payload = tongue_diagnosis_service.decrypt_payload(encrypted_json)
+    elif encrypt_data:
+        payload = tongue_diagnosis_service.decrypt_payload(encrypt_data)
+    elif request.is_json:
+        payload = request.get_json(silent=True) or {}
+    else:
+        payload = request.form.to_dict()
+
+    if sign_encrypted_json:
+        sign_source = f"{payload.get('thirdId')}_{payload.get('time')}"
+        if not payload.get('thirdId') or not payload.get('time'):
+            return None, None, None, FlaskResponse('missing signature source', status=400, mimetype='text/plain')
+        if not tongue_diagnosis_service.verify_value_signature(sign_source, sign_encrypted_json):
+            return None, None, None, FlaskResponse('invalid signature', status=400, mimetype='text/plain')
+
+    out_id = out_id or payload.get('outId') or payload.get('thirdId')
+    if not out_id:
+        return None, None, None, FlaskResponse('missing thirdId', status=400, mimetype='text/plain')
+    if signature and not tongue_diagnosis_service.verify_signature(out_id, signature):
+        return None, None, None, FlaskResponse('invalid signature', status=400, mimetype='text/plain')
+
+    return out_id, signature, payload, None
 
 
 @b_tongue_bp.route('/tasks', methods=['POST'])
@@ -350,35 +583,11 @@ def list_tongue_tasks_by_record(current_user, record_id):
 @b_tongue_bp.route('/callback', methods=['POST'])
 def tongue_callback():
     """第三方异步回调。成功处理后必须返回纯文本 success。"""
-    json_body = request.get_json(silent=True) if request.is_json else {}
-    out_id = request.form.get('outId') or (json_body or {}).get('outId')
-    signature = request.form.get('signature') or (json_body or {}).get('signature')
-    encrypt_data = request.form.get('encryptData') or (json_body or {}).get('encryptData')
-    encrypted_json = request.form.get('encryptedJson') or (json_body or {}).get('encryptedJson')
-    sign_encrypted_json = request.form.get('signEncryptedJson') or (json_body or {}).get('signEncryptedJson')
-
     payload = None
     try:
-        if encrypted_json:
-            payload = tongue_diagnosis_service.decrypt_payload(encrypted_json)
-        elif encrypt_data:
-            payload = tongue_diagnosis_service.decrypt_payload(encrypt_data)
-        elif request.is_json:
-            payload = request.get_json(silent=True) or {}
-        else:
-            payload = request.form.to_dict()
-        if sign_encrypted_json:
-            sign_source = f"{payload.get('thirdId')}_{payload.get('time')}"
-            if not payload.get('thirdId') or not payload.get('time'):
-                return FlaskResponse('missing signature source', status=400, mimetype='text/plain')
-            if not tongue_diagnosis_service.verify_value_signature(sign_source, sign_encrypted_json):
-                return FlaskResponse('invalid signature', status=400, mimetype='text/plain')
-
-        out_id = out_id or payload.get('outId') or payload.get('thirdId')
-        if not out_id:
-            return FlaskResponse('missing thirdId', status=400, mimetype='text/plain')
-        if signature and not tongue_diagnosis_service.verify_signature(out_id, signature):
-            return FlaskResponse('invalid signature', status=400, mimetype='text/plain')
+        out_id, _signature, payload, error_response = _read_callback_payload()
+        if error_response:
+            return error_response
 
         task = BTongueDiagnosis.query.filter_by(out_id=out_id).first()
         if not task:
@@ -394,4 +603,24 @@ def tongue_callback():
     except Exception as e:
         db.session.rollback()
         print(f'舌诊回调处理失败: {e}; payload={payload}')
+        return FlaskResponse('error', status=500, mimetype='text/plain')
+
+
+@b_tongue_bp.route('/hand-callback', methods=['POST'])
+def hand_callback():
+    """第三方手诊异步回调。协议与舌诊一致，成功处理后返回纯文本 success。"""
+    payload = None
+    try:
+        out_id, _signature, payload, error_response = _read_callback_payload()
+        if error_response:
+            return error_response
+
+        saved = _write_hand_result_to_record_and_report(out_id, payload)
+        if not saved:
+            print(f'手诊回调未匹配到档案: thirdId={out_id}; payload={payload}')
+        db.session.commit()
+        return FlaskResponse('success', mimetype='text/plain')
+    except Exception as e:
+        db.session.rollback()
+        print(f'手诊回调处理失败: {e}; payload={payload}')
         return FlaskResponse('error', status=500, mimetype='text/plain')

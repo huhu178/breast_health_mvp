@@ -1,707 +1,611 @@
 <template>
-  <div class="page">
-    <div class="page-head">
-      <div class="page-title">随访任务</div>
-      <div class="crumb">首页 / <b>随访任务</b></div>
-    </div>
+  <div class="followup-page">
+    <header class="page-head">
+      <div>
+        <p class="crumb">首页 / 随访任务执行</p>
+        <h1>随访任务执行</h1>
+      </div>
+      <div class="head-actions">
+        <button class="btn" type="button" @click="loadDashboard">刷新</button>
+        <button class="primary" type="button" :disabled="runningScheduler" @click="runScheduler">
+          {{ runningScheduler ? '调度中...' : '运行调度器' }}
+        </button>
+      </div>
+    </header>
 
-    <!-- KPI 行（对齐截图样式） -->
-    <section class="kpi-row" aria-label="随访关键指标">
-      <article v-for="m in metrics" :key="m.label" class="kpi" :data-tone="m.tone">
-        <div class="kpi-ico" aria-hidden="true">
-          <svg v-if="m.icon === 'today'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /><path d="M8 14h4M8 18h6" />
-          </svg>
-          <svg v-else-if="m.icon === 'clock'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-          </svg>
-          <svg v-else-if="m.icon === 'check'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 6L9 17l-5-5" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-          </svg>
-          <svg v-else-if="m.icon === 'alert'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" />
-          </svg>
-          <svg v-else-if="m.icon === 'bell'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" />
-          </svg>
-        </div>
-        <div class="kpi-label">{{ m.label }}</div>
-        <div class="kpi-value">{{ m.value }}</div>
-        <div class="kpi-delta">{{ m.delta }}</div>
-        <svg class="spark" viewBox="0 0 70 26" aria-hidden="true">
-          <path :d="sparkPath(m.delta)" />
-        </svg>
+    <section class="metric-grid">
+      <article v-for="item in metricCards" :key="item.key" class="metric-card" :data-tone="item.tone">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <em>{{ item.hint }}</em>
       </article>
     </section>
 
-    <section class="card filters-card">
-      <div class="card-title" style="margin-bottom:12px">筛选条件</div>
-      <div class="filter-grid">
-        <label class="fi">姓名/手机号<input v-model="keyword" placeholder="请输入姓名或手机号"></label>
-        <label class="fi">患者来源
-          <select v-model="sourceFilter">
-            <option value="all">门诊 / 体检中心</option>
-            <option value="门诊">门诊</option>
-            <option value="体检中心">体检中心</option>
-          </select>
-        </label>
-        <label class="fi">结节类型
-          <select v-model="noduleFilter">
-            <option value="all">乳腺、甲状腺、肺部等</option>
-            <option value="lung">肺部结节</option>
-            <option value="breast">乳腺结节</option>
-            <option value="thyroid">甲状腺结节</option>
-          </select>
-        </label>
-        <label class="fi">风险等级
-          <select v-model="riskFilter">
-            <option value="all">全部</option>
-            <option value="high">高风险</option>
-            <option value="mid">中风险</option>
-            <option value="low">低风险</option>
-          </select>
-        </label>
-        <label class="fi">随访方式
-          <select v-model="channelFilter">
-            <option value="all">企微 / 电话 / 小程序</option>
-            <option value="wecom">企微</option>
-            <option value="phone">电话</option>
-            <option value="miniapp">小程序</option>
-          </select>
-        </label>
-        <label class="fi">随访状态
-          <select v-model="followStatus">
-            <option value="all">全部</option>
-            <option value="followup">随访中</option>
-            <option value="alert">异常待处理</option>
-            <option value="done">已闭环</option>
-          </select>
-        </label>
-        <label class="fi">随访时间
-          <div class="date-pair">
-            <input placeholder="开始日期">
-            <span>-</span>
-            <input placeholder="结束日期">
-          </div>
-        </label>
-        <label class="fi">负责人
-          <select v-model="ownerFilter">
-            <option value="all">负责人（全部）</option>
-            <option value="健康管理师">健康管理师</option>
-            <option value="李医生">李医生</option>
-            <option value="王医生">王医生</option>
-            <option value="未分派">未分派</option>
-          </select>
-        </label>
-        <div class="fi-btns">
-          <button class="btn" @click="resetFilters">重置</button>
-          <button class="primary" @click="toast.show('查询中...')">查询</button>
-          <button class="primary" @click="toast.show('新建随访任务')">新建随访任务</button>
-        </div>
-      </div>
-    </section>
+    <div v-if="error" class="notice error">{{ error }}</div>
+    <div v-if="toastText" class="notice">{{ toastText }}</div>
 
-    <!-- AI随访统计区（独立 section，始终显示） -->
-    <section class="card ai-stats-section">
-      <div class="ai-stats-bar">
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">随访中</div>
-          <div class="ai-stat-value blue">{{ aiStatCounts.followup }}</div>
+    <section class="board-grid">
+      <aside class="task-panel">
+        <div class="panel-head">
+          <div>
+            <h2>任务队列</h2>
+            <p>共 {{ filteredTasks.length }} 条</p>
+          </div>
         </div>
-        <div class="ai-stat-divider"></div>
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">异常待处理</div>
-          <div class="ai-stat-value red">{{ aiStatCounts.alert }}</div>
-        </div>
-        <div class="ai-stat-divider"></div>
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">已闭环</div>
-          <div class="ai-stat-value green">{{ aiStatCounts.done }}</div>
-        </div>
-        <div class="ai-stat-divider"></div>
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">高风险患者</div>
-          <div class="ai-stat-value orange">{{ aiStatCounts.highRisk }}</div>
-        </div>
-        <div class="ai-stat-divider"></div>
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">今日需随访</div>
-          <div class="ai-stat-value purple">{{ aiStatCounts.todayDue }}</div>
-        </div>
-        <div class="ai-stat-divider"></div>
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">AI自动触达</div>
-          <div class="ai-stat-value cyan">{{ aiStatCounts.autoSent }}</div>
-        </div>
-        <div class="ai-stat-divider"></div>
-        <div class="ai-stat-item">
-          <div class="ai-stat-label">患者依从率</div>
-          <div class="ai-stat-value teal">{{ aiStatCounts.compliance }}%</div>
-        </div>
-      </div>
-    </section>
 
-    <section class="card ai-followup-board" v-if="filtered.length">
-      <div class="board-grid">
-        <aside class="patient-side">
-          <div class="board-title">患者信息列表</div>
-          <div class="patient-count">共 {{ filtered.length }} 人</div>
-          <div class="patient-scroll">
-            <button
-              v-for="p in filtered"
-              :key="p.id"
-              class="patient-item"
-              :class="{ active: p.id === store.currentPatientId }"
-              @click="store.currentPatientId = p.id"
-            >
-              <div class="patient-top">
-                <b>{{ p.name }}</b>
-                <TagBadge :text="riskText(p.risk)" :tone="riskClass(p.risk)" />
-              </div>
-              <div class="patient-meta">{{ p.gender }} · {{ p.age }}岁 · {{ p.phone }}</div>
-              <div class="patient-tags">
-                <TagBadge :text="p.nodule" tone="blue" />
-                <TagBadge :text="stageLabels[p.stage]" :tone="stageClass(p.stage)" />
-              </div>
-              <div class="patient-next">下次随访：{{ p.next }}</div>
-            </button>
-          </div>
-        </aside>
+        <div class="filters">
+          <input v-model.trim="filters.search" placeholder="患者姓名 / 手机 / 任务码">
+          <select v-model="filters.status">
+            <option value="">全部状态</option>
+            <option value="pending">待发送</option>
+            <option value="scheduled">待调度</option>
+            <option value="sent">已发送</option>
+            <option value="replied">已回复</option>
+            <option value="manual_processing">待处理</option>
+            <option value="alert">重点关注</option>
+            <option value="completed">已完成</option>
+            <option value="failed">失败</option>
+          </select>
+          <select v-model="filters.due">
+            <option value="">全部时间</option>
+            <option value="today">今日到期</option>
+            <option value="overdue">已逾期</option>
+          </select>
+        </div>
 
-        <section class="ai-main" v-if="current">
-          <div class="board-title">AI随访数字分身</div>
-          <div class="ai-current">当前患者：{{ current.name }}（{{ current.nodule }}）</div>
-          <div class="ai-chat">
-            <div class="ai-msg ai">
-              您好，{{ current.name }}。已为您生成 Day {{ planDay.replace('day', '') }} 的随访建议。
-            </div>
-            <div class="ai-msg user">
-              我最近睡得不太好，复查前还需要注意什么？
-            </div>
-            <div class="ai-msg ai">
-              建议您保持规律作息，晚间减少咖啡因摄入；复查前避免剧烈运动，按时记录症状变化。
-            </div>
-            <div class="ai-msg ai" v-if="planQuick.knowledge">
-              知识卡重点：{{ planQuick.knowledge }}
+        <div class="task-list">
+          <button
+            v-for="task in filteredTasks"
+            :key="task.id"
+            type="button"
+            class="task-item"
+            :class="{ active: task.id === selectedTaskId }"
+            @click="selectTask(task)"
+          >
+            <span class="task-top">
+              <b>{{ task.patient?.name || `患者${task.patient_id}` }}</b>
+              <em :data-status="task.status">{{ statusText(task.status) }}</em>
+            </span>
+            <span class="task-title">{{ task.title }}</span>
+            <span class="task-meta">{{ task.plan_name || '健康管理计划' }} · Day {{ task.plan_day || 1 }}</span>
+            <span class="task-meta">{{ task.due_at || '未设置到期时间' }}</span>
+          </button>
+          <div v-if="!filteredTasks.length" class="empty">暂无匹配任务</div>
+        </div>
+      </aside>
+
+      <main class="detail-panel" v-if="selectedTask">
+        <section class="detail-card hero-card">
+          <div>
+            <p class="eyebrow">任务 {{ selectedTask.task_code }}</p>
+            <h2>{{ selectedTask.title }}</h2>
+            <div class="hero-meta">
+              <span>{{ selectedTask.patient?.name || '-' }}</span>
+              <span>{{ selectedTask.patient?.phone || '未登记手机号' }}</span>
+              <span>{{ noduleText(selectedTask.nodule_type || selectedTask.patient?.nodule_type) }}</span>
+              <span>{{ riskText(selectedTask.risk_level) }}</span>
             </div>
           </div>
-          <div class="assistant-actions">
-            <button class="primary" @click="toast.show('已发送AI随访消息')">发送AI随访</button>
-            <button class="btn" @click="toast.show('已切换人工随访')">切换人工随访</button>
-          </div>
+          <span class="status-pill" :data-status="selectedTask.status">{{ statusText(selectedTask.status) }}</span>
         </section>
 
-        <section class="ai-right" v-if="current">
-          <div class="board-title">今日随访内容（Day {{ planDay.replace('day', '') }}）</div>
-          <div class="today-card">
-            <div class="today-k">知识干预</div>
-            <div class="today-v">
-              {{ planQuick.knowledge || '围绕饮食、运动、心理和复查时机进行分层指导。' }}
+        <section class="detail-grid">
+          <article class="detail-card">
+            <h3>任务信息</h3>
+            <div class="kv-grid">
+              <div><span>计划</span><b>{{ selectedTask.plan_name || '-' }}</b></div>
+              <div><span>节点</span><b>{{ nodeName }}</b></div>
+              <div><span>任务类型</span><b>{{ taskTypeText(nodeInfo.task_type) }}</b></div>
+              <div><span>触达通道</span><b>{{ channelText(selectedTask.channel) }}</b></div>
+              <div><span>计划发送</span><b>{{ selectedTask.scheduled_send_at || '-' }}</b></div>
+              <div><span>到期时间</span><b>{{ selectedTask.due_at || '-' }}</b></div>
             </div>
+          </article>
+
+          <article class="detail-card">
+            <h3>执行操作</h3>
+            <div class="action-grid">
+              <button class="primary" type="button" @click="sendTask">发送提醒</button>
+              <button class="btn" type="button" @click="openReplyModal">录入打卡/回复</button>
+              <button class="btn" type="button" @click="openManualModal">健康管理师处理</button>
+              <button class="btn" type="button" @click="completeTask">标记完成</button>
+              <button class="btn" type="button" @click="copyCheckinLink">复制打卡链接</button>
+              <button class="btn" type="button" @click="openCheckinLink">打开打卡页</button>
+            </div>
+            <div class="link-box">{{ checkinLink }}</div>
+          </article>
+        </section>
+
+        <section v-if="selectedTask.abnormal_flag || ['alert', 'manual_processing', 'failed'].includes(selectedTask.status)" class="alert-card">
+          <strong>需要健康管理师处理</strong>
+          <span>{{ selectedTask.abnormal_reason || selectedTask.ai_summary || '任务处于重点关注或待处理状态，请健康管理师跟进。' }}</span>
+          <button class="btn" type="button" @click="openManualModal">记录处理</button>
+        </section>
+
+        <section class="columns">
+          <article class="detail-card">
+            <div class="card-title-row">
+              <h3>消息记录</h3>
+              <span>{{ messages.length }} 条</span>
+            </div>
+            <div class="timeline-list">
+              <div v-for="msg in messages" :key="msg.id" class="message-row" :data-dir="msg.direction">
+                <div class="row-time">{{ msg.created_at || msg.sent_at || msg.received_at || '-' }}</div>
+                <b>{{ senderText(msg) }}</b>
+                <p>{{ msg.content }}</p>
+                <small>{{ msg.send_status || msg.ai_intent || '' }}</small>
+              </div>
+              <div v-if="!messages.length" class="empty">暂无消息记录</div>
+            </div>
+          </article>
+
+          <article class="detail-card">
+            <div class="card-title-row">
+              <h3>患者打卡</h3>
+              <span>{{ checkins.length }} 条</span>
+            </div>
+            <div class="timeline-list">
+              <div v-for="item in checkins" :key="item.id" class="checkin-row" :class="{ alert: item.abnormal_flag }">
+                <div class="row-time">{{ item.submitted_at }}</div>
+                <b>{{ taskTypeText(item.checkin_type) }}</b>
+                <p>{{ item.content_text || '患者已提交图片/结构化打卡' }}</p>
+                <div v-if="item.image_urls?.length" class="checkin-images">
+                  <a v-for="url in item.image_urls" :key="url" :href="url" target="_blank" rel="noreferrer">
+                    <img :src="url" alt="患者打卡图片">
+                  </a>
+                </div>
+                <small>{{ item.abnormal_reason || item.ai_result?.summary || statusText(item.status) }}</small>
+                <button class="mini-btn" type="button" @click="reviewCheckin(item)">标记已查看</button>
+              </div>
+              <div v-if="!checkins.length" class="empty">暂无打卡记录</div>
+            </div>
+          </article>
+        </section>
+
+        <section class="detail-card">
+          <div class="card-title-row">
+            <h3>事件流水</h3>
+            <span>{{ events.length }} 条</span>
           </div>
-          <div class="today-card">
-            <div class="today-k">运动建议</div>
-            <div class="today-v">{{ planQuick.sport || '建议每日中等强度活动 30 分钟，避免过度疲劳。' }}</div>
-          </div>
-          <div class="today-card">
-            <div class="today-k">心理建议</div>
-            <div class="today-v">{{ planQuick.psych || '减少焦虑触发因素，保持可执行的小目标。' }}</div>
-          </div>
-          <div class="today-card subtle">
-            <div class="today-k">执行提醒</div>
-            <div class="today-v">复查前 3 天自动提醒，异常反馈将优先转医生。</div>
+          <div class="event-list">
+            <div v-for="event in events" :key="event.id" class="event-row">
+              <span>{{ event.created_at }}</span>
+              <b>{{ eventTypeText(event.event_type) }}</b>
+              <p>{{ event.summary || '-' }}</p>
+              <em v-if="event.from_status || event.to_status">{{ statusText(event.from_status) }} -> {{ statusText(event.to_status) }}</em>
+            </div>
+            <div v-if="!events.length" class="empty">暂无事件记录</div>
           </div>
         </section>
-      </div>
+      </main>
+
+      <main class="detail-panel empty-detail" v-else>
+        <div class="empty">请选择左侧任务</div>
+      </main>
     </section>
 
-    <div class="layout">
-      <section class="card">
-        <div class="card-head">
-          <div class="card-title">随访列表 <span class="muted">共 {{ filtered.length }} 条</span></div>
-          <div class="head-actions">
-            <button class="btn" @click="toast.show('导出中...')">导出</button>
-            <button class="btn" @click="toast.show('批量发送提醒')">批量提醒</button>
-          </div>
+    <div v-if="replyModalOpen" class="modal-mask" @click.self="replyModalOpen = false">
+      <section class="modal-card">
+        <div class="modal-head">
+          <h2>录入用户打卡/回复</h2>
+          <button class="icon-close" type="button" @click="replyModalOpen = false">×</button>
         </div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>患者</th><th>结节类型</th><th>风险</th><th>随访状态</th>
-                <th>下次随访</th><th>随访方式</th><th>负责人</th><th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in filtered" :key="p.id"
-                :class="{ active: p.id === store.currentPatientId }"
-                @click="store.currentPatientId = p.id">
-                <td>
-                  <div><b>{{ p.name }}</b></div>
-                  <div class="muted" style="font-size:11px">{{ p.age }}岁 · {{ p.phone }}</div>
-                </td>
-                <td><TagBadge :text="p.nodule" tone="blue" /></td>
-                <td><TagBadge :text="riskText(p.risk)" :tone="riskClass(p.risk)" /></td>
-                <td><TagBadge :text="stageLabels[p.stage]" :tone="stageClass(p.stage)" /></td>
-                <td>{{ p.next }}</td>
-                <td>
-                  <div class="channel-row">
-                    <span class="channel">企微</span>
-                    <span class="channel">电话</span>
-                  </div>
-                </td>
-                <td>{{ p.owner }}</td>
-                <td>
-                  <div class="row-actions">
-                    <span class="act" @click.stop="store.currentPatientId = p.id">详情</span>
-                    <span class="act" @click.stop="doRecord(p)">记录</span>
-                    <span class="act" @click.stop="toast.show('发送复查提醒')">提醒</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="pagination">
-          <button class="page-btn">‹</button>
-          <button class="page-btn active">1</button>
-          <button class="page-btn">2</button>
-          <button class="page-btn">3</button>
-          <span>...</span>
-          <button class="page-btn">›</button>
-          <span class="muted">10 条/页</span>
+        <label>内容<textarea v-model.trim="replyForm.content" rows="5" placeholder="例如：用户今日已完成饮食和运动打卡，睡眠正常。"></textarea></label>
+        <div class="modal-actions">
+          <button class="btn" type="button" @click="replyModalOpen = false">取消</button>
+          <button class="primary" type="button" @click="submitReply">保存记录</button>
         </div>
       </section>
+    </div>
 
-      <section class="card" v-if="current">
-        <div class="card-head">
-          <div class="card-title">随访详情</div>
-          <button class="ico-btn" @click="store.currentPatientId = null">×</button>
+    <div v-if="manualModalOpen" class="modal-mask" @click.self="manualModalOpen = false">
+      <section class="modal-card">
+        <div class="modal-head">
+          <h2>健康管理师处理</h2>
+          <button class="icon-close" type="button" @click="manualModalOpen = false">×</button>
         </div>
-        <div class="detail-body">
-          <div v-if="current.stage === 'alert'" class="alert-tip">
-            <span>⚠ 患者反馈异常症状，需立即转医生处理</span>
-            <button class="btn-x" @click="toast.show('已转医生处理')">×</button>
-          </div>
-
-          <div class="detail-top">
-            <div>
-              <div class="detail-name">{{ current.name }}</div>
-              <div class="muted" style="margin-top:4px">{{ current.gender }} · {{ current.age }}岁 · {{ current.phone }}</div>
-            </div>
-            <div class="badge-row">
-              <TagBadge :text="riskText(current.risk)" :tone="riskClass(current.risk)" />
-              <TagBadge :text="stageLabels[current.stage]" :tone="stageClass(current.stage)" />
-            </div>
-          </div>
-
-          <div class="seg">
-            <div class="seg-title"><span class="idx">A</span>基本信息</div>
-            <div class="mini-kv">
-              <div><div class="k">结节类型</div><div class="v">{{ current.nodule }}</div></div>
-              <div><div class="k">负责人</div><div class="v">{{ current.owner }}</div></div>
-              <div><div class="k">下次随访时间</div><div class="v">{{ current.next }}</div></div>
-              <div><div class="k">随访周期</div><div class="v">{{ current.risk === 'high' ? '3个月' : current.risk === 'mid' ? '6个月' : '12个月' }}</div></div>
-            </div>
-          </div>
-
-          <div class="seg">
-            <div class="seg-title"><span class="idx">B</span>随访计划</div>
-            <div class="plan-grid">
-              <div class="plan-row">
-                <span class="k">计划来源</span>
-                <span class="v">
-                  {{ planState.title || '甲状腺结节合并肺结节健康管理方案（含心理）' }}
-                  <a class="plan-link" href="/plans/9 甲状腺结节合并肺结节健康管理方案加心理.xlsx" target="_blank" rel="noreferrer">下载原表</a>
-                </span>
-              </div>
-              <div class="plan-row">
-                <span class="k">计划天数</span>
-                <span class="v">
-                  <span v-if="planState.loading" class="muted">加载中…</span>
-                  <span v-else-if="planState.error" class="muted">{{ planState.error }}</span>
-                  <span v-else>Day {{ planDay.replace('day','') }} / {{ planDayList.length }}</span>
-                </span>
-              </div>
-              <div class="plan-row">
-                <span class="k">选择天数</span>
-                <span class="v">
-                  <select class="plan-select" v-model="planDay" :disabled="planState.loading || !!planState.error">
-                    <option v-for="d in planDayList" :key="d" :value="d">Day {{ d.replace('day','') }}</option>
-                  </select>
-                  <button class="btn" type="button" @click="loadPlan">刷新</button>
-                </span>
-              </div>
-              <div class="plan-row"><span class="k">随访方式</span><span class="v">企微 / 电话 / 小程序</span></div>
-              <div class="plan-row"><span class="k">提醒策略</span><span class="v">到期前 3 天自动提醒；逾期转人工；异常优先转医生</span></div>
-              <div class="plan-row"><span class="k">计划说明</span><span class="v">按风险分层触达，饮食+运动+心理协同；化痰不伤阴、理气不耗气</span></div>
-            </div>
-
-            <div v-if="!planState.loading && !planState.error" class="plan-items">
-              <div class="plan-item" v-for="(r, idx) in currentPlanRows" :key="idx">
-                <div class="plan-time">{{ r.time || '—' }}</div>
-                <div class="plan-main">
-                  <div class="plan-sum">{{ r.summary }}</div>
-                  <div v-if="r.remind" class="plan-remind">{{ r.remind }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seg">
-            <div class="seg-title"><span class="idx">C</span>随访内容</div>
-            <div class="checklist">
-              <label class="ck"><input type="checkbox" checked>复查时间确认</label>
-              <label class="ck"><input type="checkbox" checked>症状询问与分级</label>
-              <label class="ck"><input type="checkbox">复查预约与材料准备</label>
-              <label class="ck"><input type="checkbox">用药/生活方式建议</label>
-            </div>
-          </div>
-
-          <div class="seg">
-            <div class="seg-title"><span class="idx">D</span>患者反馈</div>
-            <div class="ai-box">
-              <div class="ai-block">
-                <div class="ai-sub">患者反馈</div>
-                <div class="ai-text">{{ current.ai }}</div>
-              </div>
-              <div v-if="planQuick.psych || planQuick.sport" class="ai-split"></div>
-              <div v-if="planQuick.psych || planQuick.sport" class="ai-block">
-                <div class="ai-sub">AI随访建议（来自 Day {{ planDay.replace('day','') }}）</div>
-                <div v-if="planQuick.sport" class="ai-text"><b>运动：</b>{{ planQuick.sport }}</div>
-                <div v-if="planQuick.psych" class="ai-text" style="margin-top:8px"><b>心理：</b>{{ planQuick.psych }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seg">
-            <div class="seg-title"><span class="idx">E</span>重要节点记录</div>
-            <div class="timeline">
-              <div v-for="(event, i) in current.events" :key="i" class="event">
-                <div class="event-time">{{ i === current.events.length - 1 ? '最新' : '记录' }}</div>
-                <div class="event-text">{{ event }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seg">
-            <div class="seg-title"><span class="idx">F</span>随访进度</div>
-            <div class="flow-line">
-              <div v-for="(n, i) in followFlow" :key="n.label" class="flow-node" :class="n.cls">
-                <div class="flow-dot">{{ n.done ? '✓' : i + 1 }}</div>
-                <div class="flow-label">{{ n.label }}</div>
-                <div class="muted" style="font-size:10px">{{ n.sub }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="action-bar">
-            <button class="primary" @click="doRecord(current)">录随访</button>
-            <button class="btn" @click="toast.show('发送提醒')">发送提醒</button>
-            <button class="btn" @click="toast.show('已完成闭环')">已完成闭环</button>
-            <button v-if="current.stage === 'alert'" class="btn danger" @click="toast.show('转人工/医生处理')">转人工</button>
-            <button class="btn" @click="toast.show('标记完成')">标记完成</button>
-          </div>
+        <label>处理动作
+          <select v-model="manualForm.action">
+            <option value="manual_followed">已跟进</option>
+            <option value="doctor_handoff">重点关注</option>
+            <option value="close_alert">关闭关注并完成</option>
+          </select>
+        </label>
+        <label>处理备注<textarea v-model.trim="manualForm.note" rows="5" placeholder="记录沟通情况、打卡说明、饮食建议或关闭原因。"></textarea></label>
+        <div class="modal-actions">
+          <button class="btn" type="button" @click="manualModalOpen = false">取消</button>
+          <button class="primary" type="button" @click="submitManualAction">提交处理</button>
         </div>
       </section>
     </div>
   </div>
-  <ToastMsg ref="toast" />
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { store } from '../store/index.js'
-import { stageLabels, riskText, riskClass, stageClass } from '../mocks/patients.js'
-import TagBadge from '../components/TagBadge.vue'
-import ToastMsg from '../components/ToastMsg.vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
-const toast = ref(null)
-const keyword = ref('')
-const sourceFilter = ref('all')
-const noduleFilter = ref('all')
-const riskFilter = ref('all')
-const channelFilter = ref('all')
-const followStatus = ref('all')
-const ownerFilter = ref('all')
+const tasks = ref([])
+const metrics = ref({})
+const selectedTaskId = ref(null)
+const selectedTaskDetail = ref(null)
+const checkins = ref([])
+const loadingDetail = ref(false)
+const runningScheduler = ref(false)
+const error = ref('')
+const toastText = ref('')
+const replyModalOpen = ref(false)
+const manualModalOpen = ref(false)
 
-const planState = ref({
-  loading: true,
-  error: '',
-  title: '',
-  sourceFile: '',
-  days: {}
-})
-const planDay = ref('day1')
-
-/**
- * @description 加载随访计划（从 public/plans 读取 JSON）
- */
-async function loadPlan() {
-  planState.value.loading = true
-  planState.value.error = ''
-  try {
-    const res = await fetch('/plans/thyroid-lung-psych.json', { cache: 'no-cache' })
-    if (!res.ok) throw new Error(`加载计划失败：${res.status}`)
-    const data = await res.json()
-    planState.value = {
-      loading: false,
-      error: '',
-      title: data?.title ?? '',
-      sourceFile: data?.sourceFile ?? '',
-      days: data?.days ?? {}
-    }
-    if (!planState.value.days?.[planDay.value]) {
-      const first = Object.keys(planState.value.days ?? {})[0]
-      if (first) planDay.value = first
-    }
-  } catch (e) {
-    planState.value.loading = false
-    planState.value.error = e?.message || '加载计划失败'
-  }
-}
-
-onMounted(() => {
-  loadPlan()
+const filters = reactive({
+  search: '',
+  status: '',
+  due: ''
 })
 
-const planDayList = computed(() => {
-  const keys = Object.keys(planState.value.days ?? {})
-  // day1..day90 排序
-  return keys.sort((a, b) => Number(a.replace('day', '')) - Number(b.replace('day', '')))
+const replyForm = reactive({
+  content: ''
 })
 
-const currentPlanRows = computed(() => planState.value.days?.[planDay.value] ?? [])
-
-const aiStatCounts = computed(() => {
-  const all = store.patients.filter(p => ['followup', 'alert', 'done'].includes(p.stage))
-  return {
-    followup: all.filter(p => p.stage === 'followup').length,
-    alert: all.filter(p => p.stage === 'alert').length,
-    done: all.filter(p => p.stage === 'done').length,
-    highRisk: all.filter(p => p.risk === 'high').length,
-    todayDue: all.filter(p => p.next && (p.next.includes('今天') || p.next.includes('立即'))).length,
-    autoSent: all.filter(p => p.stage === 'followup').length + all.filter(p => p.stage === 'alert').length,
-    compliance: Math.round(all.filter(p => p.stage !== 'alert').length / Math.max(all.length, 1) * 100)
-  }
+const manualForm = reactive({
+  action: 'manual_followed',
+  note: ''
 })
 
-function pickFirst(prefix) {
-  return currentPlanRows.value.find((r) => String(r?.summary ?? '').includes(prefix))?.summary || ''
-}
+const selectedTask = computed(() => selectedTaskDetail.value || tasks.value.find(task => task.id === selectedTaskId.value) || null)
+const messages = computed(() => selectedTask.value?.messages || [])
+const events = computed(() => selectedTask.value?.events || [])
+const nodeInfo = computed(() => selectedTask.value?.task_payload?.node || {})
+const nodeName = computed(() => nodeInfo.value.name || selectedTask.value?.title || '-')
+const checkinLink = computed(() => selectedTask.value?.task_code ? `${window.location.origin}/followup-checkin/${selectedTask.value.task_code}` : '')
 
-const planQuick = computed(() => {
-  const sport = pickFirst('运动')
-  const psych = pickFirst('心理')
-  const knowledge = pickFirst('知识卡')
-  return { sport, psych, knowledge }
-})
-
-const metrics = computed(() => ([
-  { label: '今日随访', value: '128', delta: '较昨日 +18', tone: 'blue', icon: 'today' },
-  { label: '待随访', value: '246', delta: '较昨日 +124', tone: 'orange', icon: 'clock' },
-  { label: '已完成', value: '89', delta: '较昨日 +15', tone: 'green', icon: 'check' },
-  { label: '逾期随访', value: '36', delta: '较昨日 +6', tone: 'red', icon: 'alert' },
-  { label: '异常反馈', value: '18', delta: '较昨日 +4', tone: 'purple', icon: 'bell' },
-  { label: '自动提醒中', value: '74', delta: '较昨日 +11', tone: 'cyan', icon: 'send' },
-]))
-
-function sparkPath(delta) {
-  const down = /-\s*\d/.test(String(delta ?? '')) || /↓/.test(String(delta ?? ''))
-  return down
-    ? 'M2 12 C10 10 14 12 18 11 C26 10 30 16 34 15 C40 14 44 20 48 19 C55 18 58 22 68 23'
-    : 'M2 20 C10 18 12 16 18 17 C25 18 28 10 34 12 C40 14 42 6 48 7 C55 8 57 17 68 12'
-}
-
-const filtered = computed(() => store.patients.filter(p => {
-  if (!['followup', 'alert', 'done'].includes(p.stage)) return false
-  if (keyword.value && !`${p.name}${p.phone}${p.nodule}`.includes(keyword.value)) return false
-  if (sourceFilter.value !== 'all' && p.source !== sourceFilter.value) return false
-  if (noduleFilter.value !== 'all' && !p.noduleType.includes(noduleFilter.value)) return false
-  if (riskFilter.value !== 'all' && p.risk !== riskFilter.value) return false
-  if (followStatus.value !== 'all' && p.stage !== followStatus.value) return false
-  if (ownerFilter.value !== 'all' && p.owner !== ownerFilter.value) return false
+const filteredTasks = computed(() => tasks.value.filter(task => {
+  const text = `${task.task_code || ''} ${task.title || ''} ${task.patient?.name || ''} ${task.patient?.phone || ''}`
+  if (filters.search && !text.includes(filters.search)) return false
+  if (filters.status && task.status !== filters.status) return false
+  if (filters.due === 'today' && !isToday(task.due_at)) return false
+  if (filters.due === 'overdue' && !isOverdue(task)) return false
   return true
 }))
 
-const current = computed(() => store.patients.find(p => p.id === store.currentPatientId))
+const metricCards = computed(() => [
+  { key: 'today', label: '今日到期', value: metrics.value.today_due ?? 0, hint: '需要触达', tone: 'blue' },
+  { key: 'pending', label: '待发送', value: metrics.value.pending ?? 0, hint: '待调度/待发送', tone: 'orange' },
+  { key: 'sent', label: '已发送/已打卡', value: metrics.value.sent ?? 0, hint: '执行中', tone: 'cyan' },
+  { key: 'alert', label: '重点关注', value: metrics.value.alert ?? 0, hint: '需健康管理师处理', tone: 'red' },
+  { key: 'completed', label: '已完成', value: metrics.value.completed ?? 0, hint: `完成率 ${metrics.value.completion_rate ?? 0}%`, tone: 'green' },
+  { key: 'overdue', label: '逾期', value: metrics.value.overdue ?? 0, hint: '建议跟进', tone: 'purple' },
+])
 
-const followFlow = computed(() => {
-  if (!current.value) return []
-  const stage = current.value.stage
-  const idx = stage === 'done' ? 4 : (stage === 'alert' ? 2 : 3)
-  return [
-    { label: '任务生成', sub: '自动/手动' },
-    { label: '触达患者', sub: '企微/电话' },
-    { label: '结果记录', sub: '问卷/回访' },
-    { label: '复核确认', sub: '异常转人工' },
-    { label: '闭环完成', sub: '归档' },
-  ].map((n, i) => ({
-    ...n,
-    done: i < idx,
-    cls: i < idx ? 'done' : (i === idx ? 'active' : '')
-  }))
+watch(selectedTaskId, async (id) => {
+  if (id) await loadTaskDetail(id)
 })
 
-function doRecord(p) {
-  if (p.stage === 'followup' || p.stage === 'alert') {
-    store.setStage(p.id, 'done', '随访结果已记录，当前闭环完成')
-    toast.value?.show('随访结果已记录，当前闭环完成')
-  } else {
-    toast.value?.show('记录随访结果')
+onMounted(loadDashboard)
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    },
+    ...options
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || data?.success === false) throw new Error(data?.message || `请求失败：${res.status}`)
+  return data.data ?? data
+}
+
+async function loadDashboard() {
+  error.value = ''
+  try {
+    const [taskPage, metricData] = await Promise.all([
+      apiFetch('/api/b/followup/tasks?per_page=100'),
+      apiFetch('/api/b/followup/tasks/metrics')
+    ])
+    tasks.value = taskPage?.items || []
+    metrics.value = metricData || {}
+    if (!selectedTaskId.value && tasks.value[0]?.id) selectedTaskId.value = tasks.value[0].id
+    if (selectedTaskId.value) await loadTaskDetail(selectedTaskId.value)
+  } catch (e) {
+    error.value = e?.message || '任务加载失败'
   }
 }
 
-function resetFilters() {
-  keyword.value = ''
-  sourceFilter.value = 'all'
-  noduleFilter.value = 'all'
-  riskFilter.value = 'all'
-  channelFilter.value = 'all'
-  followStatus.value = 'all'
-  ownerFilter.value = 'all'
+async function loadTaskDetail(taskId) {
+  loadingDetail.value = true
+  error.value = ''
+  try {
+    const [detail, checkinItems] = await Promise.all([
+      apiFetch(`/api/b/followup/tasks/${taskId}`),
+      apiFetch(`/api/b/followup/tasks/${taskId}/checkins`)
+    ])
+    selectedTaskDetail.value = detail
+    checkins.value = Array.isArray(checkinItems) ? checkinItems : []
+  } catch (e) {
+    error.value = e?.message || '任务详情加载失败'
+  } finally {
+    loadingDetail.value = false
+  }
+}
+
+function selectTask(task) {
+  selectedTaskId.value = task.id
+}
+
+async function runScheduler() {
+  runningScheduler.value = true
+  error.value = ''
+  try {
+    const result = await apiFetch('/api/b/followup/scheduler/run-once', {
+      method: 'POST',
+      body: JSON.stringify({ limit: 50 })
+    })
+    showToast(`调度完成：处理 ${result?.processed ?? 0} 个任务`)
+    await loadDashboard()
+  } catch (e) {
+    error.value = e?.message || '调度执行失败'
+  } finally {
+    runningScheduler.value = false
+  }
+}
+
+async function sendTask() {
+  if (!selectedTask.value?.id) return
+  try {
+    await apiFetch(`/api/b/followup/tasks/${selectedTask.value.id}/send`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+    showToast('任务提醒已处理')
+    await loadDashboard()
+  } catch (e) {
+    error.value = e?.message || '发送失败'
+  }
+}
+
+async function completeTask() {
+  if (!selectedTask.value?.id) return
+  try {
+    await apiFetch(`/api/b/followup/tasks/${selectedTask.value.id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ summary: '健康管理师在执行看板标记完成' })
+    })
+    showToast('任务已标记完成')
+    await loadDashboard()
+  } catch (e) {
+    error.value = e?.message || '标记完成失败'
+  }
+}
+
+function openReplyModal() {
+  replyForm.content = ''
+  replyModalOpen.value = true
+}
+
+async function submitReply() {
+  if (!selectedTask.value?.id || !replyForm.content) return
+  try {
+    await apiFetch(`/api/b/followup/tasks/${selectedTask.value.id}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ content: replyForm.content, channel: selectedTask.value.channel })
+    })
+    replyModalOpen.value = false
+    showToast('用户记录已录入')
+    await loadDashboard()
+  } catch (e) {
+    error.value = e?.message || '录入回复失败'
+  }
+}
+
+function openManualModal() {
+  manualForm.action = selectedTask.value?.status === 'completed' ? 'manual_followed' : 'manual_followed'
+  manualForm.note = selectedTask.value?.abnormal_reason || ''
+  manualModalOpen.value = true
+}
+
+async function submitManualAction() {
+  if (!selectedTask.value?.id) return
+  try {
+    await apiFetch(`/api/b/followup/tasks/${selectedTask.value.id}/manual-action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: manualForm.action, note: manualForm.note })
+    })
+    manualModalOpen.value = false
+    showToast('人工处理已记录')
+    await loadDashboard()
+  } catch (e) {
+    error.value = e?.message || '人工处理失败'
+  }
+}
+
+async function reviewCheckin(item) {
+  try {
+    await apiFetch(`/api/b/followup/checkins/${item.id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ status: 'closed', note: '健康管理师已查看打卡记录' })
+    })
+    showToast('打卡记录已查看')
+    await loadTaskDetail(selectedTask.value.id)
+  } catch (e) {
+    error.value = e?.message || '打卡记录处理失败'
+  }
+}
+
+async function copyCheckinLink() {
+  if (!checkinLink.value) return
+  try {
+    await navigator.clipboard.writeText(checkinLink.value)
+    showToast('打卡链接已复制')
+  } catch (e) {
+    showToast(checkinLink.value)
+  }
+}
+
+function openCheckinLink() {
+  if (checkinLink.value) window.open(checkinLink.value, '_blank')
+}
+
+function showToast(text) {
+  toastText.value = text
+  window.setTimeout(() => {
+    if (toastText.value === text) toastText.value = ''
+  }, 2400)
+}
+
+function isToday(value) {
+  if (!value) return false
+  return String(value).slice(0, 10) === new Date().toISOString().slice(0, 10)
+}
+
+function isOverdue(task) {
+  if (!task?.due_at || ['completed', 'cancelled'].includes(task.status)) return false
+  return new Date(task.due_at.replace(' ', 'T')).getTime() < Date.now()
+}
+
+function statusText(status) {
+  return ({
+    pending: '待发送',
+    scheduled: '待调度',
+    sent: '已发送',
+    replied: '已回复',
+    manual_processing: '待处理',
+    alert: '重点关注',
+    completed: '已完成',
+    failed: '失败',
+    cancelled: '已取消',
+    analyzed: '已分析',
+    submitted: '已提交'
+  }[status] || status || '-')
+}
+
+function riskText(risk) {
+  const text = String(risk || '').toLowerCase()
+  if (['high', '高危', '高风险'].includes(text)) return '高风险'
+  if (['mid', 'medium', '中危', '中风险'].includes(text)) return '中风险'
+  if (['low', '低危', '低风险'].includes(text)) return '低风险'
+  return risk || '-'
+}
+
+function noduleText(type) {
+  return ({ breast: '乳腺', thyroid: '甲状腺', lung: '肺部' }[type] || type || '-')
+}
+
+function channelText(channel) {
+  return ({ wecom: '企业微信', phone: '电话', miniapp: '小程序' }[channel] || channel || '-')
+}
+
+function taskTypeText(type) {
+  return ({
+    knowledge_push: '知识推送',
+    daily_checkin: '每日打卡',
+    diet_checkin: '饮食打卡/图片识别',
+    exercise_reminder: '运动提醒',
+    psych_reminder: '心理提醒',
+    review_reminder: '复查提醒'
+  }[type] || type || '-')
+}
+
+function senderText(msg) {
+  if (msg.sender_type === 'patient') return '患者'
+  if (msg.sender_type === 'ai') return 'AI机器人'
+  if (msg.sender_type === 'staff') return '健康管理师'
+  return msg.sender_type || msg.direction || '-'
+}
+
+function eventTypeText(type) {
+  return ({
+    task_created: '任务创建',
+    task_created_from_report: '报告生成任务',
+    scheduler_message_sent: '调度发送',
+    scheduler_message_failed: '调度失败',
+    scheduler_error: '调度错误',
+    message_sent: '消息发送',
+    message_failed: '消息失败',
+    patient_reply_analyzed: '患者回复分析',
+    public_checkin_submitted: '患者打卡',
+    checkin_alert: '打卡关注',
+    task_completed: '任务完成'
+  }[type] || type || '-')
 }
 </script>
 
 <style scoped>
-.page{min-height:100%}
-.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.page-title{font-size:20px;font-weight:950;color:#0f172a}
-.crumb{color:#64748b;font-weight:700}
-.kpi-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:12px}
-.kpi{position:relative;background:#fff;border:1px solid #e6edf7;border-radius:10px;padding:10px 12px;box-shadow:0 4px 12px rgba(15,23,42,.04);overflow:hidden}
-.kpi-ico{width:28px;height:28px;border-radius:8px;border:1px solid #e6edf7;background:#f8fafc;color:#64748b;display:grid;place-items:center;margin-bottom:4px}
-.kpi[data-tone="orange"] .kpi-ico{background:#fff7ed;border-color:#fed7aa;color:#f97316}
-.kpi[data-tone="green"] .kpi-ico{background:#ecfdf5;border-color:#bbf7d0;color:#16a34a}
-.kpi[data-tone="purple"] .kpi-ico{background:#f5f3ff;border-color:#ddd6fe;color:#8b5cf6}
-.kpi[data-tone="cyan"] .kpi-ico{background:#eafcff;border-color:#c7f9ff;color:#0ea5b7}
-.kpi[data-tone="red"] .kpi-ico{background:#fff1f2;border-color:#fecdd3;color:#dc2626}
-.kpi-label{color:#64748b;font-weight:500;font-size:12px;line-height:1.3}
-.kpi-value{font-size:26px;font-weight:700;color:#0f172a;margin-top:3px;line-height:1}
-.kpi-delta{font-size:12px;color:#c4cdd6;margin-top:3px;font-weight:400}
-.spark{position:absolute;right:8px;bottom:8px;width:44px;height:16px;opacity:.6}
-.spark path{fill:none;stroke:#5b8ff9;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.kpi[data-tone="orange"] .spark path{stroke:#f97316}
-.kpi[data-tone="green"] .spark path{stroke:#16a34a}
-.kpi[data-tone="purple"] .spark path{stroke:#8b5cf6}
-.kpi[data-tone="cyan"] .spark path{stroke:#0ea5b7}
-.kpi[data-tone="red"] .spark path{stroke:#dc2626}
-
-.card{background:#fff;border:1px solid #e6edf7;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,.04);margin-bottom:12px}
-.filters-card{padding:14px 16px}
-.card-title{font-weight:900;color:#0f172a}
-.card-head{height:46px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
-.head-actions{display:flex;gap:6px}
-.filter-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:12px 18px;align-items:end}
-.fi{display:flex;flex-direction:column;gap:6px;color:#475569;font-weight:750;font-size:13px}
-.fi input,.fi select{height:34px;border:1px solid #d9e2ef;border-radius:8px;padding:0 10px;background:#fff;color:#111827;outline:none}
-.fi input:focus,.fi select:focus{border-color:#155eef;box-shadow:0 0 0 3px rgba(21,94,239,.10)}
-.date-pair{display:grid;grid-template-columns:1fr 16px 1fr;gap:4px;align-items:center}
-.fi-btns{display:flex;gap:8px;align-items:flex-end}
-.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(460px,.95fr);gap:12px;align-items:start}
-.ai-followup-board{padding:14px}
-.ai-stats-section{padding:0}
-.ai-stats-bar{display:flex;align-items:center;background:#fff;border-radius:10px;padding:14px 20px;gap:0}
-.ai-stat-item{flex:1;text-align:center;min-width:0}
-.ai-stat-divider{width:1px;height:36px;background:#e6edf7;flex-shrink:0;margin:0 4px}
-.ai-stat-label{font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
-.ai-stat-value{font-size:22px;font-weight:800;margin-top:2px;line-height:1}
-.ai-stat-value.blue{color:#155eef}
-.ai-stat-value.red{color:#dc2626}
-.ai-stat-value.green{color:#16a34a}
-.ai-stat-value.orange{color:#f97316}
-.ai-stat-value.purple{color:#8b5cf6}
-.ai-stat-value.cyan{color:#0ea5b7}
-.ai-stat-value.teal{color:#0d9488}
-.board-grid{display:grid;grid-template-columns:300px minmax(0,1fr) 320px;gap:12px;align-items:start}
-.board-title{font-weight:900;color:#0f172a;font-size:15px}
-.patient-side{border:1px solid #e6edf7;border-radius:10px;padding:10px;background:#f8fbff}
-.patient-count{margin-top:4px;color:#64748b;font-size:12px}
-.patient-scroll{margin-top:10px;display:grid;gap:8px;max-height:420px;overflow:auto;padding-right:2px}
-.patient-item{text-align:left;border:1px solid #d9e2ef;border-radius:10px;background:#fff;padding:10px;display:grid;gap:6px}
-.patient-item:hover{border-color:#bfd4ff}
-.patient-item.active{border-color:#155eef;box-shadow:0 0 0 2px rgba(21,94,239,.12)}
-.patient-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.patient-meta{font-size:12px;color:#64748b}
-.patient-tags{display:flex;gap:6px;flex-wrap:wrap}
-.patient-next{font-size:12px;color:#334155;font-weight:700}
-.ai-main,.ai-right{border:1px solid #e6edf7;border-radius:10px;padding:12px;background:#fff}
-.ai-current{margin-top:4px;color:#64748b;font-size:12px}
-.ai-chat{margin-top:10px;border:1px solid #e6edf7;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:8px;min-height:260px}
-.ai-msg{max-width:92%;font-size:13px;line-height:1.65;padding:8px 10px;border-radius:9px}
-.ai-msg.ai{justify-self:start;background:#fff;border:1px solid #d9e2ef;color:#334155}
-.ai-msg.user{justify-self:end;background:#155eef;color:#fff}
-.assistant-actions{display:flex;gap:8px;margin-top:10px}
-.today-card{margin-top:10px;border:1px solid #e6edf7;border-radius:10px;padding:10px;background:#fff}
-.today-card.subtle{background:#f8fbff}
-.today-k{font-size:12px;color:#64748b;font-weight:800}
-.today-v{margin-top:6px;font-size:13px;line-height:1.65;color:#1e293b}
-.table-wrap{overflow:auto}
-.table{width:100%;border-collapse:collapse;min-width:900px}
-.table th{background:#f8fafc;color:#64748b;font-size:12px;text-align:left;padding:10px 9px;border-bottom:1px solid #e5edf7;white-space:nowrap}
-.table td{padding:10px 9px;border-bottom:1px solid #edf2f7;white-space:nowrap}
-.table tbody tr{cursor:pointer}
-.table tbody tr:hover{background:#f8fbff}
-.table tbody tr.active{background:#eef5ff}
-.channel-row{display:flex;gap:4px}
-.channel{background:#eef5ff;color:#155eef;border-radius:4px;padding:2px 6px;font-size:11px;font-weight:750}
-.row-actions{display:flex;gap:6px;color:#155eef;font-size:12px;font-weight:750}
-.row-actions .act{cursor:pointer}
-.pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-top:1px solid #edf2f7}
-.page-btn{border:1px solid #d9e2ef;background:#fff;border-radius:8px;padding:6px 10px;color:#475569;font-weight:850;cursor:pointer}
-.page-btn.active{background:#155eef;color:#fff;border-color:#155eef}
-.detail-body{padding:14px 16px}
-.alert-tip{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:8px 10px;font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
-.btn-x{border:0;background:transparent;color:#c2410c;font-weight:950;cursor:pointer}
-.detail-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
-.detail-name{font-size:16px;font-weight:950;color:#0f172a}
-.badge-row{display:flex;gap:8px;flex-wrap:wrap}
-.seg{border:1px solid #eef2f7;border-radius:10px;background:#fff;padding:12px;margin-bottom:10px}
-.seg-title{font-weight:950;color:#0f172a;display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.idx{width:18px;height:18px;border-radius:6px;background:#eef5ff;color:#155eef;display:grid;place-items:center;font-size:12px;font-weight:950;flex-shrink:0}
-.mini-kv{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
-.mini-kv .k{color:#94a3b8;font-size:12px}
-.mini-kv .v{font-weight:900;color:#0f172a;margin-top:4px}
-.plan-grid{display:grid;gap:8px}
-.plan-row{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;align-items:start}
-.plan-row .k{color:#94a3b8;font-size:12px}
-.plan-row .v{color:#0f172a;font-weight:700;line-height:1.7;font-size:13px}
-.plan-select{height:34px;border:1px solid #d9e2ef;border-radius:8px;padding:0 10px;background:#fff;color:#111827;outline:none;margin-right:8px}
-.plan-select:disabled{background:#f5f7fa;color:#94a3b8}
-.plan-link{margin-left:10px;color:#155eef;text-decoration:none;font-weight:800}
-.plan-link:hover{text-decoration:underline}
-.plan-items{margin-top:12px;border-top:1px dashed #e6edf7;padding-top:10px;display:grid;gap:10px;max-height:320px;overflow:auto}
-.plan-item{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:flex-start}
-.plan-time{color:#64748b;font-weight:850;font-size:12px;white-space:nowrap}
-.plan-sum{color:#0f172a;font-weight:750;line-height:1.7;font-size:13px}
-.plan-remind{margin-top:6px;color:#64748b;line-height:1.7;font-size:12px}
-.checklist{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-.ck{display:flex;gap:8px;align-items:center;font-size:13px;color:#334155}
-.ck input{accent-color:#155eef}
-.timeline{display:grid;gap:0}
-.event{display:grid;grid-template-columns:48px minmax(0,1fr);gap:9px;padding:8px 0;border-bottom:1px solid #edf2f7}
-.event:last-child{border-bottom:0}
-.event-time{color:#94a3b8;font-size:12px}
-.event-text{line-height:1.6;font-size:13px}
-.ai-box{background:#f8fbff;border:1px solid #dce8f8;border-radius:7px;padding:11px 12px;color:#253247;font-size:13px}
-.ai-block{display:block}
-.ai-sub{font-weight:950;color:#0f172a;margin-bottom:6px}
-.ai-text{line-height:1.7;white-space:pre-wrap}
-.ai-split{height:1px;background:#dce8f8;margin:10px 0}
-
-.flow-line{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:4px 0 0;text-align:center;font-size:11px;color:#64748b}
-.flow-dot{width:18px;height:18px;border-radius:50%;background:#cbd5e1;margin:0 auto 6px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:900}
-.flow-node.done .flow-dot{background:#22c55e}
-.flow-node.active .flow-dot{background:#155eef}
-.flow-label{font-weight:850;color:#334155}
-
-.action-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.btn{border:1px solid #d9e2ef;border-radius:6px;background:#fff;color:#475569;padding:6px 10px;cursor:pointer}
-.btn.danger{border-color:#fecdd3;color:#dc2626;background:#fff1f2}
-.primary{background:#155eef;border:1px solid #155eef;color:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-weight:750}
-.ico-btn{width:34px;height:34px;border-radius:10px;border:1px solid #d9e2ef;background:#fff;color:#64748b;cursor:pointer}
-.muted{color:#64748b}
+.followup-page{display:grid;gap:14px;color:#172033}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.crumb{margin:0 0 4px;color:#667085;font-size:13px}
+h1{margin:0;font-size:24px;line-height:1.2}
+h2,h3{margin:0}
+.head-actions{display:flex;gap:8px}
+.btn,.primary,.mini-btn{height:36px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;color:#344054;padding:0 12px;font-weight:800;cursor:pointer}
+.primary{border-color:#155eef;background:#155eef;color:#fff}
+.mini-btn{height:30px;font-size:12px;justify-self:start}
+button:disabled{opacity:.6;cursor:not-allowed}
+.metric-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.metric-card{background:#fff;border:1px solid #e4e7ec;border-radius:8px;padding:13px;display:grid;gap:5px;box-shadow:0 8px 22px rgba(16,24,40,.05)}
+.metric-card span{color:#667085;font-size:13px}
+.metric-card strong{font-size:25px;line-height:1}
+.metric-card em{font-style:normal;color:#98a2b3;font-size:12px}
+.metric-card[data-tone="red"] strong{color:#d92d20}
+.metric-card[data-tone="green"] strong{color:#079455}
+.metric-card[data-tone="orange"] strong{color:#dc6803}
+.metric-card[data-tone="cyan"] strong{color:#088ab2}
+.metric-card[data-tone="purple"] strong{color:#7a5af8}
+.notice{border:1px solid #b2ddff;background:#eff8ff;color:#175cd3;border-radius:8px;padding:10px 12px;font-weight:700}
+.notice.error{border-color:#fecdca;background:#fffbfa;color:#b42318}
+.board-grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;align-items:start}
+.task-panel,.detail-card,.detail-panel{background:#fff;border:1px solid #e4e7ec;border-radius:8px;box-shadow:0 8px 22px rgba(16,24,40,.05)}
+.task-panel{padding:14px;position:sticky;top:0}
+.panel-head,.card-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.panel-head p,.card-title-row span{margin:4px 0 0;color:#667085;font-size:12px}
+.filters{display:grid;gap:8px;margin-bottom:12px}
+input,select{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:8px;padding:9px 10px;color:#172033;font:inherit;background:#fff}
+.task-list{display:grid;gap:8px;max-height:calc(100vh - 285px);overflow:auto;padding-right:2px}
+.task-item{border:1px solid #e4e7ec;background:#fff;border-radius:8px;padding:11px;text-align:left;display:grid;gap:5px;cursor:pointer}
+.task-item.active{border-color:#155eef;background:#eff6ff}
+.task-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.task-top b{color:#172033}
+.task-top em,.status-pill{font-style:normal;border-radius:999px;padding:4px 8px;background:#eef4ff;color:#155eef;font-size:12px;font-weight:800}
+[data-status="alert"],[data-status="manual_processing"],[data-status="failed"]{background:#fff1f3!important;color:#c01048!important}
+[data-status="completed"]{background:#ecfdf3!important;color:#067647!important}
+[data-status="pending"],[data-status="scheduled"]{background:#fff7ed!important;color:#b54708!important}
+.task-title{font-weight:800;color:#344054}
+.task-meta{font-size:12px;color:#667085}
+.detail-panel{display:grid;gap:12px;padding:14px}
+.empty-detail{min-height:360px;place-items:center}
+.hero-card{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px}
+.eyebrow{margin:0 0 5px;color:#667085;font-size:12px}
+.hero-card h2{font-size:20px;line-height:1.3}
+.hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.hero-meta span{border:1px solid #e4e7ec;border-radius:999px;padding:4px 8px;color:#475467;font-size:12px;background:#fff}
+.detail-grid,.columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.detail-card{padding:14px}
+.detail-card h3{font-size:16px;margin-bottom:12px}
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kv-grid div{border:1px solid #eef2f7;border-radius:8px;padding:10px;display:grid;gap:5px}
+.kv-grid span{color:#667085;font-size:12px}
+.kv-grid b{font-size:13px;color:#172033}
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.link-box{margin-top:10px;border:1px solid #e4e7ec;border-radius:8px;padding:9px;color:#667085;font-size:12px;word-break:break-all;background:#f8fafc}
+.alert-card{border:1px solid #fedf89;background:#fffaeb;color:#93370d;border-radius:8px;padding:12px;display:grid;gap:5px}
+.timeline-list,.event-list{display:grid;gap:8px;max-height:360px;overflow:auto}
+.message-row,.checkin-row,.event-row{border:1px solid #eef2f7;border-radius:8px;padding:10px;display:grid;gap:4px}
+.message-row[data-dir="inbound"]{background:#f8fafc}
+.checkin-row.alert{border-color:#fedf89;background:#fffaeb}
+.row-time,.event-row span{font-size:12px;color:#98a2b3}
+.message-row p,.checkin-row p,.event-row p{margin:0;color:#475467;line-height:1.55}
+.message-row small,.checkin-row small,.event-row em{color:#667085;font-size:12px;font-style:normal}
+.checkin-images{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.checkin-images a{display:block;width:72px;height:72px;border:1px solid #e4e7ec;border-radius:8px;overflow:hidden;background:#f8fafc}
+.checkin-images img{width:100%;height:100%;object-fit:cover;display:block}
+.empty{border:1px dashed #d0d5dd;border-radius:8px;padding:18px;text-align:center;color:#667085}
+.modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.42);display:grid;place-items:center;z-index:60;padding:20px}
+.modal-card{width:min(560px,100%);background:#fff;border-radius:10px;padding:16px;box-shadow:0 24px 80px rgba(15,23,42,.28);display:grid;gap:14px}
+.modal-head{display:flex;align-items:center;justify-content:space-between}
+.icon-close{width:32px;height:32px;border:1px solid #e4e7ec;border-radius:8px;background:#fff;font-size:22px;line-height:1;cursor:pointer}
+.modal-card label{display:grid;gap:7px;color:#344054;font-weight:800;font-size:13px}
+textarea{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:8px;padding:10px;color:#172033;font:inherit;resize:vertical}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px}
+@media (max-width:1180px){.metric-grid{grid-template-columns:repeat(3,1fr)}.board-grid,.detail-grid,.columns{grid-template-columns:1fr}.task-panel{position:static}.task-list{max-height:420px}}
+@media (max-width:720px){.metric-grid{grid-template-columns:1fr 1fr}.page-head,.hero-card{display:grid}.kv-grid,.action-grid{grid-template-columns:1fr}}
 </style>

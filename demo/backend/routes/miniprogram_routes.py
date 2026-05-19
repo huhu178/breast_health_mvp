@@ -1403,7 +1403,6 @@ def submit_questionnaire():
                 'imaging_risk_warning': risk_warning,
                 'risk_warning': risk_warning,
                 'comprehensive_conclusion': comprehensive_conclusion,
-                'tcm_analysis': '（中医分析接口数据待接入）',
                 'report_code': report_code,
             })
         elif nodule_type in ['breast_lung', 'breast_thyroid', 'lung_thyroid']:

@@ -75,7 +75,7 @@
                 @click="store.currentPatientId = p.id">
                 <td><b>{{ p.name }}</b></td>
                 <td>{{ p.source }}</td>
-                <td>{{ p.noduleType.includes('lung') ? 'CT报告' : '超声报告' }}</td>
+                <td>{{ includesText(p.noduleType, 'lung') ? 'CT报告' : '超声报告' }}</td>
                 <td><TagBadge :text="p.nodule" tone="blue" /></td>
                 <td>{{ p.uploadTime }}</td>
                 <td><TagBadge :text="p.aiStatus" :tone="aiStatusTone(p.aiStatus)" /></td>
@@ -125,7 +125,7 @@
             <div class="kv"><div class="k">结节类型</div><div class="v">{{ current.nodule }}</div></div>
             <div class="kv"><div class="k">负责人</div><div class="v">{{ current.owner }}</div></div>
             <div class="kv"><div class="k">上传时间</div><div class="v">{{ current.uploadTime }}</div></div>
-            <div class="kv"><div class="k">最近检查</div><div class="v">{{ current.noduleType.includes('lung') ? '胸部CT' : '超声' }}</div></div>
+            <div class="kv"><div class="k">最近检查</div><div class="v">{{ includesText(current.noduleType, 'lung') ? '胸部CT' : '超声' }}</div></div>
           </div>
 
           <div class="hline"></div>
@@ -177,7 +177,7 @@ const aiFilter = ref('all')
 const filtered = computed(() => store.patients.filter(p => {
   if (keyword.value && !`${p.name}${p.phone}${p.nodule}`.includes(keyword.value)) return false
   if (source.value !== 'all' && p.source !== source.value) return false
-  if (noduleFilter.value !== 'all' && !p.noduleType.includes(noduleFilter.value)) return false
+  if (noduleFilter.value !== 'all' && !includesText(p.noduleType, noduleFilter.value)) return false
   if (riskFilter.value !== 'all' && p.risk !== riskFilter.value) return false
   if (aiFilter.value !== 'all' && p.aiStatus !== aiFilter.value) return false
   return true
@@ -203,10 +203,15 @@ const flowNodes = computed(() => {
 })
 
 function aiStatusTone(status) {
-  if (status.includes('异常')) return 'high'
-  if (status.includes('解析中')) return 'orange'
-  if (status.includes('完成')) return 'green'
+  const text = String(status || '')
+  if (text.includes('异常')) return 'high'
+  if (text.includes('解析中')) return 'orange'
+  if (text.includes('完成')) return 'green'
   return 'gray'
+}
+
+function includesText(value, needle) {
+  return String(value || '').includes(needle)
 }
 
 function handleProcess(p) {

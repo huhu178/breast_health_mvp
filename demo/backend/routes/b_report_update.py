@@ -127,29 +127,14 @@ def publish_report(current_user, report_id):
             if report.status == 'downloaded':
                 return Response.error('报告已被患者下载，无法再标记审核', 400)
 
-            # 将舌诊摘要写入报告（仅在审核时写入，符合“先入档案，审核后入报告”）
+            # 将中医回流报告写入报告（仅在审核时写入，符合“先入档案，审核后入报告”）
             try:
+                from utils.report_manager import inject_tcm_report_html
                 record = CHealthRecord.query.get(report.record_id) if report.record_id else None
-                if record and record.tongue_result_summary and report.report_html:
-                    placeholder = '（中医分析接口数据待接入）'
-                    summary_html = (
-                        '<div style="margin-top:8px;line-height:1.6;">'
-                        + '<div style="font-weight:700;margin-bottom:6px;">舌诊摘要</div>'
-                        + '<div style="white-space:pre-line;">'
-                        + (record.tongue_result_summary or '')
-                        + '</div></div>'
-                    )
-                    if placeholder in report.report_html:
-                        report.report_html = report.report_html.replace(placeholder, summary_html)
-                    else:
-                        # 若模板中不存在占位符，则在 </body> 前追加（尽量不破坏原结构）
-                        if '</body>' in report.report_html:
-                            report.report_html = report.report_html.replace('</body>', f'{summary_html}</body>')
-                        else:
-                            report.report_html = report.report_html + summary_html
+                if record and report.report_html:
+                    report.report_html = inject_tcm_report_html(report.report_html, record)
             except Exception as inject_err:
-                # 不阻塞审核流程，但记录日志
-                print(f"WARNING: 注入舌诊摘要失败: {inject_err}")
+                print(f"WARNING: 注入中医回流报告失败: {inject_err}")
 
             report.status = 'shared'
             db.session.commit()
@@ -216,7 +201,6 @@ def publish_report(current_user, report_id):
                         'imaging_risk_warning': imaging_warning,
                         'risk_warning': imaging_warning,  # 兼容旧变量名
                         'comprehensive_conclusion': report.medical_conclusion or report.imaging_conclusion or '',
-                        'tcm_analysis': '（中医分析接口数据待接入）',
                         'risk_score': report.risk_score,
                         'risk_level': report.risk_level,
                         'report_code': report.report_code,

@@ -86,3 +86,15 @@ class Config:
     # ========================================
     WECHAT_APPID = os.getenv('WECHAT_APPID', '')
     WECHAT_SECRET = os.getenv('WECHAT_SECRET', '')
+
+    # ========================================
+    # 企业微信配置（AI随访触达）
+    # ========================================
+    WECOM_CORP_ID = os.getenv('WECOM_CORP_ID', '')
+    WECOM_AGENT_ID = os.getenv('WECOM_AGENT_ID', '')
+    WECOM_AGENT_SECRET = os.getenv('WECOM_AGENT_SECRET', '')
+    WECOM_CALLBACK_TOKEN = os.getenv('WECOM_CALLBACK_TOKEN', '')
+    WECOM_CALLBACK_AES_KEY = os.getenv('WECOM_CALLBACK_AES_KEY', '')
+    WECOM_CALLBACK_VERIFY_SIGNATURE = os.getenv('WECOM_CALLBACK_VERIFY_SIGNATURE', 'false').lower() in ('1', 'true', 'yes', 'on')
+    # 未配置企业微信或患者缺少 external_userid/userid 时，是否以 dry_run 方式保留消息记录
+    WECOM_DRY_RUN = os.getenv('WECOM_DRY_RUN', 'true').lower() in ('1', 'true', 'yes', 'on')

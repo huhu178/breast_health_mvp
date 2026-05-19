@@ -24,6 +24,29 @@ b_patient_bp = Blueprint('b_patient', __name__, url_prefix='/api/b/patients')
 # 患者管理
 # ============================================
 
+def _latest_report_summary_for_record(record_id):
+    report = BReport.query.filter_by(record_id=record_id).order_by(BReport.created_at.desc()).first()
+    if not report:
+        return None
+    return {
+        'id': report.id,
+        'report_code': report.report_code,
+        'status': report.status,
+        'risk_level': report.risk_level,
+        'risk_score': report.risk_score,
+        'report_summary': report.report_summary,
+        'imaging_conclusion': report.imaging_conclusion,
+        'reviewed_at': report.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if report.reviewed_at else None,
+        'created_at': report.created_at.strftime('%Y-%m-%d %H:%M:%S') if report.created_at else None,
+        'updated_at': report.updated_at.strftime('%Y-%m-%d %H:%M:%S') if report.updated_at else None,
+    }
+
+
+def _record_with_latest_report(record):
+    data = record.to_dict()
+    data['latest_report'] = _latest_report_summary_for_record(record.id)
+    return data
+
 @b_patient_bp.route('', methods=['GET'])
 @login_required
 def get_all_patients():
@@ -401,11 +424,62 @@ def get_patient_detail(patient_id):
         reports = CReport.query.filter_by(patient_id=patient_id).all()
         follow_ups = []
     
-    patient_data['health_records'] = [record.to_dict() for record in records]
+    patient_data['health_records'] = [
+        _record_with_latest_report(record) if patient_type == 'b_end' else record.to_dict()
+        for record in records
+    ]
     patient_data['reports'] = [report.to_dict() for report in reports]
     patient_data['follow_ups'] = [follow_up.to_dict() for follow_up in follow_ups]
     
     return Response.success(patient_data)
+
+
+@b_patient_bp.route('/<int:patient_id>/wecom-bind', methods=['POST'])
+@login_required
+def bind_patient_wecom(patient_id):
+    """手动绑定患者企业微信身份。"""
+    patient = BPatient.query.get_or_404(patient_id)
+    data = request.json or {}
+    external_userid = (data.get('wecom_external_userid') or data.get('external_userid') or '').strip()
+    userid = (data.get('wecom_userid') or data.get('userid') or '').strip()
+    if not external_userid and not userid:
+        return Response.error('wecom_external_userid 或 wecom_userid 至少填写一个', 400)
+
+    if external_userid:
+        existed = BPatient.query.filter(
+            BPatient.id != patient.id,
+            BPatient.wecom_external_userid == external_userid
+        ).first()
+        if existed:
+            return Response.error(f'该 external_userid 已绑定患者：{existed.name}', 409)
+
+    if userid:
+        existed = BPatient.query.filter(
+            BPatient.id != patient.id,
+            BPatient.wecom_userid == userid
+        ).first()
+        if existed:
+            return Response.error(f'该 wecom_userid 已绑定患者：{existed.name}', 409)
+
+    patient.wecom_external_userid = external_userid or patient.wecom_external_userid
+    patient.wecom_userid = userid or patient.wecom_userid
+    patient.wecom_bind_status = 'bound'
+    patient.wecom_bound_at = datetime.now()
+    db.session.commit()
+    return Response.success(patient.to_dict(), '患者企微身份已绑定')
+
+
+@b_patient_bp.route('/<int:patient_id>/wecom-bind', methods=['DELETE'])
+@login_required
+def unbind_patient_wecom(patient_id):
+    """解绑患者企业微信身份。"""
+    patient = BPatient.query.get_or_404(patient_id)
+    patient.wecom_external_userid = None
+    patient.wecom_userid = None
+    patient.wecom_bind_status = 'unbound'
+    patient.wecom_bound_at = None
+    db.session.commit()
+    return Response.success(patient.to_dict(), '患者企微身份已解绑')
 
 
 @b_patient_bp.route('/<int:patient_id>/mark_contacted', methods=['POST'])
@@ -441,6 +515,8 @@ def get_patient_records(patient_id):
     else:
         records = CHealthRecord.query.filter_by(patient_id=patient_id).all()
     
+    if patient_type == 'b_end':
+        return Response.success([_record_with_latest_report(record) for record in records])
     return Response.success([record.to_dict() for record in records])
 
 

@@ -3,7 +3,10 @@
 统一管理7种结节类型的模板选择和字段提取
 """
 
+import json
+import re
 from datetime import datetime
+from html import escape
 
 # ==================== 模板映射配置 ====================
 
@@ -54,7 +57,288 @@ def extract_common_fields(patient, record) -> dict:
 
         # 报告信息
         'report_date': datetime.now().strftime('%Y年%m月%d日'),
+
+        # 第三方中医报告：舌诊/手诊回流后统一插入各类报告模板
+        'tcm_analysis': build_tcm_report_html(record),
     }
+
+
+def _stringify_external_value(value):
+    if value is None or value == '':
+        return ''
+    if isinstance(value, (list, tuple, set)):
+        return '；'.join(_stringify_external_value(item) for item in value if item not in (None, '', [], {}))
+    if isinstance(value, dict):
+        return '；'.join(
+            f'{key}: {_stringify_external_value(child)}'
+            for key, child in value.items()
+            if child not in (None, '', [], {})
+        )
+    return str(value).strip()
+
+
+def _flatten_external_report(payload, prefix='', depth=0):
+    if not payload or depth > 5:
+        return []
+
+    labels = {
+        'tongueFeature': '舌象特征',
+        'tongue_feature': '舌象特征',
+        'constitutionName': '体质类型',
+        'constitutionNames': '体质类型',
+        'symptomName': '症状提示',
+        'symptomNames': '症状提示',
+        'healthIndex': '健康指数',
+        'colorOfTongueNames': '舌色',
+        'colorOfTongueName': '舌色',
+        'colorOfMossNames': '苔色',
+        'colorOfMossName': '苔色',
+        'mossNames': '舌苔',
+        'mossName': '舌苔',
+        'bodyfluidNames': '津液',
+        'bodyfluidName': '津液',
+        'shapeOfTongueNames': '舌形',
+        'shapeOfTongueName': '舌形',
+        'veinNames': '舌下络脉',
+        'veinName': '舌下络脉',
+        'faceFeature': '面象特征',
+        'mianse': '面色',
+        'zhuse': '主色',
+        'guangze': '光泽',
+        'chunse': '唇色',
+        'suggest': '调理建议',
+        'suggestion': '调理建议',
+        'advice': '调理建议',
+        'conclusion': '综合结论',
+        'reportTime': '报告时间',
+        'createdTime': '检测时间',
+        'time': '检测时间',
+    }
+    technical_keys = {
+        'signature', 'sign', 'encryptData', 'encryptedJson', 'signEncryptedJson',
+        'token', 'accessToken', 'secret', 'password', 'code', 'msg', 'message',
+        'returnType', 'pdf', 'pdfUrl', 'reportPdf', 'reportUrl',
+    }
+    binary_words = ('base64', 'image', 'img', 'photo', 'encrypt')
+    lines = []
+
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except Exception:
+            return [payload.strip()] if payload.strip() else []
+
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if value in (None, '', [], {}) or key in technical_keys:
+                continue
+            if isinstance(value, str) and len(value) > 5000 and any(word in key.lower() for word in binary_words):
+                continue
+            label = labels.get(key) or key
+            full_label = f'{prefix} - {label}' if prefix else label
+            if isinstance(value, (dict, list)):
+                lines.extend(_flatten_external_report(value, full_label, depth + 1))
+            else:
+                text = _stringify_external_value(value)
+                if text:
+                    lines.append(f'{full_label}：{text}')
+    elif isinstance(payload, list):
+        for index, item in enumerate(payload, 1):
+            item_prefix = f'{prefix} #{index}' if prefix else f'报告项 #{index}'
+            if isinstance(item, (dict, list)):
+                lines.extend(_flatten_external_report(item, item_prefix, depth + 1))
+            else:
+                text = _stringify_external_value(item)
+                if text:
+                    lines.append(f'{item_prefix}：{text}')
+
+    return lines
+
+
+def _get_external_report_text(record, summary_attr, raw_attr):
+    summary = str(getattr(record, summary_attr, '') or '').strip()
+    lines = []
+    if summary:
+        lines.extend(line.strip() for line in summary.splitlines() if line.strip())
+    return '\n'.join(lines).strip()
+
+
+def build_tcm_report_text(record):
+    """汇总第三方返回的中医报告文本；当前支持舌诊，并预留手诊同名字段。"""
+    if not record:
+        return ''
+
+    sections = []
+    tongue_text = _get_external_report_text(record, 'tongue_result_summary', 'tongue_result_raw')
+    if tongue_text:
+        sections.append(('舌诊报告', tongue_text))
+
+    hand_text = _get_external_report_text(record, 'hand_result_summary', 'hand_result_raw')
+    if hand_text:
+        sections.append(('手诊报告', hand_text))
+
+    return '\n\n'.join(f'【{title}】\n{text}' for title, text in sections).strip()
+
+
+def _load_external_report_payload(raw_value):
+    if not raw_value:
+        return None
+    if isinstance(raw_value, dict):
+        return raw_value
+    if isinstance(raw_value, str):
+        try:
+            payload = json.loads(raw_value)
+        except Exception:
+            return None
+        return payload if isinstance(payload, dict) else None
+    return None
+
+
+def _extract_health_index_from_payload(payload):
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get('healthIndex')
+    if value in (None, ''):
+        value = payload.get('health_index')
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_tcm_health_index(record):
+    """读取第三方中医健康指数。优先舌诊，其次手诊；指数越高代表健康状态越好。"""
+    if not record:
+        return None
+    for raw_attr in ('tongue_result_raw', 'hand_result_raw'):
+        payload = _load_external_report_payload(getattr(record, raw_attr, None))
+        health_index = _extract_health_index_from_payload(payload)
+        if health_index is not None:
+            return max(0.0, min(100.0, health_index))
+    return None
+
+
+def derive_tcm_risk_level(record):
+    """按中医健康指数映射系统低/中/高风险；返回 None 表示没有中医评分可用。"""
+    health_index = get_tcm_health_index(record)
+    if health_index is None:
+        return None
+
+    if health_index >= 80:
+        risk_level = '低风险'
+        risk_score = 25
+    elif health_index >= 60:
+        risk_level = '中风险'
+        risk_score = 55
+    else:
+        risk_level = '高风险'
+        risk_score = 85
+    basis = f'中医健康指数{health_index:g}，按中医评分分层为{risk_level}'
+    return risk_level, risk_score, basis
+
+
+def build_tcm_report_html(record):
+    text = build_tcm_report_text(record)
+    if not text:
+        return '（中医舌诊/手诊报告待回流）'
+
+    blocks = []
+    for block in text.split('\n\n'):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        title = lines[0].strip('【】')
+        body = lines[1:] if lines[0].startswith('【') else lines
+        items = ''
+        in_nested = False
+        for line in body:
+            if line.startswith('相关风险提示：'):
+                items += f'<li>{escape("相关风险提示：")}<ul style="margin:6px 0 0 0;padding-left:18px;">'
+                first_risk = line.split('：', 1)[1].strip()
+                if first_risk:
+                    items += f'<li>{escape(first_risk).replace("｜", "<br>")}</li>'
+                in_nested = True
+                continue
+            if in_nested and '｜风险等级：' in line:
+                items += f'<li>{escape(line).replace("｜", "<br>")}</li>'
+                continue
+            if in_nested:
+                items += '</ul></li>'
+                in_nested = False
+            items += f'<li>{escape(line)}</li>'
+        if in_nested:
+            items += '</ul></li>'
+        blocks.append(
+            '<div class="tcm-report-block" style="margin-bottom:12px;">'
+            f'<h4 style="margin:0 0 8px;color:#1f2937;font-size:15px;">{escape(title)}</h4>'
+            f'<ul style="margin:0;padding-left:20px;line-height:1.8;">{items}</ul>'
+            '</div>'
+        )
+    return ''.join(blocks) or '（中医舌诊/手诊报告待回流）'
+
+
+def _insert_tcm_into_report_section(html, tcm_html):
+    marker = '（三）中医信息收集'
+    marker_pos = html.find(marker)
+    if marker_pos == -1:
+        return html, False
+
+    next_h3 = html.find('<h3', marker_pos + len(marker))
+    section_end = next_h3 if next_h3 != -1 else len(html)
+    section = html[marker_pos:section_end]
+
+    div_pos = section.find('<div style="line-height: 1.8')
+    if div_pos != -1:
+        open_end = section.find('>', div_pos)
+        close_pos = section.find('</div>', open_end)
+        if open_end != -1 and close_pos != -1:
+            abs_start = marker_pos + open_end + 1
+            abs_end = marker_pos + close_pos
+            return html[:abs_start] + '\n' + tcm_html + '\n' + html[abs_end:], True
+
+    h3_end = html.find('</h3>', marker_pos)
+    if h3_end != -1:
+        insert_at = h3_end + len('</h3>')
+        return html[:insert_at] + '\n' + tcm_html + html[insert_at:], True
+    return html, False
+
+
+def inject_tcm_report_html(report_html, record):
+    """把已回流的中医报告写入现有HTML，兼容旧占位和新占位。"""
+    if not report_html or not record:
+        return report_html
+    tcm_html = build_tcm_report_html(record)
+    if not tcm_html or tcm_html == '（中医舌诊/手诊报告待回流）':
+        return report_html
+
+    placeholders = (
+        '（中医舌苔面部检测报告插图区域）',
+        '（中医分析接口数据待接入）',
+        '（中医舌诊/手诊报告待回流）',
+    )
+    html = report_html
+    if 'tcm-report-block' in html:
+        html, _replaced_count = re.subn(
+            r'<div class="tcm-report-block"[^>]*>.*?</div>',
+            '',
+            html,
+            flags=re.S
+        )
+
+    replaced = False
+    for placeholder in placeholders:
+        if placeholder in html:
+            html = html.replace(placeholder, tcm_html)
+            replaced = True
+
+    if replaced:
+        return html
+    html, inserted = _insert_tcm_into_report_section(html, tcm_html)
+    if inserted:
+        return html
+    if '</body>' in html:
+        return html.replace('</body>', f'{tcm_html}</body>')
+    return html + tcm_html
 
 
 def extract_breast_fields(record) -> dict:
