@@ -74,8 +74,13 @@ def _generate_report_for_record(record_id, generated_by_user_id):
     from utils.report_manager import prepare_llm_patient_data
     patient_data = prepare_llm_patient_data(record, nodule_type, patient)
 
-    print(f"\n[报告生成] 患者ID: {patient.id}, 结节类型: {nodule_type}")
-    print(f"[报告生成] 提取的字段数量: {len([k for k,v in patient_data.items() if v is not None and v != ''])}")
+    current_app.logger.info(
+        'generating report: patient_id=%s record_id=%s nodule_type=%s field_count=%s',
+        patient.id,
+        record.id,
+        nodule_type,
+        len([k for k, v in patient_data.items() if v is not None and v != ''])
+    )
 
     # 添加一些旧逻辑需要的字段格式（兼容处理）
     if record.symptoms:
@@ -92,13 +97,15 @@ def _generate_report_for_record(record_id, generated_by_user_id):
     )
 
     # 5.1 生成按类别分组的建议草稿
-    print("\n" + "="*60)
-    print("📝 生成分类建议草稿...")
-    print("="*60)
+    current_app.logger.info('generating recommendation draft: patient_id=%s', patient.id)
     recommendations_draft = generate_recommendations_by_category(
         patient_data, matched_knowledge
     )
-    print(f"✅ 已生成 {len(recommendations_draft.get('recommendations', []))} 条分类建议")
+    current_app.logger.info(
+        'recommendation draft generated: patient_id=%s recommendation_count=%s',
+        patient.id,
+        len(recommendations_draft.get('recommendations', []))
+    )
 
     # 5.2 生成影像学综合结论（包含影像学评估、综合分析和随访建议）
     imaging_conclusion_dict = generate_imaging_conclusion_with_llm(
@@ -130,7 +137,12 @@ def _generate_report_for_record(record_id, generated_by_user_id):
     })
 
     report_html = render_template(template_path, **template_fields)
-    print(f"✅ 使用模板: {template_path} 生成 {patient.nodule_type} 报告")
+    current_app.logger.info(
+        'report html rendered: patient_id=%s template=%s html_length=%s',
+        patient.id,
+        template_path,
+        len(report_html or '')
+    )
 
     risk_level, risk_score, risk_basis = derive_report_risk_level(record, nodule_type, patient_data)
     report_summary = f"{risk_level} · {risk_basis}"
@@ -941,9 +953,12 @@ def finalize_report(current_user, report_id):
             for rec in approved_recs
         ])
         
-        # 调试：打印建议文本长度
-        print(f"📝 建议文本总长度: {len(recommendations_text)} 字符")
-        print(f"📝 建议文本预览: {recommendations_text[:200]}...")
+        current_app.logger.info(
+            'generating final report from approved recommendations: report_id=%s recommendation_count=%s text_length=%s',
+            report.id,
+            len(approved_recs),
+            len(recommendations_text)
+        )
         
         # 获取患者和档案信息
         patient = BPatient.query.get(report.patient_id)
@@ -995,10 +1010,6 @@ def finalize_report(current_user, report_id):
 直接输出完整报告，分段清晰，不要额外标题，不要"报告如下"等开场白。"""
 
         # 调用LLM生成最终报告
-        print("\n" + "="*60)
-        print("📄 生成最终打印报告...")
-        print("="*60)
-        
         final_report_text = llm_generator._call_llm_api(prompt)
         
         if not final_report_text:
@@ -1029,7 +1040,12 @@ def finalize_report(current_user, report_id):
         report.status = 'finalized'
         db.session.commit()
         
-        print(f"✅ 最终报告生成成功")
+        current_app.logger.info(
+            'final report generated: report_id=%s final_text_length=%s html_length=%s',
+            report.id,
+            len(final_report_text or ''),
+            len(final_report_html or '')
+        )
         
         return Response.success({
             'report_id': report.id,
