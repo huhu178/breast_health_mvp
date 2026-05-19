@@ -2,7 +2,7 @@
 B端档案管理路由
 处理健康档案的创建、查看、编辑
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 from models import db, BPatient, BHealthRecord, BImagingReport, BReport, CPatient, CHealthRecord
 from utils.decorators import login_required
 from utils.response import Response
@@ -15,6 +15,15 @@ from services.pdf_parser import pdf_parser
 from services.imaging_report_service import imaging_report_service
 
 b_record_bp = Blueprint('b_record', __name__, url_prefix='/api/b/records')
+
+
+def _mask_phone(phone):
+    if not phone:
+        return None
+    value = str(phone)
+    if len(value) < 7:
+        return '***'
+    return f'{value[:3]}****{value[-4:]}'
 
 
 def _latest_report_for_record(record_id):
@@ -244,20 +253,17 @@ def create_record(current_user):
         
         patient_id = data.get('patient_id')
 
-        # 调试日志：打印接收到的关键字段
-        print(f"\n=== 创建档案接收到的数据 ===")
-        print(f"patient_id: {data.get('patient_id')}")
-        print(f"nodule_types: {data.get('nodule_types')}")
-        print(f"age: {data.get('age')} (type: {type(data.get('age'))})")
-        print(f"height: {data.get('height')} (type: {type(data.get('height'))})")
-        print(f"weight: {data.get('weight')} (type: {type(data.get('weight'))})")
-        print(f"phone: {data.get('phone')} (type: {type(data.get('phone'))})")
-        print(f"diabetes_history: {data.get('diabetes_history')}")
-        print(f"gaofang_address: {data.get('gaofang_address')}")
-        print(f"breast_discovery_date: {data.get('breast_discovery_date')}")
-        print(f"thyroid_discovery_date: {data.get('thyroid_discovery_date')}")
-        print(f"lung_discovery_date: {data.get('lung_discovery_date')}")
-        print(f"========================\n")
+        current_app.logger.debug(
+            'create_record received fields: patient_id=%s nodule_types=%s '
+            'age_type=%s height_type=%s weight_type=%s phone=%s files=%s',
+            data.get('patient_id'),
+            data.get('nodule_types'),
+            type(data.get('age')).__name__,
+            type(data.get('height')).__name__,
+            type(data.get('weight')).__name__,
+            _mask_phone(data.get('phone')),
+            len(files),
+        )
 
         # 验证患者存在
         patient = BPatient.query.get(patient_id)
@@ -272,18 +278,18 @@ def create_record(current_user):
             if value_type == 'float':
                 try:
                     result = float(value) if value else None
-                    print(f"[clean_value] 转换 {value} (type: {type(value)}) -> {result} (float)")
+                    current_app.logger.debug('clean_value converted float: type=%s', type(value).__name__)
                     return result
                 except (ValueError, TypeError) as e:
-                    print(f"[clean_value] 转换失败: {value} -> None (错误: {e})")
+                    current_app.logger.debug('clean_value failed float conversion: %s', e)
                     return None
             if value_type == 'int':
                 try:
                     result = int(value) if value else None
-                    print(f"[clean_value] 转换 {value} (type: {type(value)}) -> {result} (int)")
+                    current_app.logger.debug('clean_value converted int: type=%s', type(value).__name__)
                     return result
                 except (ValueError, TypeError) as e:
-                    print(f"[clean_value] 转换失败: {value} -> None (错误: {e})")
+                    current_app.logger.debug('clean_value failed int conversion: %s', e)
                     return None
             return value
 
@@ -338,8 +344,11 @@ def create_record(current_user):
         # 清理 height 和 weight
         cleaned_height = clean_value(data.get('height'), 'float')
         cleaned_weight = clean_value(data.get('weight'), 'float')
-        print(f"[创建档案] height: {data.get('height')} -> {cleaned_height}")
-        print(f"[创建档案] weight: {data.get('weight')} -> {cleaned_weight}")
+        current_app.logger.debug(
+            'create_record normalized numeric fields: height_present=%s weight_present=%s',
+            cleaned_height is not None,
+            cleaned_weight is not None,
+        )
 
         # 创建档案
         record = BHealthRecord(
@@ -472,7 +481,7 @@ def create_record(current_user):
         # 处理上传的影像报告文件
         imaging_reports_data = []
         if files:
-            print(f"\n📎 开始处理 {len(files)} 个上传的影像报告文件...")
+            current_app.logger.info('processing %s uploaded imaging report files', len(files))
             
             # 获取结节类型（用于LLM分析）
             nodule_type = patient.nodule_type if hasattr(patient, 'nodule_type') else 'breast'
@@ -488,7 +497,7 @@ def create_record(current_user):
                     )
                     
                     if not file_path:
-                        print(f"⚠️ 文件保存失败: {original_filename}")
+                        current_app.logger.warning('failed to save imaging report file: %s', original_filename)
                         continue
                     
                     # 2. 解析PDF提取文本
@@ -498,23 +507,23 @@ def create_record(current_user):
                     file_type = file_upload_manager.get_file_type(original_filename)
                     if file_type == 'pdf':
                         # 3. 直接使用LLM分析PDF（多模态，无需OCR）
-                        print(f"🤖 开始使用LLM直接分析PDF文件...")
+                        current_app.logger.info('extracting structured data from PDF imaging report')
                         extracted_data = imaging_report_service.extract_structured_data_from_pdf(
                             file_path, nodule_type
                         )
                         
                         # 如果多模态分析失败，尝试文本提取作为降级方案
                         if not extracted_data:
-                            print(f"⚠️ LLM多模态分析失败，尝试文本提取...")
+                            current_app.logger.warning('PDF multimodal extraction failed, trying text extraction')
                             extracted_text = pdf_parser.extract_text_from_pdf(file_path)
                             if extracted_text:
                                 extracted_data = imaging_report_service.extract_structured_data_from_text(
                                     extracted_text, nodule_type
                                 )
                             else:
-                                print(f"⚠️ PDF解析未提取到文本（可能是扫描件，且多模态分析失败）")
+                                current_app.logger.warning('PDF text extraction returned no content')
                     else:
-                        print(f"⚠️ 暂不支持的文件类型: {file_type}，跳过解析")
+                        current_app.logger.warning('unsupported imaging report file type: %s', file_type)
                     
                     # 4. 创建影像报告记录
                     imaging_report = BImagingReport(
@@ -531,34 +540,26 @@ def create_record(current_user):
                     db.session.add(imaging_report)
                     imaging_reports_data.append(imaging_report.to_dict())
                     
-                    print(f"✅ 影像报告处理完成: {original_filename}")
+                    current_app.logger.info('imaging report processed: %s', original_filename)
                     
                 except Exception as e:
-                    print(f"❌ 处理影像报告失败: {str(e)}")
+                    current_app.logger.exception('failed to process imaging report file: %s', e)
                     # 继续处理其他文件，不中断整个流程
                     continue
         
         # 提交所有更改
         db.session.commit()
         
-        # 调试日志：确认保存后的数据
-        print(f"\n=== 档案保存成功后的数据 ===")
-        print(f"record.height: {record.height}")
-        print(f"record.weight: {record.weight}")
-        print(f"record.breast_discovery_date: {record.breast_discovery_date}")
-        print(f"record.thyroid_discovery_date: {record.thyroid_discovery_date}")
-        print(f"record.lung_discovery_date: {record.lung_discovery_date}")
-        print(f"========================\n")
+        current_app.logger.debug(
+            'record created: id=%s height_present=%s weight_present=%s imaging_reports=%s',
+            record.id,
+            record.height is not None,
+            record.weight is not None,
+            len(imaging_reports_data),
+        )
 
         result_dict = record.to_dict()
         result_dict['imaging_reports'] = imaging_reports_data  # 添加影像报告信息
-        
-        print(f"\n=== to_dict() 返回的数据 ===")
-        print(f"height: {result_dict.get('height')}")
-        print(f"weight: {result_dict.get('weight')}")
-        print(f"breast_discovery_date: {result_dict.get('breast_discovery_date')}")
-        print(f"imaging_reports count: {len(imaging_reports_data)}")
-        print(f"========================\n")
 
         return Response.success(result_dict, '档案创建成功', 201)
         
