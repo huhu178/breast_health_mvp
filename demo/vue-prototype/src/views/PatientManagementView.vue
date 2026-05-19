@@ -1615,10 +1615,15 @@ const toast = { show: (msg) => window.alert(msg) }
 const scenario = computed(() => getStoredScenario())
 const isCheckupScenario = computed(() => scenario.value.key === 'checkup')
 const {
+  channelLabel,
+  noduleTypeLabel,
+  planStatusLabel,
   riskLevelLabel,
   riskToneFromLevel,
   statusKey,
-  statusLabel
+  statusLabel,
+  taskTypeLabel,
+  templateStatusLabel
 } = usePatientDisplay({ scenario, isCheckupScenario })
 
 function goFollowupWorkflow() {
@@ -4200,48 +4205,6 @@ async function loadPatients() {
   }))
   const existingIds = new Set(queue.value.map(p => p.id))
   followMocks.forEach(p => { if (!existingIds.has(p.id)) queue.value.push(p) })
-}
-
-function noduleTypeLabel(t) {
-  const map = {
-    breast: '乳腺结节', lung: '肺部结节', thyroid: '甲状腺结节',
-    breast_lung: '乳腺+肺部结节', breast_thyroid: '乳腺+甲状腺结节',
-    lung_thyroid: '肺部+甲状腺结节', triple: '三合并结节'
-  }
-  return map[t] || t || '—'
-}
-
-function channelLabel(channel) {
-  const map = { wecom: '企业微信', phone: '电话', miniapp: '小程序' }
-  return map[channel] || channel || '企业微信'
-}
-
-function templateStatusLabel(status) {
-  const map = { draft: '草稿', active: '启用', paused: '暂停', archived: '归档' }
-  return map[status] || status || '模板'
-}
-
-function planStatusLabel(status) {
-  const map = { draft: '草稿', active: '执行中', paused: '已暂停', completed: '已完成', cancelled: '已取消' }
-  return map[status] || status || '计划'
-}
-
-function taskTypeLabel(type) {
-  const map = {
-    knowledge: '知识推送',
-    knowledge_push: '知识推送',
-    daily_checkin: '每日打卡',
-    diet_checkin: '饮食打卡',
-    diet_image_checkin: '餐饮图片打卡',
-    breakfast_checkin: '早餐打卡',
-    lunch_checkin: '午餐打卡',
-    dinner_checkin: '晚餐打卡',
-    exercise_reminder: '运动提醒',
-    psych_reminder: '心理关怀',
-    review_reminder: '复查提醒',
-    manual: '人工处理',
-  }
-  return map[type] || type || '随访任务'
 }
 
 function patientActionLabel(action) {
