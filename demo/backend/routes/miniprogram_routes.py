@@ -1464,6 +1464,67 @@ def submit_questionnaire():
         return Response.error(f'问卷提交失败: {str(e)}', 500)
 
 
+def _find_c_patient_for_questionnaire(phone=None, openid=None, patient_id=None):
+    query = CPatient.query
+    if patient_id:
+        return query.filter_by(id=patient_id).first()
+    if openid:
+        patient = query.filter_by(wechat_openid=openid).first()
+        if patient:
+            return patient
+    if phone:
+        return query.filter_by(phone=phone).first()
+    return None
+
+
+@miniprogram_bp.route('/questionnaire/latest', methods=['GET'])
+def get_latest_questionnaire():
+    """
+    小程序查看患者最新档案摘要。
+
+    说明：患者端只能查看自己最近一次提交的档案与报告；修改不覆盖旧档案，
+    如需更正资料，请重新提交问卷生成一条新的档案版本。
+    """
+    phone = (request.args.get('phone') or '').strip()
+    openid = (request.args.get('openid') or '').strip()
+    patient_id = request.args.get('patient_id', type=int)
+
+    if not phone and not openid and not patient_id:
+        return Response.error('请提供手机号、openid 或 patient_id', 400)
+    if phone:
+        is_valid, message = verify_phone(phone)
+        if not is_valid:
+            return Response.error(message, 400)
+
+    patient = _find_c_patient_for_questionnaire(phone=phone, openid=openid, patient_id=patient_id)
+    if not patient:
+        return Response.error('未找到患者档案', 404)
+
+    record = CHealthRecord.query.filter_by(patient_id=patient.id).order_by(CHealthRecord.created_at.desc()).first()
+    report = CReport.query.filter_by(patient_id=patient.id).order_by(CReport.created_at.desc()).first()
+
+    return Response.success({
+        'patient': patient.to_dict(),
+        'record': record.to_dict() if record else None,
+        'report': {
+            **report.to_dict(),
+            'report_html': report.report_html
+        } if report else None,
+        'permission': {
+            'can_view': True,
+            'can_edit_current_record': False,
+            'edit_strategy': 'resubmit_new_version',
+            'message': '已提交档案不可直接覆盖修改；如需更正，请重新提交问卷生成新的档案版本。'
+        }
+    }, '获取最新档案成功')
+
+
+@miniprogram_bp.route('/questionnaire/resubmit', methods=['POST'])
+def resubmit_questionnaire():
+    """患者更正资料：复用提交流程，创建新的档案与报告版本。"""
+    return submit_questionnaire()
+
+
 @miniprogram_bp.route('/manager/contact', methods=['POST'])
 def submit_manager_contact():
     """
