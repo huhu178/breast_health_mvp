@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import AnalyticsView from '../views/AnalyticsView.vue'
+import WorkbenchView from '../views/WorkbenchView.vue'
 import QueueView from '../views/QueueView.vue'
 import ReportView from '../views/ReportView.vue'
 import ReviewView from '../views/ReviewView.vue'
@@ -22,7 +23,7 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView },
     { path: '/followup-checkin/:taskCode', name: 'followup-checkin', component: FollowupCheckinView },
     { path: '/analytics', name: 'analytics', component: AnalyticsView, meta: auth },
-    { path: '/workbench', redirect: '/patient' },
+    { path: '/workbench', name: 'workbench', component: WorkbenchView, meta: auth },
     { path: '/queue', name: 'queue', component: QueueView, meta: auth },      // 兼容旧入口（不在主导航展示）
     { path: '/report', name: 'report', component: ReportView, meta: auth },   // 兼容旧入口（不在主导航展示）
     { path: '/review', name: 'review', component: ReviewView, meta: auth },   // 兼容旧入口（不在主导航展示）

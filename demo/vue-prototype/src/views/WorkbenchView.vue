@@ -1,174 +1,141 @@
 <template>
   <div class="page">
-    <div class="head">
-      <div class="title">工作台</div>
-      <div class="crumb">首页 / <b>工作台</b></div>
+    <header class="page-head">
+      <div>
+        <div class="title">医生工作台</div>
+        <div class="sub">表单配置、AI助手和复核任务集中管理</div>
+      </div>
+      <div class="head-actions">
+        <button class="btn" type="button">导入模板</button>
+        <button class="primary" type="button">新建表单</button>
+      </div>
+    </header>
+
+    <div class="kpi-row" aria-label="医生工作台概览">
+      <article v-for="item in summaryCards" :key="item.label" class="kpi" :data-tone="item.tone">
+        <div class="kpi-label">{{ item.label }}</div>
+        <div class="kpi-value">{{ item.value }}</div>
+        <div class="kpi-note">{{ item.note }}</div>
+      </article>
     </div>
 
-    <div class="kpi-row" aria-label="统计概览">
-      <KpiCard
-        v-for="k in kpiList"
-        :key="k.label"
-        :label="k.label"
-        :value="k.value"
-        :delta="k.delta"
-        :tone="k.tone"
-        :icon="k.icon"
-      />
-    </div>
-
-    <div class="tri">
-      <!-- 左：患者队列 -->
-      <section class="card">
-        <header class="card-head">
-          <div class="card-title">患者队列</div>
-          <button class="btn-lite" type="button">+ 新建档案</button>
-        </header>
-        <div class="card-body">
-          <div class="filters">
-            <label class="field">
-              <span>姓名/手机号</span>
-              <input v-model="keyword" placeholder="请输入姓名或手机号">
-            </label>
-            <label class="field">
-              <span>结节类型</span>
-              <select v-model="nodule">
-                <option value="all">全部</option>
-                <option value="肺部结节">肺部结节</option>
-                <option value="甲状腺结节">甲状腺结节</option>
-                <option value="乳腺结节">乳腺结节</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>风险等级</span>
-              <select v-model="risk">
-                <option value="all">全部</option>
-                <option value="高风险">高风险</option>
-                <option value="中风险">中风险</option>
-                <option value="低风险">低风险</option>
-              </select>
-            </label>
+    <div class="workspace-grid">
+      <section class="card forms-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">表单管理</div>
+            <div class="card-sub">建档、复查、随访问卷模板</div>
           </div>
-
-          <div class="tabs">
-            <button v-for="t in tabs" :key="t" type="button" class="tab" :class="{ active: stage === t }" @click="stage = t">
-              {{ t }}
-            </button>
-          </div>
-
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>患者</th>
-                  <th>来源</th>
-                  <th>结节类型</th>
-                  <th>风险</th>
-                  <th>状态</th>
-                  <th>最近检查</th>
-                  <th>下次随访</th>
-                  <th>负责人</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="p in filtered"
-                  :key="p.id"
-                  :class="{ active: p.id === currentId }"
-                  @click="currentId = p.id"
-                >
-                  <td>
-                    <div class="pname">{{ p.name }}</div>
-                    <div class="psub">{{ p.gender }} · {{ p.age }}岁 · {{ p.phone }}</div>
-                  </td>
-                  <td>{{ p.source }}</td>
-                  <td><span class="tag blue">{{ p.nodule }}</span></td>
-                  <td><span class="tag" :class="riskClass(p.risk)">{{ p.risk }}</span></td>
-                  <td><span class="tag blue">{{ p.stage }}</span></td>
-                  <td>{{ p.lastExam }}</td>
-                  <td>{{ p.next }}</td>
-                  <td>{{ p.owner }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- 中：患者沟通 -->
-      <section class="card">
-        <header class="card-head">
-          <div class="card-title">患者沟通</div>
-          <div class="mini">
-            <span class="pill" :class="wecom.sent ? 'b' : ''">已发送</span>
-            <span class="pill" :class="wecom.read ? 'g' : ''">已读</span>
-            <span class="pill" :class="wecom.replied ? 'o' : ''">已回复</span>
-          </div>
-        </header>
-        <div class="card-body">
-          <div class="conv-head">
-            <div>
-              <div class="conv-title">{{ current.name }} · {{ current.phone }}</div>
-              <div class="muted">最近报告：{{ current.reportSummary }}</div>
-            </div>
-            <div class="conv-actions">
-              <button class="btn-lite" type="button">发起电话随访</button>
-              <button class="btn-lite" type="button">推送小程序</button>
-            </div>
-          </div>
-
-          <div class="bubble-list">
-            <div v-for="m in thread.messages" :key="m.at + m.text" class="bubble" :class="{ mine: m.from !== '患者' }">
-              <div class="meta">
-                <b>{{ m.from }}</b>
-                <span class="muted">{{ m.at }}</span>
-              </div>
-              <div class="text">{{ m.text }}</div>
-            </div>
-          </div>
-
-          <div class="composer">
-            <input class="composer-input" placeholder="输入随访话术或快速回复…">
-            <button class="primary" type="button">发送</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- 右：AI工作区 -->
-      <section class="card">
-        <header class="card-head">
-          <div class="card-title">AI工作区</div>
-          <button class="ghost" type="button">刷新</button>
-        </header>
-        <div class="card-body">
-          <div class="ai-box">
-            <div class="ai-title">当前患者摘要</div>
-            <div class="kv" v-for="r in ai.summary" :key="r.k">
-              <span class="k">{{ r.k }}</span>
-              <span class="v">{{ r.v }}</span>
-            </div>
-          </div>
-
-          <div class="split"></div>
-
-          <div class="draft">
-            <div class="ai-title">{{ ai.draft.title }}</div>
-            <ul class="ul">
-              <li v-for="b in ai.draft.bullets" :key="b">{{ b }}</li>
-            </ul>
-          </div>
-
-          <div class="split"></div>
-
-          <div class="ai-actions">
+          <div class="seg">
             <button
-              v-for="a in ai.actions"
-              :key="a.label"
+              v-for="tab in formTabs"
+              :key="tab"
               type="button"
-              :class="a.primary ? 'primary' : 'btn-lite'"
+              :class="{ active: formTab === tab }"
+              @click="formTab = tab"
             >
-              {{ a.label }}
+              {{ tab }}
             </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>表单名称</th>
+                <th>适用场景</th>
+                <th>字段</th>
+                <th>状态</th>
+                <th>最近更新</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="form in visibleForms" :key="form.id" :class="{ active: selectedFormId === form.id }" @click="selectedFormId = form.id">
+                <td>
+                  <div class="main-text">{{ form.name }}</div>
+                  <div class="muted">{{ form.owner }}</div>
+                </td>
+                <td>{{ form.scene }}</td>
+                <td>{{ form.fields }}项</td>
+                <td><span class="tag" :data-tone="form.statusTone">{{ form.status }}</span></td>
+                <td>{{ form.updatedAt }}</td>
+                <td><button class="link-btn" type="button">配置</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card task-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">医生复核队列</div>
+            <div class="card-sub">按风险和超时优先级排序</div>
+          </div>
+          <button class="btn" type="button">批量分派</button>
+        </div>
+        <div class="task-list">
+          <article v-for="task in reviewTasks" :key="task.id" class="task-item">
+            <div class="task-top">
+              <div>
+                <div class="main-text">{{ task.patient }}</div>
+                <div class="muted">{{ task.report }} · {{ task.source }}</div>
+              </div>
+              <span class="tag" :data-tone="task.tone">{{ task.risk }}</span>
+            </div>
+            <div class="task-meta">
+              <span>{{ task.owner }}</span>
+              <span>{{ task.deadline }}</span>
+              <span>{{ task.status }}</span>
+            </div>
+            <div class="task-actions">
+              <button class="btn" type="button">打开档案</button>
+              <button class="primary" type="button">进入复核</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="card ai-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">AI助手管理</div>
+            <div class="card-sub">报告、话术、随访任务生成能力</div>
+          </div>
+          <button class="btn" type="button">模型设置</button>
+        </div>
+
+        <div class="assistant-list">
+          <article v-for="bot in assistants" :key="bot.id" class="assistant">
+            <div class="assistant-head">
+              <div>
+                <div class="main-text">{{ bot.name }}</div>
+                <div class="muted">{{ bot.desc }}</div>
+              </div>
+              <label class="switch">
+                <input v-model="bot.enabled" type="checkbox">
+                <span></span>
+              </label>
+            </div>
+            <div class="assistant-metrics">
+              <span>今日 {{ bot.today }}</span>
+              <span>准确率 {{ bot.accuracy }}</span>
+              <span>{{ bot.latency }}</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="config-box">
+          <div class="card-title small">当前表单联动</div>
+          <div class="selected-form">
+            <b>{{ selectedForm.name }}</b>
+            <span>{{ selectedForm.scene }} · {{ selectedForm.fields }}项字段</span>
+          </div>
+          <div class="rules">
+            <div v-for="rule in selectedForm.rules" :key="rule" class="rule">
+              <span class="dot"></span>{{ rule }}
+            </div>
           </div>
         </div>
       </section>
@@ -177,111 +144,105 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import KpiCard from '../components/KpiCard.vue'
-import { kpis, patientQueue, messageThreads, aiWorkspace } from '../mocks/workbenchMock'
+import { computed, reactive, ref } from 'vue'
 
-const keyword = ref('')
-const risk = ref('all')
-const nodule = ref('all')
-const stage = ref('全部')
-const tabs = ['全部', '待处理报告', '待医生复核', '待推送患者', '异常']
+const summaryCards = [
+  { label: '启用表单', value: '18', note: '覆盖7类结节场景', tone: 'blue' },
+  { label: '今日待复核', value: '82', note: '18份已超24小时', tone: 'orange' },
+  { label: 'AI生成任务', value: '236', note: '报告/话术/问卷', tone: 'green' },
+  { label: '医生平均处理', value: '11.6分', note: '较昨日 -1.8分', tone: 'purple' }
+]
 
-const kpiList = kpis.analytics
+const formTabs = ['全部', '建档', '复查', '随访']
+const formTab = ref('全部')
 
-const currentId = ref(patientQueue[0]?.id)
+const forms = [
+  { id: 'f1', type: '建档', name: '乳腺结节首诊建档表', scene: '门诊/体检导入', fields: 42, status: '已启用', statusTone: 'green', owner: '李医生', updatedAt: '05-18 16:20', rules: ['BI-RADS 4A及以上自动标记高风险', '缺少影像报告时提示补充上传', '同步生成报告草稿字段映射'] },
+  { id: 'f2', type: '建档', name: '肺部结节联合评估表', scene: '胸部CT复核', fields: 38, status: '已启用', statusTone: 'green', owner: '王医生', updatedAt: '05-17 10:45', rules: ['Lung-RADS 4类进入优先复核', '磨玻璃结节自动匹配3个月随访模板', '吸烟史字段参与风险提示'] },
+  { id: 'f3', type: '复查', name: '多结节复查结果表', scene: '复查资料回收', fields: 31, status: '试运行', statusTone: 'orange', owner: '赵医生', updatedAt: '05-16 18:12', rules: ['结节增大自动进入异常队列', '复查时间超期触发企微提醒', '支持补充PDF影像报告'] },
+  { id: 'f4', type: '随访', name: '术后/穿刺后随访问卷', scene: '小程序打卡', fields: 26, status: '已启用', statusTone: 'green', owner: '李医生', updatedAt: '05-15 09:30', rules: ['疼痛/出血等异常答案触发人工交接', '自动汇总给随访AI生成回复', '7天未填报进入待联系队列'] }
+]
 
-const filtered = computed(() => {
-  return patientQueue.filter((p) => {
-    const byKeyword = !keyword.value || (p.name + p.phone + p.nodule).includes(keyword.value)
-    const byRisk = risk.value === 'all' || p.risk === risk.value
-    const byNodule = nodule.value === 'all' || p.nodule.includes(nodule.value)
-    const byStage = stage.value === '全部' || stage.value === '全部' ? true : p.stage === stage.value
-    return byKeyword && byRisk && byNodule && byStage
-  })
-})
+const selectedFormId = ref(forms[0].id)
+const visibleForms = computed(() => forms.filter((item) => formTab.value === '全部' || item.type === formTab.value))
+const selectedForm = computed(() => forms.find((item) => item.id === selectedFormId.value) || forms[0])
 
-const current = computed(() => patientQueue.find((p) => p.id === currentId.value) ?? patientQueue[0])
-const thread = computed(() => messageThreads.find((t) => t.patientId === current.value.id) ?? messageThreads[0])
-const wecom = computed(() => current.value.wecom)
-const ai = aiWorkspace
+const reviewTasks = [
+  { id: 't1', patient: '张*国', report: '肺部结节健康报告', source: '胸部CT', risk: '高风险', tone: 'red', owner: '李医生', deadline: '剩余 1小时', status: '待医生复核' },
+  { id: 't2', patient: '吴*丽', report: '乳腺+甲状腺报告', source: '超声报告', risk: '高风险', tone: 'red', owner: '王医生', deadline: '已超时 2小时', status: '待补充意见' },
+  { id: 't3', patient: '周*明', report: '肺部+甲状腺报告', source: 'CT/超声', risk: '中风险', tone: 'orange', owner: '李医生', deadline: '今天 17:30', status: '待复核' }
+]
 
-function riskClass(r) {
-  if (r === '高风险') return 'high'
-  if (r === '中风险') return 'orange'
-  return 'green'
-}
+const assistants = reactive([
+  { id: 'a1', name: '报告生成助手', desc: '按表单字段生成报告草稿与风险提示', enabled: true, today: 126, accuracy: '96.8%', latency: '12秒' },
+  { id: 'a2', name: '随访话术助手', desc: '按风险等级生成企微/电话随访话术', enabled: true, today: 74, accuracy: '94.1%', latency: '8秒' },
+  { id: 'a3', name: '异常预警助手', desc: '识别打卡异常和复查资料变化', enabled: true, today: 31, accuracy: '92.6%', latency: '5秒' },
+  { id: 'a4', name: '表单质控助手', desc: '发现缺失字段、冲突字段和补录建议', enabled: false, today: 5, accuracy: '试运行', latency: '待启用' }
+])
 </script>
 
 <style scoped>
-.page{display:grid;gap:12px}
-.head{display:flex;align-items:flex-end;justify-content:space-between}
-.title{font-size:20px;font-weight:950;color:#0f172a}
-.crumb{color:#94a3b8;font-weight:850}
-
-.kpi-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
-.kpi{position:relative;background:#fff;border:1px solid #e6edf7;border-radius:14px;padding:14px 14px;box-shadow:0 6px 18px rgba(15,23,42,.04);overflow:hidden}
-.kpi-label{color:#526175;font-weight:850;font-size:12px}
-.kpi-value{font-size:22px;font-weight:950;color:#0f172a;margin-top:8px}
-.kpi-delta{font-size:12px;color:#94a3b8;margin-top:8px;font-weight:800}
-.spark{position:absolute;right:12px;bottom:12px;width:66px;height:24px}
-.spark path{fill:none;stroke:#5b8ff9;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-
-.tri{display:grid;grid-template-columns:minmax(420px,1.2fr) minmax(360px,1fr) minmax(360px,1fr);gap:12px;min-height:calc(100vh - 56px - 14px - 18px - 104px - 36px)}
-.card{background:#fff;border:1px solid #e6edf7;border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,.04);overflow:hidden;min-height:0;display:flex;flex-direction:column}
-.card-head{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #eef2f7;gap:10px}
-.card-title{font-weight:950;color:#0f172a}
-.card-body{padding:12px 14px;min-height:0;display:flex;flex-direction:column;gap:10px}
-.btn-lite{height:34px;border-radius:12px;border:1px solid #d9e2ef;background:#fff;color:#155eef;font-weight:900;padding:0 12px}
-.primary{height:34px;border-radius:12px;border:1px solid #155eef;background:#155eef;color:#fff;font-weight:950;padding:0 12px}
-.ghost{border:0;background:transparent;color:#155eef;font-weight:950}
-.muted{color:#64748b;font-weight:750}
-
-.filters{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px}
-.field span{display:block;color:#64748b;font-weight:800;font-size:12px;margin-bottom:6px}
-.field input,.field select{height:34px;border:1px solid #d9e2ef;border-radius:12px;padding:0 10px;outline:none;background:#fff}
-.tabs{display:flex;gap:8px;flex-wrap:wrap}
-.tab{height:32px;border-radius:999px;border:1px solid #e6edf7;background:#fff;color:#526175;font-weight:900;padding:0 12px}
-.tab.active{border-color:#155eef;background:#eef5ff;color:#155eef}
-
-.table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid #eef2f7;border-radius:12px}
-.table{width:100%;border-collapse:collapse;min-width:920px}
-.table th{position:sticky;top:0;background:#f8fafc;color:#64748b;text-align:left;font-size:12px;padding:10px 10px;border-bottom:1px solid #e5edf7;white-space:nowrap}
-.table td{padding:10px 10px;border-bottom:1px solid #edf2f7;white-space:nowrap}
-.table tbody tr:hover{background:#f8fbff}
-.table tbody tr.active{background:#eef5ff}
-.pname{font-weight:950;color:#0f172a}
-.psub{font-size:12px;color:#64748b;margin-top:2px}
-.tag{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:900;line-height:1.4}
-.tag.blue{background:#eef5ff;color:#155eef}
-.tag.high{background:#fff1f2;color:#dc2626}
-.tag.orange{background:#fff7ed;color:#c2410c}
-.tag.green{background:#ecfff3;color:#14843b}
-
-.mini{display:flex;gap:6px}
-.pill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:900;background:#f1f5f9;color:#64748b}
-.pill.b{background:#eef5ff;color:#155eef}
-.pill.g{background:#ecfff3;color:#14843b}
-.pill.o{background:#fff7ed;color:#c2410c}
-
-.conv-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.conv-title{font-weight:950;color:#0f172a}
-.conv-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.bubble-list{flex:1;min-height:0;overflow:auto;display:grid;gap:10px;padding:10px 0}
-.bubble{border:1px solid #eef2f7;border-radius:14px;padding:10px 12px;background:#fff}
-.bubble.mine{background:#f8fbff;border-color:#dbeafe}
-.meta{display:flex;justify-content:space-between;gap:10px;align-items:center}
-.text{margin-top:6px;line-height:1.65;color:#334155}
-.composer{display:flex;gap:10px;align-items:center}
-.composer-input{flex:1;height:36px;border-radius:12px;border:1px solid #d9e2ef;padding:0 12px;outline:none}
-
-.ai-box{border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:12px 12px}
-.ai-title{font-weight:950;color:#0f172a}
-.kv{display:flex;justify-content:space-between;gap:10px;margin-top:10px}
-.kv .k{color:#64748b;font-weight:850}
-.kv .v{color:#0f172a;font-weight:950;text-align:right}
-.split{height:1px;background:#eef2f7}
-.draft .ul{margin:10px 0 0 16px;color:#334155;line-height:1.7}
-.ai-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.page{display:grid;gap:12px;padding-bottom:20px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.title{font-size:20px;font-weight:800;color:#0f172a}
+.sub,.card-sub,.muted{color:#64748b;font-size:12px}
+.head-actions,.task-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn,.primary,.link-btn{height:32px;border-radius:6px;padding:0 10px;font-weight:600;cursor:pointer}
+.btn{border:1px solid #d9e2ef;background:#fff;color:#475569}
+.primary{border:1px solid #155eef;background:#155eef;color:#fff}
+.link-btn{border:0;background:transparent;color:#155eef;padding:0}
+.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi{background:#fff;border:1px solid #e6edf7;border-radius:10px;padding:12px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+.kpi-label{color:#64748b;font-size:12px}
+.kpi-value{font-size:26px;font-weight:800;color:#0f172a;margin-top:6px}
+.kpi-note{font-size:12px;color:#94a3b8;margin-top:4px}
+.kpi[data-tone="orange"] .kpi-value{color:#ea580c}
+.kpi[data-tone="green"] .kpi-value{color:#15803d}
+.kpi[data-tone="purple"] .kpi-value{color:#6d28d9}
+.workspace-grid{display:grid;grid-template-columns:minmax(520px,1.4fr) minmax(300px,.8fr) minmax(360px,1fr);gap:12px;align-items:start}
+.card{background:#fff;border:1px solid #e6edf7;border-radius:10px;box-shadow:0 4px 12px rgba(15,23,42,.04);overflow:hidden}
+.card-head{min-height:48px;border-bottom:1px solid #eef2f7;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-title{font-weight:800;color:#0f172a}
+.card-title.small{font-size:13px}
+.seg{display:flex;gap:4px;border:1px solid #e6edf7;border-radius:8px;padding:3px;background:#f8fafc}
+.seg button{height:26px;border:0;border-radius:6px;background:transparent;color:#64748b;font-weight:600;padding:0 8px;cursor:pointer}
+.seg button.active{background:#fff;color:#155eef;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+.table-wrap{overflow:auto}
+.table{width:100%;border-collapse:collapse;min-width:720px}
+.table th{background:#f8fafc;color:#64748b;text-align:left;font-size:12px;font-weight:600;padding:8px;border-bottom:1px solid #e5edf7;white-space:nowrap}
+.table td{padding:9px 8px;border-bottom:1px solid #edf2f7;white-space:nowrap;font-size:13px}
+.table tr.active{background:#eef5ff}
+.main-text{font-weight:800;color:#0f172a}
+.tag{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700;background:#eef5ff;color:#155eef}
+.tag[data-tone="green"]{background:#ecfdf5;color:#15803d}
+.tag[data-tone="orange"]{background:#fff7ed;color:#c2410c}
+.tag[data-tone="red"]{background:#fff1f2;color:#dc2626}
+.task-list,.assistant-list{display:grid;gap:10px;padding:12px}
+.task-item,.assistant,.config-box{border:1px solid #edf2f7;border-radius:8px;padding:10px;background:#fff}
+.task-top,.assistant-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.task-meta,.assistant-metrics{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;color:#64748b;font-size:12px}
+.task-meta span,.assistant-metrics span{background:#f8fafc;border:1px solid #edf2f7;border-radius:999px;padding:3px 8px}
+.task-actions{margin-top:10px;justify-content:flex-end}
+.ai-card{display:flex;flex-direction:column}
+.switch{position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:#cbd5e1;border-radius:999px;cursor:pointer;transition:.15s}
+.switch span::before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.2);transition:.15s}
+.switch input:checked + span{background:#155eef}
+.switch input:checked + span::before{transform:translateX(16px)}
+.config-box{margin:0 12px 12px;background:#f8fbff;border-color:#dbeafe}
+.selected-form{display:grid;gap:3px;margin-top:10px}
+.selected-form span{color:#64748b;font-size:12px}
+.rules{display:grid;gap:8px;margin-top:10px}
+.rule{display:flex;align-items:flex-start;gap:8px;color:#334155;font-size:13px;line-height:1.5}
+.dot{width:7px;height:7px;border-radius:50%;background:#155eef;margin-top:6px;flex-shrink:0}
+@media(max-width:1200px){
+  .workspace-grid{grid-template-columns:1fr}
+  .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:720px){
+  .page-head{align-items:flex-start;flex-direction:column}
+  .kpi-row{grid-template-columns:1fr}
+  .card-head{align-items:flex-start;flex-direction:column}
+}
 </style>
-
