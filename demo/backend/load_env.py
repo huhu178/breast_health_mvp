@@ -4,7 +4,35 @@
 """
 import os
 import sys
+import re
 from pathlib import Path
+
+ENV_LINE_RE = re.compile(r'^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$')
+
+
+def _parse_env_value(raw_value):
+    value = raw_value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        return value[1:-1]
+    return value
+
+
+def _load_env_file(env_file):
+    loaded = 0
+    skipped = 0
+    with open(env_file, 'r', encoding='utf-8') as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith('#'):
+                continue
+            match = ENV_LINE_RE.match(line)
+            if not match:
+                skipped += 1
+                continue
+            key, raw_value = match.groups()
+            os.environ.setdefault(key, _parse_env_value(raw_value))
+            loaded += 1
+    return loaded, skipped
 
 def load_environment():
     """加载环境变量"""
@@ -20,35 +48,12 @@ def load_environment():
         return False
     
     try:
-        # 尝试使用 python-dotenv
-        try:
-            from dotenv import load_dotenv
-            # 强制使用 UTF-8 编码加载
-            load_dotenv(env_file, encoding='utf-8')
-            print(f"OK: Loaded environment variables from .env")
-            return True
-        except ImportError:
-            # 如果没有安装 python-dotenv，手动解析
-            print("INFO: python-dotenv not installed, using simple parser")
-            with open(env_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    # 跳过注释和空行
-                    if not line or line.startswith('#'):
-                        continue
-                    # 解析 KEY=VALUE
-                    if '=' in line:
-                        key, value = line.split('=', 1)
-                        key = key.strip()
-                        value = value.strip()
-                        # 移除引号
-                        if value.startswith('"') and value.endswith('"'):
-                            value = value[1:-1]
-                        elif value.startswith("'") and value.endswith("'"):
-                            value = value[1:-1]
-                        os.environ[key] = value
-            print(f"OK: Manually parsed .env file")
-            return True
+        loaded, skipped = _load_env_file(env_file)
+        if skipped:
+            print(f"OK: Loaded environment variables from .env ({loaded} loaded, {skipped} invalid lines skipped)")
+        else:
+            print("OK: Loaded environment variables from .env")
+        return True
     except Exception as e:
         print(f"ERROR: Failed to load .env file: {e}")
         return False
