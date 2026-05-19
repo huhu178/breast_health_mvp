@@ -3486,8 +3486,8 @@ async function loadReports() {
             noduleKey: nType,
             uploadAt: r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : '—',
             aiStatus: r.status === 'not_generated' ? '待生成' : r.status === 'finalized' || r.status === 'published' ? '已完成' : '待审核',
-            risk: r.risk_level || '未评估',
-            riskTone: r.risk_level === '高风险' ? 'r' : r.risk_level === '中风险' ? 'o' : 'g',
+            risk: riskLevelLabel(r.risk_level || '未评估'),
+            riskTone: riskToneFromLevel(r.risk_level),
             owner: r.created_by_name || scenario.value.defaultOwner,
             summary: r.report_summary || r.summary || '',
             aiReadSummary: r.imaging_conclusion || r.ai_read_summary || '',
@@ -4179,8 +4179,8 @@ async function loadPatients() {
         owner: p.manager_name || scenario.value.defaultOwner,
         nodules: noduleTypeLabel(p.nodule_type),
         noduleType: p.nodule_type || 'breast',
-        risk: p.risk_level || (p.reports?.[0]?.risk_level) || '—',
-        riskTone: (p.risk_level || p.reports?.[0]?.risk_level) === '高风险' ? 'r' : (p.risk_level || p.reports?.[0]?.risk_level) === '中风险' ? 'o' : 'g',
+        risk: riskLevelLabel(p.risk_level || (p.reports?.[0]?.risk_level) || '—'),
+        riskTone: riskToneFromLevel(p.risk_level || p.reports?.[0]?.risk_level),
         stage: p.risk_level ? 'plan' : (p.reports?.length ? 'review' : 'gen'),
         stageLabel: p.risk_level ? statusLabel({ stage: 'plan' }) : (p.reports?.length ? statusLabel({ stage: 'review' }) : statusLabel({ stage: 'aiGen' })),
         nextStep: '',
@@ -4236,8 +4236,16 @@ function noduleTypeLabel(t) {
 }
 
 function riskLevelLabel(risk) {
-  const map = { high: '高风险', mid: '中风险', medium: '中风险', low: '低风险' }
+  const map = { high: '高风险', mid: '中风险', medium: '中风险', low: '低风险', '高危': '高风险', '中危': '中风险', '低危': '低风险' }
   return map[risk] || risk || '通用风险'
+}
+
+function riskToneFromLevel(risk) {
+  const label = riskLevelLabel(risk)
+  if (label === '高风险') return 'r'
+  if (label === '中风险') return 'o'
+  if (label === '低风险') return 'g'
+  return 'g'
 }
 
 function channelLabel(channel) {
@@ -4485,7 +4493,7 @@ function normalizeBackendTask(task) {
     phoneMasked: patient.phone ? patient.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
     nodules: noduleTypeLabel(task.nodule_type || patient.nodule_type),
     risk: task.risk_level || '—',
-    riskTone: task.risk_level === '高风险' || task.risk_level === '高危' || task.risk_level === 'high' ? 'r' : task.risk_level === '中风险' || task.risk_level === '中危' || task.risk_level === 'mid' ? 'o' : 'g',
+    riskTone: riskToneFromLevel(task.risk_level),
     owner: task.manager_name || scenario.value.defaultOwner,
     channel: task.channel === 'wecom' ? '企微' : task.channel === 'phone' ? '电话' : task.channel === 'miniapp' ? '小程序' : (task.channel || '企微'),
     cycle: '—',
@@ -4707,8 +4715,8 @@ async function hydratePatientWorkspace(p) {
         created_at: latestReport.created_at,
         updated_at: latestReport.updated_at
       }
-      p.risk = latestReport.risk_level || p.risk
-      p.riskTone = latestReport.risk_level === '高风险' ? 'r' : latestReport.risk_level === '中风险' ? 'o' : latestReport.risk_level === '低风险' ? 'g' : p.riskTone
+      p.risk = riskLevelLabel(latestReport.risk_level || p.risk)
+      p.riskTone = riskToneFromLevel(latestReport.risk_level || p.risk)
       const advice = await apiJson(`/api/b/reports/${latestReport.id}/advice`)
       p.adviceDraft = normalizeAdvicePayload(advice.advice, p.adviceDraft)
       if (latestReport.status === 'finalized' || latestReport.status === 'published' || p.adviceDraft.status === 'archived') {
