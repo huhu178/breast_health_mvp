@@ -21,6 +21,8 @@ ENV/
 # Cursor/Agent 本地配置（不要提交）
 .claude/settings.local.json
 .agents/
+demo/.codex/
+demo/.codex
 demo/.claude/settings.local.json
 demo/.claude/
 
@@ -54,6 +56,11 @@ frontend/vue-app/.cache/
 
 # demo 后端上传文件（体积大/环境相关）
 demo/backend/uploads/
+
+# 本地交付包/临时资料（不要提交）
+demo.zip
+ngrok-*.tgz
+demo/任务安排.md
 
 # 临时文件
 *.tmp
