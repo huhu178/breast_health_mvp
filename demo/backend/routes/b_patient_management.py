@@ -6,6 +6,7 @@ import os
 from flask import Blueprint, request, g, jsonify
 from models import (
     db, BPatient, BHealthRecord, BReport, BFollowUpRecord, 
+    BFollowUpTask, BFollowUpPatientPlan, BFollowUpCheckin,
     CPatient, CHealthRecord, CReport, CConversation
 )
 from utils.response import Response
@@ -343,6 +344,18 @@ def delete_patient(patient_id):
     try:
         if patient_type == 'b_end':
             patient = BPatient.query.get_or_404(patient_id)
+
+            # 新随访工作流会通过 report_id / record_id / patient_id 引用报告和档案。
+            # 删除患者前先清理这些下游数据，避免删除报告时触发外键约束。
+            tasks = BFollowUpTask.query.filter_by(patient_id=patient_id).all()
+            task_ids = [task.id for task in tasks]
+            if task_ids:
+                BFollowUpCheckin.query.filter(BFollowUpCheckin.task_id.in_(task_ids)).delete(synchronize_session=False)
+            BFollowUpCheckin.query.filter_by(patient_id=patient_id).delete(synchronize_session=False)
+            BFollowUpPatientPlan.query.filter_by(patient_id=patient_id).delete(synchronize_session=False)
+            for task in tasks:
+                task.last_message_id = None
+                db.session.delete(task)
             
             # ✅ 先删报告：BReport.record_id 外键指向 b_health_records.id
             # 若先删档案会触发外键约束，导致 commit() 失败 -> 400
