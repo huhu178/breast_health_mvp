@@ -111,8 +111,20 @@
               <button class="btn" type="button" @click="completeTask">标记完成</button>
               <button class="btn" type="button" @click="copyCheckinLink">复制打卡链接</button>
               <button class="btn" type="button" @click="openCheckinLink">打开打卡页</button>
+              <button class="btn" type="button" @click="copyOutboundContent" :disabled="!latestOutboundMessage">复制发送文案</button>
             </div>
-            <div class="link-box">{{ checkinLink }}</div>
+            <div class="send-state-grid">
+              <div class="send-state">
+                <span>发送状态</span>
+                <b :data-status="latestSendStatus">{{ sendStatusText(latestSendStatus) }}</b>
+                <small>{{ latestOutboundMessage?.error_message || latestOutboundMessage?.provider_response?.message || '任务可通过公开打卡链接继续流转' }}</small>
+              </div>
+              <div class="send-state">
+                <span>公开打卡链接</span>
+                <b>{{ checkinLink ? '已生成' : '未生成' }}</b>
+                <small>{{ checkinLink || '发送或创建任务后生成' }}</small>
+              </div>
+            </div>
           </article>
         </section>
 
@@ -133,7 +145,7 @@
                 <div class="row-time">{{ msg.created_at || msg.sent_at || msg.received_at || '-' }}</div>
                 <b>{{ senderText(msg) }}</b>
                 <p>{{ msg.content }}</p>
-                <small>{{ msg.send_status || msg.ai_intent || '' }}</small>
+                <small>{{ sendStatusText(msg.send_status) || msg.ai_intent || '' }}</small>
               </div>
               <div v-if="!messages.length" class="empty">暂无消息记录</div>
             </div>
@@ -256,7 +268,18 @@ const messages = computed(() => selectedTask.value?.messages || [])
 const events = computed(() => selectedTask.value?.events || [])
 const nodeInfo = computed(() => selectedTask.value?.task_payload?.node || {})
 const nodeName = computed(() => nodeInfo.value.name || selectedTask.value?.title || '-')
-const checkinLink = computed(() => selectedTask.value?.task_code ? `${window.location.origin}/followup-checkin/${selectedTask.value.task_code}` : '')
+const checkinLink = computed(() => {
+  const task = selectedTask.value
+  if (!task) return ''
+  const path = task.public_checkin_path || (task.task_code ? `/followup-checkin/${task.task_code}` : '')
+  if (!path) return ''
+  if (/^https?:\/\//.test(path)) return path
+  return `${window.location.origin}${path}`
+})
+const latestOutboundMessage = computed(() => {
+  return [...messages.value].reverse().find(msg => msg.direction === 'outbound') || null
+})
+const latestSendStatus = computed(() => latestOutboundMessage.value?.send_status || selectedTask.value?.status || '')
 
 const filteredTasks = computed(() => tasks.value.filter(task => {
   const text = `${task.task_code || ''} ${task.title || ''} ${task.patient?.name || ''} ${task.patient?.phone || ''}`
@@ -353,11 +376,13 @@ async function runScheduler() {
 async function sendTask() {
   if (!selectedTask.value?.id) return
   try {
-    await apiFetch(`/api/b/followup/tasks/${selectedTask.value.id}/send`, {
+    const task = await apiFetch(`/api/b/followup/tasks/${selectedTask.value.id}/send`, {
       method: 'POST',
       body: JSON.stringify({})
     })
-    showToast('任务提醒已处理')
+    selectedTaskDetail.value = task
+    showToast(task.messages?.some(msg => msg.send_status === 'dry_run') ? '已生成公开打卡链接' : '任务提醒已处理')
+    await loadTaskDetail(selectedTask.value.id)
     await loadDashboard()
   } catch (e) {
     error.value = e?.message || '发送失败'
@@ -442,6 +467,17 @@ async function copyCheckinLink() {
   }
 }
 
+async function copyOutboundContent() {
+  const content = latestOutboundMessage.value?.content || ''
+  if (!content) return
+  try {
+    await navigator.clipboard.writeText(content)
+    showToast('发送文案已复制')
+  } catch (e) {
+    showToast(content)
+  }
+}
+
 function openCheckinLink() {
   if (checkinLink.value) window.open(checkinLink.value, '_blank')
 }
@@ -492,7 +528,19 @@ function noduleText(type) {
 }
 
 function channelText(channel) {
-  return ({ wecom: '企业微信', phone: '电话', miniapp: '小程序' }[channel] || channel || '-')
+  return ({ wecom: '企业微信', phone: '电话', miniapp: '小程序', manual: '公开链接/人工触达', public_checkin: '公开打卡页' }[channel] || channel || '-')
+}
+
+function sendStatusText(status) {
+  return ({
+    created: '已创建',
+    dry_run: '公开链接模式',
+    sent: '已发送',
+    delivered: '已送达',
+    read: '已读',
+    replied: '已回复',
+    failed: '发送失败'
+  }[status] || status || '')
 }
 
 function taskTypeText(type) {
@@ -586,7 +634,14 @@ input,select{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-ra
 .kv-grid span{color:#667085;font-size:12px}
 .kv-grid b{font-size:13px;color:#172033}
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.link-box{margin-top:10px;border:1px solid #e4e7ec;border-radius:8px;padding:9px;color:#667085;font-size:12px;word-break:break-all;background:#f8fafc}
+.send-state-grid{margin-top:10px;display:grid;grid-template-columns:1fr;gap:8px}
+.send-state{border:1px solid #e4e7ec;border-radius:8px;padding:9px;background:#f8fafc;display:grid;gap:3px;min-width:0}
+.send-state span{color:#667085;font-size:12px}
+.send-state b{color:#172033;font-size:13px}
+.send-state b[data-status="dry_run"]{color:#155eef}
+.send-state b[data-status="failed"]{color:#b42318}
+.send-state b[data-status="sent"],.send-state b[data-status="replied"]{color:#027a48}
+.send-state small{color:#667085;font-size:12px;line-height:1.45;word-break:break-all}
 .alert-card{border:1px solid #fedf89;background:#fffaeb;color:#93370d;border-radius:8px;padding:12px;display:grid;gap:5px}
 .timeline-list,.event-list{display:grid;gap:8px;max-height:360px;overflow:auto}
 .message-row,.checkin-row,.event-row{border:1px solid #eef2f7;border-radius:8px;padding:10px;display:grid;gap:4px}

@@ -900,6 +900,8 @@ class BFollowUpTask(db.Model):
         data = {
             'id': self.id,
             'task_code': self.task_code,
+            'public_checkin_path': f'/followup-checkin/{self.task_code}',
+            'public_checkin_api_path': f'/api/followup/checkin/{self.task_code}',
             'patient_id': self.patient_id,
             'record_id': self.record_id,
             'report_id': self.report_id,

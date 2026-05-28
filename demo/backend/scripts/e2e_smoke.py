@@ -182,12 +182,60 @@ def run_smoke(keep=False):
             expected_status=201
         )
         assert task['patient_id'] == patient_id, task
+        assert task['channel'] == 'manual', task
+        assert task['public_checkin_path'].endswith(task['task_code']), task
+        assert task['task_payload']['first_followup_days'] == 7, task
+        assert task['task_payload']['node']['name'] == '报告后首次随访', task
+
+        expect_failure(
+            client.post(f'/api/b/followup/tasks/from-report/{report_id}', json={}),
+            '同一报告禁止重复生成随访任务',
+            expected_status=409
+        )
+
+        report_tasks = expect_success(
+            client.get(f'/api/b/followup/tasks?report_id={report_id}&source=report&per_page=20'),
+            '按报告查询随访任务'
+        )
+        assert report_tasks['total'] == 1, report_tasks
+        assert report_tasks['items'][0]['id'] == task['id'], report_tasks
+
+        sent_task = expect_success(
+            client.post(f"/api/b/followup/tasks/{task['id']}/send", json={}),
+            '发送随访任务并生成公开打卡链接'
+        )
+        assert sent_task['status'] == 'sent', sent_task
+        outbound = sent_task['messages'][-1]
+        assert outbound['send_status'] == 'dry_run', outbound
+        assert task['task_code'] in outbound['content'], outbound
+
+        public_task = expect_success(
+            client.get(f"/api/followup/checkin/{task['task_code']}"),
+            '免登录查看随访打卡任务'
+        )
+        assert public_task['task_code'] == task['task_code'], public_task
+
+        public_result = expect_success(
+            client.post(f"/api/followup/checkin/{task['task_code']}", json={
+                'checkin_type': 'daily_checkin',
+                'content_text': '冒烟测试：今日睡眠正常，饮食清淡，步行20分钟。',
+                'analyze': True,
+            }),
+            '免登录提交随访打卡'
+        )
+        assert public_result['task']['status'] == 'replied', public_result
 
         task_list = expect_success(
             client.get(f'/api/b/followup/tasks?patient_id={patient_id}&per_page=20'),
             '按患者查询随访任务'
         )
         assert task_list['total'] >= 1, task_list
+
+        task_detail = expect_success(client.get(f"/api/b/followup/tasks/{task['id']}"), '查看随访任务消息流水')
+        assert any(m['channel'] == 'public_checkin' for m in task_detail['messages']), task_detail
+
+        checkins = expect_success(client.get(f"/api/b/followup/tasks/{task['id']}/checkins"), '查看患者公开打卡记录')
+        assert len(checkins) >= 1, checkins
         print('[OK] 主流程冒烟测试完成')
 
         if patient_id and not keep:

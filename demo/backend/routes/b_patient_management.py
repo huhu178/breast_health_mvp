@@ -350,6 +350,11 @@ def delete_patient(patient_id):
             tasks = BFollowUpTask.query.filter_by(patient_id=patient_id).all()
             task_ids = [task.id for task in tasks]
             if task_ids:
+                BFollowUpTask.query.filter(BFollowUpTask.id.in_(task_ids)).update(
+                    {BFollowUpTask.last_message_id: None},
+                    synchronize_session=False
+                )
+                db.session.flush()
                 BFollowUpCheckin.query.filter(BFollowUpCheckin.task_id.in_(task_ids)).delete(synchronize_session=False)
             BFollowUpCheckin.query.filter_by(patient_id=patient_id).delete(synchronize_session=False)
             BFollowUpPatientPlan.query.filter_by(patient_id=patient_id).delete(synchronize_session=False)

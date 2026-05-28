@@ -76,6 +76,69 @@ def _task_code():
     return f"FU{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:6].upper()}"
 
 
+def _public_checkin_url(task):
+    """Return the patient-facing check-in URL for a task."""
+    base = (
+        current_app.config.get('FOLLOWUP_PUBLIC_BASE_URL')
+        or current_app.config.get('PUBLIC_BASE_URL')
+        or request.host_url.rstrip('/')
+    )
+    return f"{base}/followup-checkin/{task.task_code}"
+
+
+def _recipient_for_channel(patient, channel):
+    if not patient:
+        return None
+    if channel == 'wecom':
+        return patient.wecom_external_userid or patient.wecom_userid or patient.wechat_id
+    if channel == 'phone':
+        return patient.phone
+    if channel == 'miniapp':
+        return patient.wechat_id
+    return patient.phone or patient.wecom_external_userid or patient.wecom_userid or patient.wechat_id
+
+
+def _append_checkin_link(content, checkin_url):
+    if not checkin_url or checkin_url in content:
+        return content
+    suffix = f"\n\n请通过以下链接完成本次健康打卡：\n{checkin_url}"
+    return f"{content.rstrip()}{suffix}" if content else suffix.strip()
+
+
+def _dispatch_followup_message(task, content):
+    """
+    Dispatch a follow-up message by channel.
+
+    Non-WeCom channels intentionally produce a dry-run record with the public
+    check-in URL, so the task can be completed without enterprise WeChat.
+    """
+    checkin_url = _public_checkin_url(task)
+    content_with_link = _append_checkin_link(content, checkin_url)
+    channel = task.channel or 'manual'
+
+    if channel == 'wecom' and task.channel_recipient:
+        result = wecom_service.send_text(task.channel_recipient, content_with_link)
+    else:
+        result = {
+            'ok': True,
+            'dry_run': True,
+            'status': 'dry_run',
+            'channel': channel,
+            'recipient': task.channel_recipient,
+            'payload': {
+                'channel': channel,
+                'recipient': task.channel_recipient,
+                'content': content_with_link,
+                'checkin_url': checkin_url,
+            },
+            'message': '未启用真实外部触达或缺少接收人，已生成公开打卡链接并保存发送记录',
+        }
+
+    result['content'] = content_with_link
+    result['checkin_url'] = checkin_url
+    return result
+
+
 def _plan_code():
     return f"FP{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:6].upper()}"
 
@@ -273,6 +336,30 @@ def _risk_aliases(value):
     if risk == 'low':
         return ['low', '低危', '低风险']
     return [value] if value else []
+
+
+def _first_followup_days(risk_level):
+    risk = _normalize_risk_for_match(risk_level)
+    if risk == 'high':
+        return 7
+    if risk == 'mid':
+        return 30
+    if risk == 'low':
+        return 90
+    return 30
+
+
+def _open_report_followup_task(report_id):
+    return (
+        BFollowUpTask.query
+        .filter(
+            BFollowUpTask.report_id == report_id,
+            BFollowUpTask.source == 'report',
+            BFollowUpTask.status != 'cancelled'
+        )
+        .order_by(BFollowUpTask.created_at.desc())
+        .first()
+    )
 
 
 def _match_knowledge(patient=None, nodule_type=None, risk_level=None, task_type=None, categories=None, limit=20):
@@ -1235,10 +1322,12 @@ def create_checkin():
 def list_tasks():
     """随访任务列表"""
     patient_id = request.args.get('patient_id', type=int)
+    report_id = request.args.get('report_id', type=int)
     status = request.args.get('status', '').strip()
     search = request.args.get('search', '').strip()
     risk_level = request.args.get('risk_level', '').strip()
     channel = request.args.get('channel', '').strip()
+    source = request.args.get('source', '').strip()
     due = request.args.get('due', '').strip()  # today/overdue
     page = request.args.get('page', 1, type=int)
     per_page = min(request.args.get('per_page', 20, type=int), 100)
@@ -1246,12 +1335,16 @@ def list_tasks():
     query = BFollowUpTask.query.join(BPatient)
     if patient_id:
         query = query.filter(BFollowUpTask.patient_id == patient_id)
+    if report_id:
+        query = query.filter(BFollowUpTask.report_id == report_id)
     if status and status != 'all':
         query = query.filter(BFollowUpTask.status == status)
     if risk_level and risk_level != 'all':
         query = query.filter(BFollowUpTask.risk_level == risk_level)
     if channel and channel != 'all':
         query = query.filter(BFollowUpTask.channel == channel)
+    if source and source != 'all':
+        query = query.filter(BFollowUpTask.source == source)
     if search:
         query = query.filter(db.or_(
             BPatient.name.like(f'%{search}%'),
@@ -1356,8 +1449,8 @@ def create_task():
         plan_day=data.get('plan_day') or 1,
         due_at=due_at,
         scheduled_send_at=scheduled_send_at,
-        channel=data.get('channel') or 'wecom',
-        channel_recipient=data.get('channel_recipient') or patient.wechat_id,
+        channel=data.get('channel') or 'manual',
+        channel_recipient=data.get('channel_recipient') or _recipient_for_channel(patient, data.get('channel') or 'manual'),
         ai_enabled=data.get('ai_enabled', True),
         task_payload=data.get('task_payload') or {}
     )
@@ -1371,17 +1464,36 @@ def create_task():
 @b_followup_bp.route('/tasks/from-report/<int:report_id>', methods=['POST'])
 @login_required
 def create_task_from_report(report_id):
-    """从报告生成随访任务"""
+    """手动从已审核报告生成首次随访任务。"""
     report = BReport.query.get(report_id)
     if not report:
         return Response.error('报告不存在', 404)
+    if report.status != 'finalized':
+        return Response.error('报告尚未审核通过，不能生成报告后随访任务', 409)
+
+    existing = _open_report_followup_task(report.id)
+    if existing:
+        return Response.error('该报告已存在随访任务，请勿重复生成', 409)
+
     patient = BPatient.query.get(report.patient_id)
     if not patient:
         return Response.error('患者不存在', 404)
 
-    risk = report.risk_level or ''
-    days = 90 if risk in ('高危', '高风险', 'high') else 180 if risk in ('中危', '中风险', 'mid') else 365
+    risk = report.risk_level or '未评估'
+    days = _first_followup_days(risk)
     due_at = datetime.now() + timedelta(days=days)
+    risk_key = _normalize_risk_for_match(risk)
+    node = {
+        'name': '报告后首次随访',
+        'task_type': 'daily_checkin',
+        'patient_action': 'reply_text',
+        'ai_action': 'reply',
+        'message_template': '您好，您的健康管理报告已完成审核。请完成本次报告后随访打卡，健康管理师会根据您的反馈继续跟进。',
+        'checkin_schema': {
+            'fields': ['睡眠', '饮食', '运动', '情绪', '症状变化', '备注'],
+            'source': 'report_first_followup'
+        }
+    }
     task = BFollowUpTask(
         task_code=_task_code(),
         patient_id=patient.id,
@@ -1389,19 +1501,27 @@ def create_task_from_report(report_id):
         report_id=report.id,
         manager_id=g.user_id,
         status='pending',
-        priority='high' if days == 90 else 'normal',
+        priority='high' if risk_key == 'high' else 'normal',
         risk_level=report.risk_level,
         nodule_type=patient.nodule_type,
         source='report',
-        title=f'{patient.name}报告后随访',
-        plan_name='报告审核后分层随访计划',
+        title=f'{patient.name}报告后首次随访',
+        plan_name='报告审核后首次随访',
         plan_day=1,
         due_at=due_at.replace(hour=9, minute=0, second=0, microsecond=0),
         scheduled_send_at=datetime.now(),
-        channel='wecom',
-        channel_recipient=patient.wechat_id,
+        channel='manual',
+        channel_recipient=_recipient_for_channel(patient, 'manual'),
         ai_enabled=True,
-        task_payload={'report_summary': report.report_summary}
+        task_payload={
+            'report_id': report.id,
+            'report_code': report.report_code,
+            'report_summary': report.report_summary,
+            'risk_level': report.risk_level,
+            'first_followup_days': days,
+            'rule': 'manual_report_first_followup',
+            'node': node,
+        }
     )
     db.session.add(task)
     db.session.flush()
@@ -1413,7 +1533,7 @@ def create_task_from_report(report_id):
 @b_followup_bp.route('/tasks/<int:task_id>/send', methods=['POST'])
 @login_required
 def send_task(task_id):
-    """生成AI话术并通过企微发送/记录"""
+    """生成AI话术并按渠道发送/记录；无企微时生成公开打卡链接。"""
     task = BFollowUpTask.query.get_or_404(task_id)
     data = request.json or {}
     content = (data.get('content') or '').strip()
@@ -1422,8 +1542,9 @@ def send_task(task_id):
         ai_result = followup_ai_service.build_outbound_message(task)
         content = ai_result.content
 
-    send_result = wecom_service.send_text(task.channel_recipient, content)
+    send_result = _dispatch_followup_message(task, content)
     status = send_result.get('status') or ('sent' if send_result.get('ok') else 'failed')
+    content = send_result.get('content') or content
     now = datetime.now()
     message = BFollowUpMessage(
         task_id=task.id,
@@ -1449,6 +1570,8 @@ def send_task(task_id):
     old_status = task.status
     task.last_message_id = message.id
     task.ai_summary = ai_result.summary if ai_result else '人工发送随访消息'
+    if send_result.get('dry_run') and send_result.get('checkin_url'):
+        task.ai_summary = f"{task.ai_summary}；公开打卡链接已生成"
     task.status = 'sent' if send_result.get('ok') else 'failed'
     task.updated_at = now
     _event(

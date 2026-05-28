@@ -3,7 +3,9 @@
 """
 from flask import Blueprint, request
 
-from models import db, BFollowUpTask, BFollowUpCheckin, BFollowUpEvent
+from datetime import datetime
+
+from models import db, BFollowUpTask, BFollowUpCheckin, BFollowUpEvent, BFollowUpMessage
 from services.followup_checkin_service import followup_checkin_service
 from services.followup_ai_service import followup_ai_service
 from utils.response import Response
@@ -13,7 +15,7 @@ public_followup_bp = Blueprint('public_followup', __name__, url_prefix='/api/fol
 
 
 def _task_public_payload(task):
-    node = (task.task_payload or {}).get('node') if isinstance(task.task_payload, dict) else {}
+    node = ((task.task_payload or {}).get('node') if isinstance(task.task_payload, dict) else {}) or {}
     patient = task.patient
     return {
         'task_code': task.task_code,
@@ -26,6 +28,7 @@ def _task_public_payload(task):
             'name': patient.name if patient else '',
             'gender': patient.gender if patient else '',
             'age': patient.age if patient else None,
+            'phone': patient.phone if patient else '',
             'nodule_type': patient.nodule_type if patient else '',
         },
         'node': {
@@ -54,7 +57,7 @@ def submit_checkin(task_code):
         return Response.error('随访任务不存在或链接无效', 404)
 
     data = request.json or {}
-    node = (task.task_payload or {}).get('node') if isinstance(task.task_payload, dict) else {}
+    node = ((task.task_payload or {}).get('node') if isinstance(task.task_payload, dict) else {}) or {}
     checkin_type = data.get('checkin_type') or node.get('task_type') or 'general'
     image_urls = data.get('image_urls') or []
     content_text = data.get('content_text') or ''
@@ -88,9 +91,34 @@ def submit_checkin(task_code):
         abnormal_reason=abnormal_reason
     )
     db.session.add(checkin)
+    db.session.flush()
+
+    inbound = BFollowUpMessage(
+        task_id=task.id,
+        patient_id=task.patient_id,
+        direction='inbound',
+        sender_type='patient',
+        channel='public_checkin',
+        content_type='text',
+        content=content_text or '患者已提交随访打卡',
+        ai_intent=ai_result.get('intent') if isinstance(ai_result, dict) else None,
+        risk_signal=ai_result.get('risk_signal') if isinstance(ai_result, dict) else None,
+        requires_manual_review=abnormal_flag,
+        send_status='replied',
+        provider_payload={
+            'source': 'public_checkin',
+            'checkin_id': checkin.id,
+            'image_urls': image_urls,
+            'structured_data': structured_data,
+        },
+        received_at=datetime.now(),
+    )
+    db.session.add(inbound)
+    db.session.flush()
 
     old_status = task.status
     task.status = 'manual_processing' if abnormal_flag else 'replied'
+    task.last_message_id = inbound.id
     task.abnormal_flag = abnormal_flag or task.abnormal_flag
     task.abnormal_reason = abnormal_reason or task.abnormal_reason
     task.ai_summary = ai_result.get('summary') or task.ai_summary
