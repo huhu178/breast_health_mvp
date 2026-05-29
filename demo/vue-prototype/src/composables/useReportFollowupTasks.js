@@ -6,8 +6,8 @@ export function useReportFollowupTasks({
   apiPostJson,
   followPatientId,
   followTasks,
-  getHydratePatientWorkspace,
   loadFollowupTasks,
+  onAuditFollowupTaskCreated,
   queue,
   rpAuditId,
   selectTask,
@@ -102,9 +102,7 @@ export function useReportFollowupTasks({
     try {
       const task = await createReportFollowupTask(rpAuditId.value)
       toast?.show('已创建报告后首次随访任务')
-      const patient = queue.value.find(p => String(p._apiId || p.id) === String(task.patient_id))
-      const hydratePatientWorkspace = getHydratePatientWorkspace?.()
-      if (patient && hydratePatientWorkspace) await hydratePatientWorkspace(patient)
+      await onAuditFollowupTaskCreated?.value?.(task)
     } catch (e) {
       if (e.status === 409) {
         toast?.show('该报告已存在随访任务')

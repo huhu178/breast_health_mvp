@@ -969,7 +969,7 @@ const activePatient = computed(() => {
 })
 const defaultOwner = computed(() => scenario.value.defaultOwner)
 const rpAuditId = ref('')
-let hydratePatientWorkspaceHandler = null
+const onAuditFollowupTaskCreated = ref(null)
 const {
   auditFollowupTask,
   canCreateReportFollowup,
@@ -988,8 +988,8 @@ const {
   apiPostJson,
   followPatientId,
   followTasks,
-  getHydratePatientWorkspace: () => hydratePatientWorkspaceHandler,
   loadFollowupTasks,
+  onAuditFollowupTaskCreated,
   queue,
   rpAuditId,
   selectTask,
@@ -1119,7 +1119,10 @@ const {
   toast,
   unmarkReportGenerating,
 })
-hydratePatientWorkspaceHandler = hydratePatientWorkspace
+onAuditFollowupTaskCreated.value = async (task) => {
+  const patient = queue.value.find(p => String(p._apiId || p.id) === String(task.patient_id))
+  if (patient) await hydratePatientWorkspace(patient)
+}
 const {
   flowNodes,
   nextHintV2,
