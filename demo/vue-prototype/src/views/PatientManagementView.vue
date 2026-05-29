@@ -289,6 +289,7 @@ import { useFollowupContent } from '../composables/useFollowupContent'
 import { useFollowupDispatch } from '../composables/useFollowupDispatch'
 import { useFollowupPlanning } from '../composables/useFollowupPlanning'
 import { useFollowupTasks } from '../composables/useFollowupTasks'
+import { useFollowupTrackingView } from '../composables/useFollowupTrackingView'
 import { usePatientDisplay } from '../composables/usePatientDisplay'
 import { usePatientManagementNavigation } from '../composables/usePatientManagementNavigation'
 import { usePatientQueue } from '../composables/usePatientQueue'
@@ -309,6 +310,7 @@ import {
   usePatientWorkspace
 } from '../composables/usePatientWorkspace'
 import { useWecomBinding } from '../composables/useWecomBinding'
+import { apiJson, apiPostJson } from '../utils/apiClient'
 
 const router = useRouter()
 const route = useRoute()
@@ -928,41 +930,22 @@ const {
   unmarkGenerating: unmarkReportGenerating,
 } = useReportGeneration({ apiJson })
 
-const followFilteredQueue = computed(() => {
-  const taskPatientIds = new Set((followTasks.value || []).map((t) => String(t.patientId)))
-  return queue.value.filter((p) => statusKey(p) === 'follow' || taskPatientIds.has(String(p.id))).filter(p => {
-    const s = followSearch.value.trim().toLowerCase()
-    if (s && !p.name.toLowerCase().includes(s) && !p.phoneMasked.includes(s)) return false
-    if (followRiskFilter.value && p.risk !== followRiskFilter.value) return false
-    if (followStageFilter.value && statusKey(p) !== followStageFilter.value) return false
-    return true
-  })
+const {
+  followFilteredQueue,
+  followTrackingStats,
+} = useFollowupTrackingView({
+  activeTaskId,
+  followPatient,
+  followPatientId,
+  followRiskFilter,
+  followSearch,
+  followStageFilter,
+  followTasks,
+  planDay,
+  queue,
+  statusKey,
+  trackingTasksForPatient,
 })
-
-const followTrackingStats = computed(() => {
-  const list = queue.value || []
-  const followList = list.filter((p) => statusKey(p) === 'follow')
-  return {
-    runningPatients: followList.length,
-    highRisk: followList.filter((p) => p.riskTone === 'r').length,
-    midRisk: followList.filter((p) => p.riskTone === 'o').length,
-    lowRisk: followList.filter((p) => p.riskTone === 'g').length,
-    unconfigured: followList.filter((p) => !p.planTask || !p.planTask.day).length,
-    configured: followList.filter((p) => p.planTask && p.planTask.day).length,
-  }
-})
-
-watch(
-  () => followPatientId.value,
-  () => {
-    const d = followPatient.value?.planTask?.day
-    if (typeof d === 'string' && d.startsWith('day')) planDay.value = d
-    const firstTask = trackingTasksForPatient.value[0]
-    if (firstTask && !trackingTasksForPatient.value.some((t) => t.id === activeTaskId.value)) {
-      activeTaskId.value = firstTask.id
-    }
-  }
-)
 
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
@@ -1222,26 +1205,6 @@ function reportDbStatusLabel(status) {
     archived: '已归档'
   }
   return map[status] || status || '未生成'
-}
-
-async function apiJson(url, options = {}) {
-  const res = await fetch(url, { credentials: 'include', ...options })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok || data.success === false) {
-    const err = new Error(data.message || `请求失败：${res.status}`)
-    err.status = res.status
-    err.payload = data
-    throw err
-  }
-  return data.data ?? data
-}
-
-async function apiPostJson(url, payload = {}) {
-  return apiJson(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
 }
 
 watch(

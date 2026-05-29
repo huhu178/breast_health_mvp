@@ -310,6 +310,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { apiJson, apiPostJson } from '../utils/apiClient'
 
 const templates = ref([])
 const knowledgeItems = ref([])
@@ -426,22 +427,8 @@ const filteredKnowledgeItems = computed(() => {
   })
 })
 
-async function apiJson(url, options = {}) {
-  const res = await fetch(url, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok || data.success === false) throw new Error(data.message || `请求失败：${res.status}`)
-  return data.data ?? data
-}
-
 async function postJson(url, payload) {
-  return apiJson(url, { method: 'POST', body: JSON.stringify(payload) })
+  return apiPostJson(url, payload)
 }
 
 function showToast(text) {
