@@ -39,9 +39,22 @@ def run_workflow_smoke(frontend_url: str, screenshot_dir: Path | None) -> None:
             expect(page.get_by_role("heading", name="随访任务模板")).to_be_visible(timeout=10000)
             expect(page.get_by_text("知识库与模板编辑").first).to_be_visible(timeout=10000)
             expect(page.get_by_text("任务节点").first).to_be_visible(timeout=10000)
+            expect(page.get_by_role("heading", name="知识库", exact=True)).to_be_visible(timeout=10000)
+            expect(page.get_by_role("heading", name="AI规则")).to_be_visible(timeout=10000)
+
+            templates = page.locator(".template-select")
+            if templates.count() > 1:
+                templates.nth(1).click()
+                expect(templates.nth(1)).to_be_visible(timeout=10000)
 
             page.get_by_role("button", name="新建随访模板").click()
             expect(page.locator("input[placeholder*='乳腺结节30天随访任务']").first).to_be_visible(timeout=10000)
+
+            edit_node = page.get_by_role("button", name="编辑").first
+            if edit_node.count():
+                edit_node.click()
+                expect(page.get_by_role("heading", name="编辑任务节点")).to_be_visible(timeout=10000)
+                page.get_by_role("button", name="取消").click()
 
             add_node = page.get_by_role("button", name="添加节点")
             if add_node.is_enabled():
@@ -49,11 +62,28 @@ def run_workflow_smoke(frontend_url: str, screenshot_dir: Path | None) -> None:
                 expect(page.get_by_role("heading", name="新增任务节点")).to_be_visible(timeout=10000)
                 page.get_by_role("button", name="取消").click()
 
-            page.get_by_role("button", name="新增知识").click()
+            search = page.locator("input[placeholder*='搜索知识标题']").first
+            search.fill("饮食")
+            page.wait_for_timeout(300)
+            search.fill("")
+
+            existing_knowledge = page.locator(".knowledge-item").first
+            if existing_knowledge.count():
+                existing_knowledge.click()
+                expect(page.get_by_role("heading", name="编辑知识")).to_be_visible(timeout=10000)
+                page.get_by_role("button", name="取消").click()
+
+            page.get_by_role("button", name="新增知识").first.click()
             expect(page.get_by_role("heading", name="新增知识")).to_be_visible(timeout=10000)
             page.get_by_role("button", name="取消").click()
 
-            page.get_by_role("button", name="新增AI规则").click()
+            existing_rule = page.locator(".rule-item").first
+            if existing_rule.count():
+                existing_rule.click()
+                expect(page.get_by_role("heading", name="编辑AI规则")).to_be_visible(timeout=10000)
+                page.get_by_role("button", name="取消").click()
+
+            page.get_by_role("button", name="新增AI规则").first.click()
             expect(page.get_by_role("heading", name="新增AI规则")).to_be_visible(timeout=10000)
             page.get_by_role("button", name="取消").click()
 

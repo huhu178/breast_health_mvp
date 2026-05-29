@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:composables": "node scripts/composable-smoke.mjs",
+    "test:composables": "node scripts/api-client-smoke.mjs && node scripts/composable-smoke.mjs",
     "smoke": "npm run build && npm run test:composables && node scripts/prototype-smoke.mjs",
     "smoke:ui": "python3 scripts/followup-ui-smoke.py",
-    "smoke:workflow-ui": "python3 scripts/workflow-ui-smoke.py"
+    "smoke:workflow-ui": "python3 scripts/workflow-ui-smoke.py",
+    "smoke:all-ui": "python3 scripts/all-ui-smoke.py"
   },
   "dependencies": {
     "vue": "^3.5.32",

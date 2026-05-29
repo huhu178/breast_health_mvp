@@ -150,6 +150,67 @@
               <div v-if="!sortedNodes.length" class="empty">还没有节点，先添加知识推送、每日打卡、饮食图片识别、运动提醒或心理提醒。</div>
             </div>
           </section>
+
+          <section class="editor-section">
+            <div class="section-head compact-head">
+              <div>
+                <h3>知识库</h3>
+                <p>维护可复用的话术、知识卡和任务素材</p>
+              </div>
+              <button class="btn" type="button" @click="newKnowledge">新增知识</button>
+            </div>
+            <div class="side-filters">
+              <input v-model.trim="knowledgeFilters.search" placeholder="搜索知识标题 / 内容 / 关键词">
+              <div class="filter-row">
+                <select v-model="knowledgeFilters.category">
+                  <option value="">全部分类</option>
+                  <option v-for="item in knowledgeCategoryOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+                </select>
+                <select v-model="knowledgeFilters.task_type">
+                  <option value="">全部任务类型</option>
+                  <option v-for="item in taskTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="knowledge-list">
+              <button
+                v-for="item in filteredKnowledgeItems"
+                :key="item.id"
+                class="knowledge-item"
+                type="button"
+                @click="editKnowledge(item)"
+              >
+                <b>{{ item.title }}</b>
+                <span>{{ categoryText(item.category) }} · {{ taskTypeText(item.task_type) }}</span>
+                <p>{{ item.content }}</p>
+              </button>
+              <div v-if="!filteredKnowledgeItems.length" class="empty compact-empty">暂无匹配知识</div>
+            </div>
+          </section>
+
+          <section class="editor-section">
+            <div class="section-head compact-head">
+              <div>
+                <h3>AI规则</h3>
+                <p>配置图片识别、饮食点评、未回复和重点关注规则</p>
+              </div>
+              <button class="btn" type="button" @click="newRule">新增AI规则</button>
+            </div>
+            <div class="rule-list">
+              <button
+                v-for="rule in aiRules"
+                :key="rule.id"
+                class="rule-item"
+                type="button"
+                @click="editRule(rule)"
+              >
+                <b>{{ rule.name }}</b>
+                <span>{{ ruleTypeText(rule.rule_type) }} · {{ taskTypeText(rule.task_type) }} · {{ actionText(rule.action) }}</span>
+                <p>{{ rule.response_template || rule.trigger_keywords || '未配置回复模板' }}</p>
+              </button>
+              <div v-if="!aiRules.length" class="empty compact-empty">暂无 AI 规则</div>
+            </div>
+          </section>
         </div>
       </main>
     </section>
@@ -544,7 +605,9 @@ textarea{resize:vertical;line-height:1.6}
 .node-tags span{border:1px solid #d0d5dd;border-radius:999px;padding:4px 8px;color:#475467;font-size:12px;background:#fff}
 .empty{border:1px dashed #d0d5dd;border-radius:8px;padding:20px;color:#667085;text-align:center}
 .side-filters{display:grid;gap:8px;margin-bottom:10px}
+.filter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .knowledge-list{max-height:340px;overflow:auto}
+.knowledge-item p{margin:0;color:#667085;font-size:12px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rule-item{border:1px solid #e4e7ec;border-radius:8px;padding:10px;display:grid;gap:5px;background:#fff;text-align:left;cursor:pointer}
 .rule-item:hover{border-color:#155eef;background:#eff6ff}
 .rule-item p{margin:0;color:#667085;font-size:12px;line-height:1.5}
