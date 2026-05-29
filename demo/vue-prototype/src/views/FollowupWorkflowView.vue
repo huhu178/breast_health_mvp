@@ -11,6 +11,8 @@
         <button class="btn" type="button" :disabled="importingExcel" @click="excelInputRef?.click()">
           {{ importingExcel ? '导入中...' : '导入Excel模板' }}
         </button>
+        <button class="btn" type="button" @click="newKnowledge">新增知识</button>
+        <button class="btn" type="button" @click="newRule">新增AI规则</button>
         <button class="primary" type="button" @click="createTemplate">新建随访模板</button>
       </div>
     </header>
