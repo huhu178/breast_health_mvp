@@ -290,6 +290,7 @@ import { useFollowupDispatch } from '../composables/useFollowupDispatch'
 import { useFollowupPlanning } from '../composables/useFollowupPlanning'
 import { useFollowupTasks } from '../composables/useFollowupTasks'
 import { usePatientDisplay } from '../composables/usePatientDisplay'
+import { usePatientManagementNavigation } from '../composables/usePatientManagementNavigation'
 import { usePatientQueue } from '../composables/usePatientQueue'
 import { usePatientStageActions } from '../composables/usePatientStageActions'
 import {
@@ -428,7 +429,6 @@ const followRiskFilter = ref('')
 const followStageFilter = ref('')
 const patientEditMode = ref(false)
 const activeAssistant = ref('hlp')
-let previewTasksFromPatientHandler = null
 
 const {
   activePlanNodePreviews,
@@ -499,7 +499,6 @@ const {
   apiJson,
   followPatientId,
   getDraft: () => draft.value,
-  getPreviewTasksFromPatient: () => previewTasksFromPatientHandler,
   noduleTypeLabel,
   planDay,
   planPatients,
@@ -518,7 +517,6 @@ const {
   trackingTaskGroups,
   trackingTasksForPatient,
 } = usePatientTracking({ followPatient, followTasks, activeTaskId, planDay })
-previewTasksFromPatientHandler = previewTasksFromPatient
 
 const latestRecordLabel = computed(() => {
   const records = activePatient.value?.workspaceRecords || []
@@ -902,6 +900,27 @@ const {
   toast,
 })
 const {
+  backToQueue,
+  goRecord,
+  midTitle,
+  openQueueFollowupPlan,
+  setStage,
+} = usePatientManagementNavigation({
+  activePatientId,
+  activeStage,
+  filteredQueue,
+  followPatientId,
+  isCheckupScenario,
+  loadReports,
+  planPatients,
+  queue,
+  recordPatient,
+  rpLoaded,
+  setSubTab,
+  statusKey,
+  subTab,
+})
+const {
   generateReportJob,
   isGenerating: isReportGenerating,
   markGenerating: markReportGenerating,
@@ -945,13 +964,42 @@ watch(
   }
 )
 
-let reportFollowupTasksApi = null
+const activePatient = computed(() => {
+  return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
+})
+const defaultOwner = computed(() => scenario.value.defaultOwner)
+const rpAuditId = ref('')
 let hydratePatientWorkspaceHandler = null
+const {
+  auditFollowupTask,
+  canCreateReportFollowup,
+  copyTaskCheckinLink,
+  createAuditFollowupTask,
+  createReportFollowupTask,
+  existingReportFollowupTask,
+  isCreatingReportFollowup,
+  loadReportFollowupTask,
+  openReportFollowupTask,
+  rememberReportFollowupTasks,
+  reportFollowupCreatingId,
+} = useReportFollowupTasks({
+  activePatient,
+  apiJson,
+  apiPostJson,
+  followPatientId,
+  followTasks,
+  getHydratePatientWorkspace: () => hydratePatientWorkspaceHandler,
+  loadFollowupTasks,
+  queue,
+  rpAuditId,
+  selectTask,
+  setSubTab,
+  toast,
+})
 const {
   closeAudit,
   finalizeReport,
   openReportRowPrimary,
-  rpAuditId,
   rpAuditImagingAdvice,
   rpAuditOverallAdvice,
   rpAuditPara1,
@@ -968,7 +1016,7 @@ const {
   generateReportJob,
   goRecord,
   isReportGenerating,
-  loadReportFollowupTask: (...args) => reportFollowupTasksApi?.loadReportFollowupTask(...args),
+  loadReportFollowupTask,
   loadReports,
   makeReportFlow,
   markReportGenerating,
@@ -976,6 +1024,7 @@ const {
   queue,
   reportTerms,
   rpActiveId,
+  rpAuditId,
   rpList,
   rpLoaded,
   toast,
@@ -1013,36 +1062,6 @@ function lastTouchLabel(p) {
   return at ? `最近：${at}` : '最近：—'
 }
 
-const activePatient = computed(() => {
-  return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
-})
-const defaultOwner = computed(() => scenario.value.defaultOwner)
-const {
-  auditFollowupTask,
-  canCreateReportFollowup,
-  copyTaskCheckinLink,
-  createAuditFollowupTask,
-  createReportFollowupTask,
-  existingReportFollowupTask,
-  isCreatingReportFollowup,
-  loadReportFollowupTask,
-  rememberReportFollowupTasks,
-  reportFollowupCreatingId,
-} = useReportFollowupTasks({
-  activePatient,
-  apiJson,
-  apiPostJson,
-  followPatientId,
-  followTasks,
-  getHydratePatientWorkspace: () => hydratePatientWorkspaceHandler,
-  loadFollowupTasks,
-  queue,
-  rpAuditId,
-  selectTask,
-  setSubTab,
-  toast,
-})
-reportFollowupTasksApi = { loadReportFollowupTask }
 const {
   activeAdvice,
   addManagementLog,
@@ -1222,11 +1241,6 @@ async function apiPostJson(url, payload = {}) {
   })
 }
 
-function openQueueFollowupPlan(p) {
-  if (p?.id) activePatientId.value = p.id
-  setSubTab('followup-plan')
-}
-
 watch(
   () => activePatientId.value,
   () => {
@@ -1237,92 +1251,7 @@ watch(
   { immediate: true }
 )
 
-/**
- * @isdoc
- * @description 根据当前子页(tab)强制绑定患者池(stage)
- * @param {string} tab
- * @returns {'all'|'gen'|'review'|'plan'|'follow'}
- */
-function stageForTab(tab) {
-  if (tab === 'followup-plan') return 'plan'
-  if (tab === 'follow') return 'follow'
-  if (tab === 'review') return 'review'
-  if (tab === 'record') return 'gen'
-  return 'all'
-}
-
-watch(
-  () => subTab.value,
-  (tab) => {
-    // 强制让每个子页只看自己的患者池
-    const stage = stageForTab(tab)
-    activeStage.value = stage
-
-    const list = stage === 'plan'
-      ? planPatients.value
-      : stage === 'follow'
-        ? queue.value.filter((p) => statusKey(p) === 'follow')
-        : stage === 'review'
-          ? queue.value.filter((p) => statusKey(p) === 'review')
-          : stage === 'gen'
-            ? queue.value.filter((p) => statusKey(p) === 'gen')
-            : queue.value
-
-    if (list.length && !list.some((p) => p.id === activePatientId.value)) {
-      activePatientId.value = list[0].id
-    }
-    if (tab === 'follow' && list.length && !list.some((p) => p.id === followPatientId.value)) {
-      followPatientId.value = list[0].id
-    }
-    if (tab === 'review') {
-      rpLoaded.value = false
-      loadReports()
-    }
-  },
-  { immediate: true }
-)
-
-const midTitle = computed(() => {
-  const map = {
-    queue: '闭环处置工作台',
-    record: '患者建档',
-    review: isCheckupScenario.value ? '体检报告确认' : '健康报告审核',
-    follow: '任务执行'
-  }
-  return map[subTab.value] || '患者管理'
-})
-
-/**
- * @description 设置当前阶段筛选，并保证选中患者存在
- * @param {string} key 阶段key
- */
-function setStage(key) {
-  activeStage.value = key
-  const list = filteredQueue.value
-  if (list.length && !list.some((p) => p.id === activePatientId.value)) {
-    activePatientId.value = list[0].id
-  }
-  if (subTab.value !== 'queue') setSubTab('queue')
-}
-
 // countBy 已废弃：状态统计改为 statusKey 映射
-
-/**
- * @description 跳转到「患者建档」页面
- */
-function goRecord(p = null) {
-  recordPatient.value = p?.id ? p : null
-  if (p?.id) activePatientId.value = p.id
-  setSubTab('record')
-}
-
-/**
- * @isdoc
- * @description 返回患者队列（用于患者建档页头返回按钮）
- */
-function backToQueue() {
-  setSubTab('queue')
-}
 </script>
 
 <style scoped>

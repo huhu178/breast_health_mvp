@@ -2,14 +2,14 @@ import { computed, ref, watch } from 'vue'
 import {
   aiActionLabel,
   patientActionLabel,
-} from './usePatientTracking'
+  previewTasksFromPatient,
+} from './usePatientTracking.js'
 
 export function useFollowupTasks({
   activePatientId,
   apiJson,
   followPatientId,
   getDraft,
-  getPreviewTasksFromPatient,
   noduleTypeLabel,
   planDay,
   planPatients,
@@ -167,9 +167,7 @@ export function useFollowupTasks({
       if (!list.length) return
       if (!list.some((p) => p.id === activePatientId.value)) activePatientId.value = list[0].id
       if (!(followTasks.value || []).length) {
-        const previewTasksFromPatient = getPreviewTasksFromPatient()
-        if (!previewTasksFromPatient) return
-        const seeded = list.filter((p) => p?.planTask).slice(0, 8).flatMap((p) => previewTasksFromPatient(p))
+        const seeded = list.filter((p) => p?.planTask).slice(0, 8).flatMap((p) => previewTasksFromPatient(p, planDay.value))
         followTasks.value = seeded
         if (seeded[0]) selectTask(seeded[0].id)
       }

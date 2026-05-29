@@ -1,40 +1,27 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '../views/LoginView.vue'
-import AnalyticsView from '../views/AnalyticsView.vue'
-import WorkbenchView from '../views/WorkbenchView.vue'
-import QueueView from '../views/QueueView.vue'
-import ReportView from '../views/ReportView.vue'
-import ReviewView from '../views/ReviewView.vue'
-import PushView from '../views/PushView.vue'
-import FollowupView from '../views/FollowupView.vue'
-import FollowupCheckinView from '../views/FollowupCheckinView.vue'
-import FollowupWorkflowView from '../views/FollowupWorkflowView.vue'
-import PatientManagementView from '../views/PatientManagementView.vue'
-import RecordView from '../views/RecordView.vue'
-import RwsView from '../views/RwsView.vue'
-import ScenarioWorkspaceView from '../views/ScenarioWorkspaceView.vue'
 
 const auth = { requiresAuth: true }
+const view = (name) => () => import(`../views/${name}.vue`)
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', redirect: '/login' },
-    { path: '/login', name: 'login', component: LoginView },
-    { path: '/followup-checkin/:taskCode', name: 'followup-checkin', component: FollowupCheckinView },
-    { path: '/analytics', name: 'analytics', component: AnalyticsView, meta: auth },
-    { path: '/workbench', name: 'workbench', component: WorkbenchView, meta: auth },
-    { path: '/queue', name: 'queue', component: QueueView, meta: auth },      // 兼容旧入口（不在主导航展示）
-    { path: '/report', name: 'report', component: ReportView, meta: auth },   // 兼容旧入口（不在主导航展示）
-    { path: '/review', name: 'review', component: ReviewView, meta: auth },   // 兼容旧入口（不在主导航展示）
-    { path: '/push', name: 'push', component: PushView, meta: auth },         // 兼容旧入口（不在主导航展示）
-    { path: '/followup', name: 'followup', component: FollowupView, meta: auth }, // 兼容旧入口（不在主导航展示）
-    { path: '/followup-workflow', name: 'followup-workflow', component: FollowupWorkflowView, meta: auth },
+    { path: '/login', name: 'login', component: view('LoginView') },
+    { path: '/followup-checkin/:taskCode', name: 'followup-checkin', component: view('FollowupCheckinView') },
+    { path: '/analytics', name: 'analytics', component: view('AnalyticsView'), meta: auth },
+    { path: '/workbench', name: 'workbench', component: view('WorkbenchView'), meta: auth },
+    { path: '/queue', name: 'queue', component: view('QueueView'), meta: auth },      // 兼容旧入口（不在主导航展示）
+    { path: '/report', name: 'report', component: view('ReportView'), meta: auth },   // 兼容旧入口（不在主导航展示）
+    { path: '/review', name: 'review', component: view('ReviewView'), meta: auth },   // 兼容旧入口（不在主导航展示）
+    { path: '/push', name: 'push', component: view('PushView'), meta: auth },         // 兼容旧入口（不在主导航展示）
+    { path: '/followup', name: 'followup', component: view('FollowupView'), meta: auth }, // 兼容旧入口（不在主导航展示）
+    { path: '/followup-workflow', name: 'followup-workflow', component: view('FollowupWorkflowView'), meta: auth },
     { path: '/stats', redirect: '/analytics' },      // 已合并到运营看板
-    { path: '/patient', name: 'patient', component: PatientManagementView, meta: auth },
-    { path: '/record', name: 'record', component: RecordView, meta: auth },
-    { path: '/rws', name: 'rws', component: RwsView, meta: auth },
-    { path: '/scenario-workspace', name: 'scenario-workspace', component: ScenarioWorkspaceView, meta: auth }
+    { path: '/patient', name: 'patient', component: view('PatientManagementView'), meta: auth },
+    { path: '/record', name: 'record', component: view('RecordView'), meta: auth },
+    { path: '/rws', name: 'rws', component: view('RwsView'), meta: auth },
+    { path: '/scenario-workspace', name: 'scenario-workspace', component: view('ScenarioWorkspaceView'), meta: auth }
   ]
 })
 

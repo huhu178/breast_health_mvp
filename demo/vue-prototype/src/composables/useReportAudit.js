@@ -14,12 +14,13 @@ export function useReportAudit({
   queue,
   reportTerms,
   rpActiveId,
+  rpAuditId: externalRpAuditId,
   rpList,
   rpLoaded,
   toast,
   unmarkReportGenerating,
 }) {
-  const rpAuditId = ref('')
+  const rpAuditId = externalRpAuditId || ref('')
   const rpAuditPara1 = ref('')
   const rpAuditPara2 = ref('')
   const rpAuditImagingAdvice = ref('')

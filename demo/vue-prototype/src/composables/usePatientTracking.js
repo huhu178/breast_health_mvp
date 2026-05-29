@@ -120,46 +120,50 @@ function trackingEventTitle(action) {
   return map[text] || text.replace(/_/g, ' ') || '任务状态更新'
 }
 
+export function previewTasksFromPatient(patient, planDay = 'day1') {
+  if (!patient) return []
+  const nodes = (patient.planTask?.nodes || []).length ? patient.planTask.nodes : MOCK_TRACKING_NODES
+  const day = patient.planTask?.day || planDay || 'day1'
+  return nodes.slice(0, 6).map((node, idx) => {
+    const message = node.message_template || '请按计划完成今日健康管理任务。'
+    return {
+      id: `preview-${patient.id}-${String(day).replace('day', '')}-${idx}`,
+      patientId: patient.id,
+      patientName: patient.name,
+      gender: patient.gender,
+      age: patient.age,
+      phoneMasked: patient.phoneMasked,
+      nodules: patient.nodules,
+      risk: patient.risk,
+      riskTone: patient.riskTone,
+      owner: patient.owner || '',
+      channel: patient.planTask?.channel || '企微',
+      cycle: patient.planTask?.cycle || '90天',
+      reminder: patient.planTask?.reminder || '',
+      day,
+      time: node.send_time || '09:00',
+      scheduledAt: '模拟排程',
+      status: idx === 0 ? 'scheduled' : 'pending',
+      node,
+      message,
+      patientAction: patientActionLabel(node.patient_action),
+      aiAction: aiActionLabel(node.ai_action),
+      logs: [{ at: '模拟', by: '系统', action: 'task_created_from_patient_plan', note: '模拟展示：真实企微接入后会写入实际发送与回调记录。' }],
+    }
+  })
+}
+
 export function usePatientTracking({ followPatient, followTasks, activeTaskId, planDay }) {
-  function previewTasksFromPatient(patient) {
-    if (!patient) return []
-    const nodes = (patient.planTask?.nodes || []).length ? patient.planTask.nodes : MOCK_TRACKING_NODES
-    const day = patient.planTask?.day || planDay.value || 'day1'
-    return nodes.slice(0, 6).map((node, idx) => {
-      const message = node.message_template || '请按计划完成今日健康管理任务。'
-      return {
-        id: `preview-${patient.id}-${String(day).replace('day', '')}-${idx}`,
-        patientId: patient.id,
-        patientName: patient.name,
-        gender: patient.gender,
-        age: patient.age,
-        phoneMasked: patient.phoneMasked,
-        nodules: patient.nodules,
-        risk: patient.risk,
-        riskTone: patient.riskTone,
-        owner: patient.owner || '',
-        channel: patient.planTask?.channel || '企微',
-        cycle: patient.planTask?.cycle || '90天',
-        reminder: patient.planTask?.reminder || '',
-        day,
-        time: node.send_time || '09:00',
-        scheduledAt: '模拟排程',
-        status: idx === 0 ? 'scheduled' : 'pending',
-        node,
-        message,
-        patientAction: patientActionLabel(node.patient_action),
-        aiAction: aiActionLabel(node.ai_action),
-        logs: [{ at: '模拟', by: '系统', action: 'task_created_from_patient_plan', note: '模拟展示：真实企微接入后会写入实际发送与回调记录。' }],
-      }
-    })
+  function previewTasksForPatient(patient) {
+    return previewTasksFromPatient(patient, planDay.value)
   }
 
   const trackingTasksForPatient = computed(() => {
     const patient = followPatient.value
     if (!patient) return []
     const tasks = (followTasks.value || []).filter((task) => String(task.patientId) === String(patient.id))
-    if (!tasks.length) return previewTasksFromPatient(patient)
-    if (tasks.length === 1 && !tasks[0].node?.message_template && !tasks[0].message) return previewTasksFromPatient(patient)
+    if (!tasks.length) return previewTasksForPatient(patient)
+    if (tasks.length === 1 && !tasks[0].node?.message_template && !tasks[0].message) return previewTasksForPatient(patient)
     return tasks
   })
 
@@ -264,7 +268,7 @@ export function usePatientTracking({ followPatient, followTasks, activeTaskId, p
     activeTrackingEvents,
     activeTrackingMessages,
     activeTrackingTask,
-    previewTasksFromPatient,
+    previewTasksFromPatient: previewTasksForPatient,
     trackingStats,
     trackingTaskGroups,
     trackingTasksForPatient,

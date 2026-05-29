@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "smoke": "npm run build && node scripts/prototype-smoke.mjs",
+    "test:composables": "node scripts/composable-smoke.mjs",
+    "smoke": "npm run build && npm run test:composables && node scripts/prototype-smoke.mjs",
     "smoke:ui": "python3 scripts/followup-ui-smoke.py"
   },
   "dependencies": {
