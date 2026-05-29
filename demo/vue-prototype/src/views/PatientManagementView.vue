@@ -300,8 +300,10 @@ import ReportAuditModal from '../components/ReportAuditModal.vue'
 import ReportReviewTab from '../components/ReportReviewTab.vue'
 import { getStoredScenario } from '../config/scenarios'
 import { useFollowupContent } from '../composables/useFollowupContent'
+import { useFollowupDispatch } from '../composables/useFollowupDispatch'
 import { useFollowupPlanning } from '../composables/useFollowupPlanning'
 import { usePatientDisplay } from '../composables/usePatientDisplay'
+import { usePatientQueue } from '../composables/usePatientQueue'
 import { usePatientStageActions } from '../composables/usePatientStageActions'
 import {
   aiActionLabel,
@@ -430,7 +432,6 @@ function setSubTab(key) {
   router.replace({ query: { ...route.query, tab: k } })
 }
 
-const activeStage = ref('all')
 const activePatientId = ref('p1')
 const recordPatient = ref(null)
 const followPatientId = ref('p1')
@@ -440,7 +441,6 @@ const followStageFilter = ref('')
 const patientEditMode = ref(false)
 const activeAssistant = ref('hlp')
 
-const followupPlanSaving = ref(false)
 const {
   activePlanNodePreviews,
   activePlanNodes,
@@ -466,6 +466,32 @@ const {
 
 // 患者队列（必须提前声明，避免 watcher immediate 引用 TDZ）
 const queue = ref([])
+const {
+  activeStage,
+  filteredQueue,
+  loadPatients,
+  noduleTags,
+  ownerLabel,
+  planPatients,
+  qNodule,
+  qRisk,
+  qSearch,
+  qSource,
+  qStatus,
+  queueFiltered,
+  resetQueueFilters,
+  sourceLabel,
+  stageTabs,
+} = usePatientQueue({
+  isCheckupScenario,
+  noduleTypeLabel,
+  queue,
+  riskLevelLabel,
+  riskToneFromLevel,
+  scenario,
+  statusKey,
+  statusLabel,
+})
 
 // 健康管理任务工作台（筛选 + 列表 + 详情）
 const taskFilters = ref({
@@ -659,212 +685,6 @@ const kbUi = ref({
   drawerActiveKey: '',
 })
 
-/**
- * @isdoc
- * @description 将表单草稿应用到当前患者计划（保存到内存）
- * @returns {void}
- */
-function applyDraftToPlan() {
-  const p = activePatient.value
-  if (!p) return
-  const enabledKeys = Object.entries(draft.value.kbEnabled || {})
-    .filter(([, v]) => !!v)
-    .map(([k]) => k)
-
-  const customEnabled = (draft.value.kbCustom || []).filter((x) => !!x.enabled)
-
-  p.planTask = {
-    day: planDay.value,
-    cycle: draft.value.cycle,
-    channel: draft.value.channel,
-    reminder: draft.value.reminder,
-    kb: {
-      breakfast: enabledKeys.includes('breakfast') ? getKbText('breakfast') : null,
-      lunch: enabledKeys.includes('lunch') ? getKbText('lunch') : null,
-      dinner: enabledKeys.includes('dinner') ? getKbText('dinner') : null,
-      knowledgeCard: enabledKeys.includes('knowledgeCard') ? getKbText('knowledgeCard') : null,
-      medication: enabledKeys.includes('medication') ? getKbText('medication') : null,
-      sport: enabledKeys.includes('sport') ? getKbText('sport') : null,
-      psych: enabledKeys.includes('psych') ? getKbText('psych') : null,
-      questionnaire: enabledKeys.includes('questionnaire') ? getKbText('questionnaire') : null,
-      reminderScript: enabledKeys.includes('reminderScript') ? getKbText('reminderScript') : null,
-      escalationRule: enabledKeys.includes('escalationRule') ? getKbText('escalationRule') : null,
-      custom: customEnabled.map((x) => ({ key: x.key, label: x.label, text: String(x.text || '').trim() })),
-      goal: pickIntro() || null,
-    },
-    note: draft.value.note
-  }
-  // 也同步写入 plan（用于后续下发任务）
-  savePlanForActive()
-  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'b', text: `生成健康管理任务：Day ${planDay.value.replace('day','')}`, meta: '已保存' })
-
-  // 同步生成/更新任务队列（工作台左侧列表）
-  const newTask = makeTaskFromPatient(p)
-  followTasks.value = [newTask, ...(followTasks.value || [])]
-  selectTask(newTask.id)
-}
-
-async function ensureFollowupRecommendation(p) {
-  const patient = p || activePatient.value
-  if (!patient?._apiId) return null
-  const rec = await apiPostJson('/api/b/followup/plans/recommend', {
-    patient_id: patient._apiId,
-    record_id: patient.workspaceRecordId || patient.latestRecordId || null,
-    report_id: patient.latestReport?.id || patient.latestReportId || null,
-    nodule_type: patient.noduleType,
-    risk_level: patient.risk,
-  })
-  followupRecommendation.value = rec
-  if (rec?.template?.id) selectedFollowupTemplateId.value = rec.template.id
-  if (rec?.settings) {
-    draft.value.cycle = cycleLabelFromDays(rec.settings.cycle_days)
-    draft.value.channel = rec.settings.channel === 'wecom' ? '企微' : rec.settings.channel === 'phone' ? '电话' : rec.settings.channel === 'miniapp' ? '小程序' : draft.value.channel
-    draft.value.reminder = rec.settings.reminder_strategy || draft.value.reminder
-  }
-  if (rec?.nodes?.length) {
-    const firstNode = rec.nodes[0]
-    if (firstNode?.day_offset) planDay.value = `day${firstNode.day_offset}`
-    draft.value.kbCustom = rec.nodes.flatMap((node) => (node.matched_knowledge || []).map((item) => ({
-      key: `api_${item.id}`,
-      label: item.title,
-      text: item.content,
-      enabled: true,
-    })))
-  }
-  return rec
-}
-
-async function recommendForActive() {
-  const p = activePatient.value
-  if (!p?._apiId) {
-    toast?.show('演示患者已使用本地知识库推荐')
-    return
-  }
-  try {
-    await ensureFollowupRecommendation(p)
-    toast?.show('已按患者画像匹配任务模板和知识库内容')
-  } catch (e) {
-    toast?.show(e.message || '任务模板推荐失败')
-  }
-}
-
-async function saveBackendPatientPlan(p) {
-  const patient = p || activePatient.value
-  if (!patient?._apiId) return null
-  followupPlanSaving.value = true
-  try {
-    const rec = followupRecommendation.value || await ensureFollowupRecommendation(patient)
-    const template = selectedWorkflowTemplate.value || rec?.template || followupTemplates.value[0] || null
-    const templateId = template?.id
-    const nodes = template?.nodes || rec?.nodes || []
-    const selectedKnowledgeIds = [
-      ...(rec?.knowledge || []).map(item => item.id),
-      ...(nodes || []).flatMap(node => node.knowledge_item_ids || [])
-    ].filter(Boolean)
-    const plan = await apiPostJson('/api/b/followup/patient-plans', {
-      patient_id: patient._apiId,
-      record_id: rec?.record_id || patient.workspaceRecordId || null,
-      report_id: rec?.report_id || patient.latestReport?.id || null,
-      template_id: templateId,
-      name: `${patient.name}健康管理任务计划`,
-      nodule_type: patient.noduleType,
-      risk_level: patient.risk,
-      settings: {
-        cycle_days: template?.cycle_days || cycleDaysFromLabel(draft.value.cycle),
-        channel: template?.default_channel || channelToBackend(draft.value.channel),
-        reminder_strategy: template?.default_reminder_strategy || draft.value.reminder,
-      },
-      plan_content: {
-        template,
-        nodes,
-      },
-      selected_knowledge_ids: Array.from(new Set(selectedKnowledgeIds)),
-    })
-    patient._patientPlanId = plan.id
-    patient.planTask = {
-      ...(patient.planTask || {}),
-      backendPlanId: plan.id,
-      cycle: cycleLabelFromDays(template?.cycle_days),
-      channel: channelLabel(template?.default_channel),
-      reminder: template?.default_reminder_strategy || draft.value.reminder,
-      day: planDay.value,
-      kb: patient.planTask?.kb || {},
-      note: draft.value.note,
-    }
-    toast?.show('任务计划已保存')
-    return plan
-  } finally {
-    followupPlanSaving.value = false
-  }
-}
-
-/**
- * @isdoc
- * @description 保存并激活任务计划，生成后续提醒/打卡任务
- * @returns {void}
- */
-async function simulatePlanToFollowup() {
-  const p = activePatient.value
-  if (!p?.id) return
-  if (p._apiId) {
-    try {
-      applySelectedTemplateToPatient()
-      const plan = p._patientPlanId ? { id: p._patientPlanId } : await saveBackendPatientPlan(p)
-      const activated = await apiPostJson(`/api/b/followup/patient-plans/${plan.id}/activate`, {})
-      const apiTasks = (activated?.tasks || []).map(normalizeBackendTask)
-      if (apiTasks.length) {
-        followTasks.value = [...apiTasks, ...(followTasks.value || [])]
-        selectTask(apiTasks[0].id)
-      }
-      p.stage = 'follow'
-      p.stageLabel = '任务执行中'
-      p.serviceStatus = '任务执行中'
-      p.nextStep = '按计划执行任务'
-      p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-      p.timeline.push({ at: '现在', tone: 'g', text: '已下发健康管理任务', meta: `${apiTasks.length} 个任务` })
-      followPatientId.value = p.id
-      setSubTab('follow')
-      toast?.show('任务已下发，已生成后续提醒/打卡任务')
-      return
-    } catch (e) {
-      toast?.show(e.message || '随访任务下发失败')
-      return
-    }
-  }
-  applySelectedTemplateToPatient()
-  const t = makeTaskFromPatient(p)
-  followTasks.value = [t, ...(followTasks.value || [])]
-  selectTask(t.id)
-  p.stage = 'follow'
-  p.stageLabel = '任务执行中'
-  p.serviceStatus = '任务执行中'
-  toast?.show('任务已下发')
-}
-
-const planPipelineSteps = computed(() => {
-  const hasTemplate = !!selectedWorkflowTemplate.value
-  const hasPreview = activePlanNodes.value.length > 0
-  const hasTask = !!activePatient.value?.planTask
-  const isFollow = statusKey(activePatient.value) === 'follow'
-  const currentStatus = statusKey(activePatient.value)
-  const hasReviewed = ['plan', 'follow', 'push', 'abnormal'].includes(currentStatus) || !!activePatient.value?.finalReport?.content || !!activePatient.value?.latestReport
-  return [
-    { key: 'reviewed', icon: '1', title: '报告已审核', sub: hasReviewed ? '可下发任务' : '等待审核', state: hasReviewed ? 'done' : 'todo' },
-    { key: 'recommend', icon: '2', title: '推荐模板', sub: selectedWorkflowTemplate.value?.name || '待推荐', state: hasTemplate ? 'done' : 'doing' },
-    { key: 'preview', icon: '3', title: '预览任务', sub: hasPreview ? `${activePlanNodes.value.length} 个节点` : '待预览', state: hasPreview ? 'done' : 'todo' },
-    { key: 'confirm', icon: '4', title: '确认下发', sub: hasTask ? '已保存' : '待确认', state: hasTask ? 'done' : 'doing' },
-    { key: 'track', icon: '5', title: '执行跟踪', sub: isFollow ? '查看任务' : '待生成', state: isFollow ? 'done' : 'todo' },
-  ]
-})
-
-const planDispatchSteps = computed(() => {
-  return planPipelineSteps.value.slice(1, 5).map((step, idx) => ({
-    ...step,
-    icon: String(idx + 1),
-  }))
-})
-
 const aiFollowFlowSteps = [
   { icon: '患', title: '患者画像', sub: '病种/风险/阶段' },
   { icon: '策', title: '助手策略', sub: '确定输出倾向' },
@@ -872,58 +692,6 @@ const aiFollowFlowSteps = [
   { icon: '文', title: '生成内容', sub: '摘要/任务/提醒' },
   { icon: '发', title: '患者预览', sub: '预览后下发' },
 ]
-
-/**
- * @isdoc
- * @description 将当前选择的 Day 与计划摘要保存到当前患者对象（mock：写入内存）
- * @returns {void}
- */
-function savePlanForActive() {
-  const p = activePatient.value
-  if (!p) return
-  p.plan = {
-    title: planState.value.title || '甲状腺结节合并肺结节健康管理方案（含心理）',
-    day: planDay.value,
-    sport: planQuick.value.sport,
-    psych: planQuick.value.psych,
-  }
-  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'b', text: `更新任务计划：Day ${planDay.value.replace('day', '')}`, meta: '已保存' })
-}
-
-function applySelectedTemplateToPatient() {
-  const p = activePatient.value
-  const tpl = selectedWorkflowTemplate.value
-  if (!p || !tpl) return
-  const firstNode = (tpl.nodes || [])[0]
-  if (firstNode?.day_offset) planDay.value = `day${firstNode.day_offset}`
-  p.planTask = {
-    ...(p.planTask || {}),
-    title: tpl.name,
-    day: planDay.value,
-    cycle: cycleLabelFromDays(tpl.cycle_days),
-    channel: channelLabel(tpl.default_channel),
-    reminder: tpl.default_reminder_strategy,
-    templateId: tpl.id,
-    nodes: tpl.nodes || [],
-  }
-  savePlanForActive()
-}
-
-async function savePlanForActiveAndBackend() {
-  const p = activePatient.value
-  if (!p) return
-  applySelectedTemplateToPatient()
-  if (!p._apiId) {
-    toast?.show('任务计划已保存')
-    return
-  }
-  try {
-    await saveBackendPatientPlan(p)
-  } catch (e) {
-    toast?.show(e.message || '保存下发设置失败')
-  }
-}
 
 const aiAssistants = [
   {
@@ -1330,34 +1098,9 @@ const {
   toast,
 })
 
-/**
- * @isdoc
- * @description 来源展示：仅保留「门诊 / 体检中心」
- * @param {string} src
- * @returns {string}
- */
-function sourceLabel(src) {
-  const s = String(src || '').trim()
-  const hit = scenario.value.sourceOptions.find((x) => s.includes(x) || x.includes(s))
-  if (hit) return hit
-  return scenario.value.sourceOptions[0] || s || '—'
-}
-
 function assistantStatus(key) {
   const enabledKeys = new Set(['hlp', 'health', 'psych', 'rehab', 'tcm'])
   return enabledKeys.has(key) ? 'g' : 'o'
-}
-
-/**
- * @isdoc
- * @description 负责人展示：统一为“×医生”
- * @param {string} owner
- * @returns {string}
- */
-function ownerLabel(owner) {
-  const s = String(owner || '').trim()
-  if (!s) return '—'
-  return s.includes('医生') ? s : `${s.replace(/(师|员|岗|管理师)$/,'')}医生`
 }
 
 /**
@@ -1370,163 +1113,6 @@ function lastTouchLabel(p) {
   const at = String(p?.chat?.[p.chat.length - 1]?.at || p?.timeline?.[p.timeline.length - 1]?.at || '').trim()
   return at ? `最近：${at}` : '最近：—'
 }
-
-// subTabs/allowedSubTabs/setSubTab 已提前定义（由路由 query.tab 驱动）
-
-const stageTabs = computed(() => {
-  const count = (k) => queue.value.filter((p) => statusKey(p) === k).length
-  return [
-    { key: 'all', label: '全部', count: queue.value.length },
-    { key: 'gen', label: `${scenario.value.reportLabel}待生成`, count: count('gen') },
-    { key: 'review', label: isCheckupScenario.value ? '待总检确认' : '健康报告待审核', count: count('review') },
-    { key: 'plan', label: '任务待下发', count: count('plan') },
-    { key: 'follow', label: '任务执行中', count: count('follow') },
-  ]
-})
-
-queue.value = []
-
-// 10条本地 mock 数据（后端无数据时展示）
-const MOCK_QUEUE = [
-  { id:'m1', name:'张*国', gender:'男', age:56, phoneMasked:'138****5678', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'review', lastReport:'CT报告' },
-  { id:'m2', name:'李*婷', gender:'女', age:48, phoneMasked:'139****2468', source:'体检中心', owner:'李医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'中风险', riskTone:'o', stage:'review', lastReport:'超声报告' },
-  { id:'m3', name:'王*梅', gender:'女', age:62, phoneMasked:'137****1357', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day1', channel:'小程序', cycle:'每月' } },
-  { id:'m4', name:'赵*强', gender:'男', age:59, phoneMasked:'136****8899', source:'体检中心', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day1', channel:'电话', cycle:'每两周' } },
-  { id:'m5', name:'陈*霞', gender:'女', age:45, phoneMasked:'138****3344', source:'门诊', owner:'李医生', nodules:'乳腺+肺部结节', noduleType:'breast_lung', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day2', channel:'小程序', cycle:'每月' } },
-  { id:'m6', name:'刘*峰', gender:'男', age:71, phoneMasked:'139****7788', source:'体检中心', owner:'李医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'医生复核中', planTask:{ day:'day1', channel:'短信', cycle:'每季度' } },
-  { id:'m7', name:'孙*英', gender:'女', age:52, phoneMasked:'137****6677', source:'门诊', owner:'李医生', nodules:'乳腺结节', noduleType:'breast', risk:'低风险', riskTone:'g', stage:'gen', lastReport:'超声报告' },
-  { id:'m8', name:'周*明', gender:'男', age:64, phoneMasked:'138****9900', source:'门诊', owner:'李医生', nodules:'肺部+甲状腺结节', noduleType:'lung_thyroid', risk:'中风险', riskTone:'o', stage:'plan', lastReport:'CT报告', planTask:{ day:'day2', channel:'电话', cycle:'每月' } },
-  { id:'m9', name:'吴*丽', gender:'女', age:39, phoneMasked:'150****4455', source:'社区', owner:'李医生', nodules:'乳腺+甲状腺结节', noduleType:'breast_thyroid', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'超声报告', planTask:{ day:'day1', channel:'小程序', cycle:'每两周' } },
-  { id:'m10', name:'郑*涛', gender:'男', age:67, phoneMasked:'136****2233', source:'体检中心', owner:'李医生', nodules:'三合并结节', noduleType:'triple', risk:'高风险', riskTone:'r', stage:'plan', lastReport:'CT报告', planTask:{ day:'day3', channel:'电话', cycle:'每月' } },
-  { id:'m11', name:'黄*芳', gender:'女', age:44, phoneMasked:'135****1122', source:'门诊', owner:'王医生', nodules:'乳腺结节', noduleType:'breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day3', channel:'小程序', cycle:'每月' } },
-  { id:'m12', name:'林*海', gender:'男', age:58, phoneMasked:'132****8866', source:'体检中心', owner:'王医生', nodules:'肺部结节', noduleType:'lung', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'CT报告', planTask:{ day:'day7', channel:'电话', cycle:'每两周' } },
-  { id:'m13', name:'何*秀', gender:'女', age:51, phoneMasked:'133****5544', source:'门诊', owner:'王医生', nodules:'甲状腺结节', noduleType:'thyroid', risk:'低风险', riskTone:'g', stage:'follow', lastReport:'超声报告', planTask:{ day:'day14', channel:'小程序', cycle:'每季度' } },
-  { id:'m14', name:'马*军', gender:'男', age:63, phoneMasked:'139****3311', source:'体检中心', owner:'李医生', nodules:'肺部+乳腺结节', noduleType:'lung_breast', risk:'高风险', riskTone:'r', stage:'follow', lastReport:'AI解析完成', planTask:{ day:'day7', channel:'小程序', cycle:'每月' } },
-  { id:'m15', name:'谢*云', gender:'女', age:37, phoneMasked:'136****7700', source:'社区', owner:'王医生', nodules:'甲状腺+乳腺结节', noduleType:'thyroid_breast', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'超声报告', planTask:{ day:'day21', channel:'小程序', cycle:'每月' } },
-  { id:'m16', name:'徐*刚', gender:'男', age:55, phoneMasked:'138****4499', source:'门诊', owner:'李医生', nodules:'肺部结节', noduleType:'lung', risk:'中风险', riskTone:'o', stage:'follow', lastReport:'CT报告', planTask:{ day:'day30', channel:'电话', cycle:'每季度' } },
-]
-
-function adaptMockQueueByScenario(list) {
-  const sources = scenario.value.sourceOptions || []
-  const owner = scenario.value.defaultOwner || '李医生'
-  return list.map((p, idx) => ({
-    ...p,
-    source: sources[idx % Math.max(sources.length, 1)] || p.source,
-    owner: idx % 3 === 0 ? owner : p.owner?.replace('医生', scenario.value.key === 'pharmacy' ? '药师' : scenario.value.key === 'community' ? '家医' : '医生'),
-  }))
-}
-
-// 筛选条件
-const qSearch = ref('')
-const qSource = ref('')
-const qNodule = ref('')
-const qRisk = ref('')
-const qStatus = ref('')
-
-
-async function loadPatients() {
-  try {
-    const res = await fetch('/api/b/patients?per_page=50', { credentials: 'include' })
-    const data = await res.json()
-    if (data.success) {
-      const items = (data.data?.items || data.data || [])
-      queue.value = items.map(p => ({
-        id: p.id,
-        _apiId: p.id,
-        name: p.name || '—',
-        gender: p.gender || '—',
-        age: p.age || '—',
-        phoneMasked: p.phone ? p.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '—',
-        phone: p.phone || '',
-        wecomExternalUserid: p.wecom_external_userid || '',
-        wecomUserid: p.wecom_userid || '',
-        wecomBindStatus: p.wecom_bind_status || ((p.wecom_external_userid || p.wecom_userid) ? 'bound' : 'unbound'),
-        wecomBoundAt: p.wecom_bound_at || '',
-        source: p.source_channel === 'manual' ? scenario.value.sourceOptions[0] : (p.source_channel || scenario.value.sourceOptions[0]),
-        owner: p.manager_name || scenario.value.defaultOwner,
-        nodules: noduleTypeLabel(p.nodule_type),
-        noduleType: p.nodule_type || 'breast',
-        risk: riskLevelLabel(p.risk_level || (p.reports?.[0]?.risk_level) || '—'),
-        riskTone: riskToneFromLevel(p.risk_level || p.reports?.[0]?.risk_level),
-        stage: p.risk_level ? 'plan' : (p.reports?.length ? 'review' : 'gen'),
-        stageLabel: p.risk_level ? statusLabel({ stage: 'plan' }) : (p.reports?.length ? statusLabel({ stage: 'review' }) : statusLabel({ stage: 'aiGen' })),
-        nextStep: '',
-        serviceStatus: '',
-        report: { status: '—', summary: '' },
-        rawReports: [],
-        aiReadSummary: '',
-        reportDoc: { title: '', sections: [] },
-        auditTrail: [],
-        chat: [],
-        followTodos: [],
-        abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
-        reviewers: '',
-        assistants: [],
-        timeline: [],
-        planTask: null,
-      }))
-    }
-  } catch (e) {
-    console.error('加载患者列表失败', e)
-  }
-  // 后端无数据时用 mock
-  if (!queue.value.length) queue.value = adaptMockQueueByScenario(MOCK_QUEUE).map(p => ({
-    ...p,
-    stageLabel: '', nextStep: '', serviceStatus: '',
-    report: { status: '—', summary: '' }, rawReports: [],
-    aiReadSummary: '', reportDoc: { title: '', sections: [] },
-    auditTrail: [], chat: [], followTodos: [],
-    abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
-    reviewers: '', assistants: [], timeline: [],
-  }))
-  // 始终追加 follow 阶段的 mock 患者（确保任务执行列表有演示数据）
-  const followMocks = adaptMockQueueByScenario(MOCK_QUEUE).filter(p => p.stage === 'follow').map(p => ({
-    ...p,
-    stageLabel: '任务执行中', nextStep: '', serviceStatus: '任务执行中',
-    report: { status: '—', summary: '' }, rawReports: [],
-    aiReadSummary: '', reportDoc: { title: '', sections: [] },
-    auditTrail: [], chat: [], followTodos: [],
-    abnormal: { keywords: [], interventions: [], recallPlan: '', recallState: '—', recallTone: 'g', recallHint: '' },
-    reviewers: '', assistants: [], timeline: [],
-  }))
-  const existingIds = new Set(queue.value.map(p => p.id))
-  followMocks.forEach(p => { if (!existingIds.has(p.id)) queue.value.push(p) })
-}
-
-function noduleTags(p) {
-  const type = p.noduleType || ''
-  const parts = type.split('_')
-  if (parts.length === 1 && type) return [{ label: noduleTypeLabel(type), type }]
-  const map = { breast: '乳腺结节', lung: '肺部结节', thyroid: '甲状腺结节', triple: '三合并' }
-  if (type === 'triple') return [{ label: '三合并结节', type: 'triple' }]
-  return parts.map(k => ({ label: map[k] || k, type: k }))
-}
-
-const queueFiltered = computed(() => {
-  let list = queue.value
-  if (qSearch.value) list = list.filter(p => p.name.includes(qSearch.value) || (p.phoneMasked || '').includes(qSearch.value))
-  if (qSource.value) list = list.filter(p => sourceLabel(p.source) === qSource.value || p.source === qSource.value)
-  if (qNodule.value) list = list.filter(p => p.nodules === qNodule.value)
-  if (qRisk.value) list = list.filter(p => p.risk === qRisk.value)
-  if (qStatus.value) list = list.filter(p => statusKey(p) === qStatus.value)
-  return list
-})
-
-function resetQueueFilters() {
-  qSearch.value = ''
-  qSource.value = ''
-  qNodule.value = ''
-  qRisk.value = ''
-  qStatus.value = ''
-}
-
-const filteredQueue = computed(() => {
-  if (activeStage.value === 'all') return queue.value
-  return queue.value.filter((p) => statusKey(p) === activeStage.value)
-})
-
-// 任务下发页：展示待下发与执行中的患者
-const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === 'plan'))
 
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
@@ -1620,6 +1206,38 @@ const {
   queue,
   toast,
 })
+const {
+  ensureFollowupRecommendation,
+  followupPlanSaving,
+  planDispatchSteps,
+  recommendForActive,
+  savePlanForActiveAndBackend,
+  simulatePlanToFollowup,
+} = useFollowupDispatch({
+  activePatient,
+  activePlanNodes,
+  apiPostJson,
+  channelLabel,
+  cycleLabelFromDays,
+  draft,
+  followPatientId,
+  followTasks,
+  followupRecommendation,
+  followupTemplates,
+  getKbText,
+  makeTaskFromPatient,
+  normalizeBackendTask,
+  pickIntro,
+  planDay,
+  planQuick,
+  planState,
+  selectTask,
+  selectedFollowupTemplateId,
+  selectedWorkflowTemplate,
+  setSubTab,
+  statusKey,
+  toast,
+})
 
 function nowText() {
   return new Date().toLocaleString('zh-CN', { hour12: false })
@@ -1639,25 +1257,11 @@ function nextFollowDateByCycle(cycle) {
   return formatDateInput(date)
 }
 
-function cycleDaysFromLabel(cycle) {
-  if (String(cycle || '').includes('3')) return 90
-  if (String(cycle || '').includes('6')) return 180
-  return 365
-}
-
 function cycleLabelFromDays(days) {
   const n = Number(days || 0)
   if (n <= 100) return '3个月'
   if (n <= 220) return '6个月'
   return '12个月'
-}
-
-function channelToBackend(channel) {
-  const text = String(channel || '')
-  if (text.includes('企微')) return 'wecom'
-  if (text.includes('电话')) return 'phone'
-  if (text.includes('小程序')) return 'miniapp'
-  return 'wecom'
 }
 
 async function loadFollowupTasks() {
