@@ -309,27 +309,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { apiJson, apiPostJson } from '../utils/apiClient'
+import { onMounted, ref } from 'vue'
+import { useFollowupAiRules } from '../composables/useFollowupAiRules'
+import { useFollowupKnowledge } from '../composables/useFollowupKnowledge'
+import { useFollowupTemplateNodes } from '../composables/useFollowupTemplateNodes'
+import { useFollowupTemplates } from '../composables/useFollowupTemplates'
+import { useFollowupWorkflowConfig } from '../composables/useFollowupWorkflowConfig'
 
-const templates = ref([])
-const knowledgeItems = ref([])
-const aiRules = ref([])
-const selectedTemplateId = ref(null)
-const loading = ref(false)
-const saving = ref(false)
-const importingExcel = ref(false)
-const error = ref('')
-const toast = ref('')
-const nodeModal = ref(false)
-const knowledgeModal = ref(false)
-const ruleModal = ref(false)
 const excelInputRef = ref(null)
-const knowledgeFilters = reactive({
-  search: '',
-  category: '',
-  task_type: ''
-})
 
 const taskTypeOptions = [
   { value: 'knowledge_push', label: '知识推送' },
@@ -357,568 +344,83 @@ const aiActionOptions = [
   { value: 'none', label: '不处理' }
 ]
 
-const templateForm = reactive({
-  id: null,
-  name: '',
-  description: '',
-  nodule_type: '',
-  risk_level: '',
-  cycle_days: 90,
-  default_channel: 'wecom',
-  default_reminder_strategy: '每日固定时间提醒；未打卡继续提醒；餐饮图片自动分析',
-  status: 'draft'
+const {
+  aiRules,
+  error,
+  handleExcelImport,
+  importingExcel,
+  knowledgeItems,
+  loadAll,
+  loading,
+  selectedTemplate,
+  selectedTemplateId,
+  showToast,
+  sortedNodes,
+  templates,
+  toast,
+  totalNodes,
+} = useFollowupWorkflowConfig()
+const {
+  archiveTemplate,
+  copyTemplate,
+  createTemplate,
+  deleteTemplate,
+  fillTemplateForm,
+  saveTemplate,
+  saving,
+  selectTemplate,
+  templateForm,
+  validateTemplate,
+} = useFollowupTemplates({
+  error,
+  loadAll,
+  selectedTemplate,
+  selectedTemplateId,
+  showToast,
+  sortedNodes,
 })
-
-const nodeForm = reactive({
-  id: null,
-  name: '',
-  day_offset: 1,
-  send_time: '09:00',
-  task_type: 'knowledge_push',
-  patient_action: 'reply_text',
-  ai_action: 'reply',
-  message_template: '',
-  knowledge_item_ids: [],
-  doctor_keywords_text: '',
-  manual_keywords_text: '',
-  no_reply_threshold: 3,
-  completion_type: 'patient_reply',
-  overdue_action: 'manual_handoff',
-  is_required: true,
-  is_active: true,
-  sort_order: 0
+const {
+  addNode,
+  copyNode,
+  deleteNode,
+  editNode,
+  moveNode,
+  nodeForm,
+  nodeModal,
+  saveNode,
+  toggleNodeActive,
+} = useFollowupTemplateNodes({
+  error,
+  loadAll,
+  selectedTemplateId,
+  showToast,
+  sortedNodes,
 })
-
-const knowledgeForm = reactive({
-  id: null,
-  title: '',
-  category: 'script',
-  task_type: '',
-  priority: 5,
-  trigger_keywords: '',
-  content: ''
+const {
+  deleteKnowledge,
+  editKnowledge,
+  filteredKnowledgeItems,
+  knowledgeFilters,
+  knowledgeForm,
+  knowledgeModal,
+  newKnowledge,
+  saveKnowledge,
+} = useFollowupKnowledge({
+  knowledgeItems,
+  loadAll,
+  showToast,
 })
-
-const ruleForm = reactive({
-  id: null,
-  name: '',
-  rule_type: 'no_reply',
-  task_type: 'daily_checkin',
-  action: 'manual_handoff',
-  trigger_keywords: '',
-  response_template: ''
+const {
+  deleteRule,
+  editRule,
+  newRule,
+  ruleForm,
+  ruleModal,
+  saveRule,
+} = useFollowupAiRules({
+  loadAll,
+  showToast,
 })
-
-const selectedTemplate = computed(() => templates.value.find(t => t.id === selectedTemplateId.value) || null)
-const sortedNodes = computed(() => [...(selectedTemplate.value?.nodes || [])].sort((a, b) => {
-  const sortA = Number(a.sort_order ?? a.day_offset ?? 0)
-  const sortB = Number(b.sort_order ?? b.day_offset ?? 0)
-  if (sortA !== sortB) return sortA - sortB
-  return (a.day_offset || 0) - (b.day_offset || 0)
-}))
-const totalNodes = computed(() => templates.value.reduce((sum, tpl) => sum + (tpl.nodes?.length || 0), 0))
-const filteredKnowledgeItems = computed(() => {
-  const search = knowledgeFilters.search.toLowerCase()
-  return knowledgeItems.value.filter(item => {
-    if (knowledgeFilters.category && item.category !== knowledgeFilters.category) return false
-    if (knowledgeFilters.task_type && item.task_type !== knowledgeFilters.task_type) return false
-    if (!search) return true
-    return `${item.title || ''} ${item.content || ''} ${item.trigger_keywords || ''}`.toLowerCase().includes(search)
-  })
-})
-
-async function postJson(url, payload) {
-  return apiPostJson(url, payload)
-}
-
-function showToast(text) {
-  toast.value = text
-  window.setTimeout(() => {
-    if (toast.value === text) toast.value = ''
-  }, 2200)
-}
-
-function fillTemplateForm(tpl) {
-  templateForm.id = tpl?.id || null
-  templateForm.name = tpl?.name || ''
-  templateForm.description = tpl?.description || ''
-  templateForm.nodule_type = tpl?.nodule_type || ''
-  templateForm.risk_level = tpl?.risk_level || ''
-  templateForm.cycle_days = tpl?.cycle_days || 90
-  templateForm.default_channel = tpl?.default_channel || 'wecom'
-  templateForm.default_reminder_strategy = tpl?.default_reminder_strategy || '每日固定时间提醒；未打卡继续提醒；餐饮图片自动分析'
-  templateForm.status = tpl?.status || 'draft'
-}
-
-async function loadAll() {
-  loading.value = true
-  error.value = ''
-  try {
-    const [tpls, knowledge, rules] = await Promise.all([
-      apiJson('/api/b/followup/templates?include_nodes=1'),
-      apiJson('/api/b/followup/knowledge?per_page=100'),
-      apiJson('/api/b/followup/ai-rules')
-    ])
-    templates.value = Array.isArray(tpls) ? tpls : []
-    knowledgeItems.value = knowledge?.items || []
-    aiRules.value = Array.isArray(rules) ? rules : []
-    if (!selectedTemplateId.value && templates.value.length) selectedTemplateId.value = templates.value[0].id
-    if (selectedTemplate.value) fillTemplateForm(selectedTemplate.value)
-  } catch (e) {
-    error.value = e?.message || '加载随访知识库与模板失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function handleExcelImport(event) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  if (!file) return
-  importingExcel.value = true
-  error.value = ''
-  try {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('replace_existing', 'true')
-    form.append('name', '甲状腺结节合并肺结节90天健康管理模板')
-    form.append('nodule_type', 'lung_thyroid')
-    form.append('cycle_days', '90')
-    form.append('default_channel', 'wecom')
-    form.append('status', 'active')
-    const res = await fetch('/api/b/followup/templates/import-excel', {
-      method: 'POST',
-      credentials: 'include',
-      body: form
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok || data.success === false) throw new Error(data.message || `导入失败：${res.status}`)
-    const result = data.data || data
-    selectedTemplateId.value = result.template?.id || selectedTemplateId.value
-    await loadAll()
-    showToast(`已导入 ${result.days || 0} 天、${result.nodes || 0} 个任务节点`)
-  } catch (e) {
-    error.value = e?.message || 'Excel模板导入失败'
-  } finally {
-    importingExcel.value = false
-  }
-}
-
-function selectTemplate(id) {
-  selectedTemplateId.value = id
-  fillTemplateForm(selectedTemplate.value)
-}
-
-function createTemplate() {
-  selectedTemplateId.value = null
-  fillTemplateForm({
-    name: '新的健康管理任务模板',
-    nodule_type: '',
-    risk_level: '',
-    cycle_days: 90,
-    default_channel: 'wecom',
-    status: 'draft'
-  })
-}
-
-async function saveTemplate() {
-  saving.value = true
-  error.value = ''
-  try {
-    templateForm.default_channel = 'wecom'
-    if (templateForm.status === 'active') {
-      const issues = getTemplateIssues()
-      if (issues.length) {
-        error.value = `模板暂不能启用：${issues.join('；')}`
-        return
-      }
-    }
-    const payload = {
-      name: templateForm.name,
-      description: templateForm.description,
-      nodule_type: templateForm.nodule_type || null,
-      risk_level: templateForm.risk_level || null,
-      cycle_days: Number(templateForm.cycle_days) || 90,
-      default_channel: templateForm.default_channel,
-      default_reminder_strategy: templateForm.default_reminder_strategy,
-      status: templateForm.status
-    }
-    const saved = templateForm.id
-      ? await apiJson(`/api/b/followup/templates/${templateForm.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-      : await postJson('/api/b/followup/templates', payload)
-    selectedTemplateId.value = saved.id
-    await loadAll()
-    showToast('模板已保存')
-  } catch (e) {
-    error.value = e?.message || '模板保存失败'
-  } finally {
-    saving.value = false
-  }
-}
-
-function getTemplateIssues() {
-  const issues = []
-  if (!templateForm.name) issues.push('模板名称不能为空')
-  if (!selectedTemplateId.value) return issues
-  const nodes = sortedNodes.value
-  if (!nodes.length) issues.push('至少需要 1 个节点')
-  nodes.forEach((node) => {
-    if (node.is_active === false) return
-    if (!node.name) issues.push(`Day ${node.day_offset || 1} 缺少节点名称`)
-    if (!String(node.message_template || '').trim()) issues.push(`${node.name || `Day ${node.day_offset || 1}`} 缺少发送话术`)
-    if (node.task_type === 'diet_checkin' && node.ai_action !== 'diet_review') issues.push(`${node.name || '饮食打卡节点'} 应配置饮食点评 AI 动作`)
-    if (node.task_type === 'diet_checkin' && !['diet_review', 'image_recognition'].includes(node.ai_action)) issues.push(`${node.name || '饮食打卡节点'} 应配置饮食点评或图片识别`)
-  })
-  return issues
-}
-
-function validateTemplate() {
-  const issues = getTemplateIssues()
-  if (issues.length) {
-    error.value = `校验未通过：${issues.join('；')}`
-    return
-  }
-  error.value = ''
-  showToast('模板校验通过，可以启用并下发给用户')
-}
-
-async function copyTemplate(tpl) {
-  if (!tpl?.id) return
-  const payload = {
-    name: `${tpl.name} 副本`,
-    description: tpl.description,
-    nodule_type: tpl.nodule_type,
-    risk_level: tpl.risk_level,
-    cycle_days: tpl.cycle_days,
-    default_channel: tpl.default_channel,
-    default_reminder_strategy: tpl.default_reminder_strategy,
-    status: 'draft',
-    nodes: (tpl.nodes || []).map(node => ({
-      node_code: `${node.node_code || 'NODE'}_COPY`,
-      name: node.name,
-      day_offset: node.day_offset,
-      send_time: node.send_time,
-      task_type: node.task_type,
-      patient_action: node.patient_action,
-      ai_action: node.ai_action,
-      message_template: node.message_template,
-      knowledge_item_ids: node.knowledge_item_ids || [],
-      checkin_schema: node.checkin_schema || {},
-      escalation_rule: node.escalation_rule || {},
-      completion_rule: node.completion_rule || {},
-      is_required: node.is_required !== false,
-      is_active: node.is_active !== false,
-      sort_order: node.sort_order || 0
-    }))
-  }
-  const saved = await postJson('/api/b/followup/templates', payload)
-  selectedTemplateId.value = saved.id
-  await loadAll()
-  showToast('模板已复制为草稿')
-}
-
-async function archiveTemplate(tpl) {
-  if (!tpl?.id) return
-  const nextStatus = tpl.status === 'archived' ? 'draft' : 'archived'
-  await apiJson(`/api/b/followup/templates/${tpl.id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ status: nextStatus })
-  })
-  await loadAll()
-  showToast(nextStatus === 'archived' ? '模板已归档' : '模板已恢复为草稿')
-}
-
-async function deleteTemplate(tpl) {
-  if (!tpl?.id) return
-  if (!window.confirm(`确认删除模板「${tpl.name}」？已被患者计划引用的模板会删除失败，可改为归档。`)) return
-  try {
-    await apiJson(`/api/b/followup/templates/${tpl.id}`, { method: 'DELETE' })
-    if (selectedTemplateId.value === tpl.id) selectedTemplateId.value = null
-    await loadAll()
-    showToast('模板已删除')
-  } catch (e) {
-    error.value = e?.message || '模板删除失败，可先归档'
-  }
-}
-
-function addNode() {
-  Object.assign(nodeForm, {
-    id: null,
-    name: '新的任务节点',
-    day_offset: Math.max(1, ...sortedNodes.value.map(n => Number(n.day_offset || 0) + 7)),
-    send_time: '09:00',
-    task_type: 'knowledge_push',
-    patient_action: 'reply_text',
-    ai_action: 'reply',
-    message_template: '请按健康管理任务完成本次打卡或查看提醒。',
-    knowledge_item_ids: [],
-    doctor_keywords_text: '不适,疼痛,明显加重',
-    manual_keywords_text: '焦虑,担心,睡不着',
-    no_reply_threshold: 3,
-    completion_type: 'patient_reply',
-    overdue_action: 'manual_handoff',
-    is_required: true,
-    is_active: true,
-    sort_order: Math.max(0, ...sortedNodes.value.map(n => Number(n.sort_order ?? n.day_offset ?? 0))) + 1
-  })
-  nodeModal.value = true
-}
-
-function editNode(node) {
-  const escalationRule = node.escalation_rule || {}
-  const completionRule = node.completion_rule || {}
-  Object.assign(nodeForm, {
-    id: node.id,
-    name: node.name || '',
-    day_offset: node.day_offset || 1,
-    send_time: node.send_time || '09:00',
-    task_type: node.task_type || 'knowledge_push',
-    patient_action: node.patient_action || 'reply_text',
-    ai_action: node.ai_action || 'reply',
-    message_template: node.message_template || '',
-    knowledge_item_ids: [...(node.knowledge_item_ids || [])],
-    doctor_keywords_text: joinKeywords(escalationRule.doctor_keywords),
-    manual_keywords_text: joinKeywords(escalationRule.manual_keywords),
-    no_reply_threshold: Number(escalationRule.no_reply_threshold ?? 3),
-    completion_type: completionRule.type || 'patient_reply',
-    overdue_action: completionRule.overdue_action || 'manual_handoff',
-    is_required: node.is_required !== false,
-    is_active: node.is_active !== false,
-    sort_order: node.sort_order ?? node.day_offset ?? 0
-  })
-  nodeModal.value = true
-}
-
-function splitKeywords(text) {
-  return String(text || '')
-    .split(/[,，、\n]/)
-    .map(item => item.trim())
-    .filter(Boolean)
-}
-
-function joinKeywords(items) {
-  return Array.isArray(items) ? items.join(',') : ''
-}
-
-function buildEscalationRule() {
-  const doctorKeywords = splitKeywords(nodeForm.doctor_keywords_text)
-  const manualKeywords = splitKeywords(nodeForm.manual_keywords_text)
-  return {
-    doctor_keywords: doctorKeywords,
-    manual_keywords: manualKeywords,
-    no_reply_threshold: Number(nodeForm.no_reply_threshold) || 0,
-    abnormal_actions: {
-      doctor_keywords: 'doctor_handoff',
-      manual_keywords: 'manual_handoff',
-      no_reply: nodeForm.overdue_action
-    }
-  }
-}
-
-function buildCompletionRule() {
-  return {
-    type: nodeForm.completion_type,
-    overdue_action: nodeForm.overdue_action,
-    required: nodeForm.is_required !== false
-  }
-}
-
-async function saveNode() {
-  try {
-    const payload = {
-      name: nodeForm.name,
-      day_offset: Number(nodeForm.day_offset) || 1,
-      send_time: nodeForm.send_time,
-      task_type: nodeForm.task_type,
-      patient_action: nodeForm.patient_action,
-      ai_action: nodeForm.ai_action,
-      message_template: nodeForm.message_template,
-      knowledge_item_ids: nodeForm.knowledge_item_ids.map(Number),
-      escalation_rule: buildEscalationRule(),
-      completion_rule: buildCompletionRule(),
-      is_required: nodeForm.is_required !== false,
-      is_active: nodeForm.is_active !== false,
-      sort_order: nodeForm.sort_order ?? (Number(nodeForm.day_offset) || 0)
-    }
-    if (nodeForm.id) {
-      await apiJson(`/api/b/followup/nodes/${nodeForm.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-    } else {
-      await postJson(`/api/b/followup/templates/${selectedTemplateId.value}/nodes`, payload)
-    }
-    nodeModal.value = false
-    await loadAll()
-    showToast('节点已保存')
-  } catch (e) {
-    error.value = e?.message || '节点保存失败'
-  }
-}
-
-function nodePayloadFromNode(node, overrides = {}) {
-  return {
-    name: node.name,
-    day_offset: node.day_offset,
-    send_time: node.send_time,
-    task_type: node.task_type,
-    patient_action: node.patient_action,
-    ai_action: node.ai_action,
-    message_template: node.message_template,
-    knowledge_item_ids: node.knowledge_item_ids || [],
-    checkin_schema: node.checkin_schema || {},
-    escalation_rule: node.escalation_rule || {},
-    completion_rule: node.completion_rule || {},
-    is_required: node.is_required !== false,
-    is_active: node.is_active !== false,
-    sort_order: node.sort_order ?? node.day_offset ?? 0,
-    ...overrides
-  }
-}
-
-async function toggleNodeActive(node) {
-  await apiJson(`/api/b/followup/nodes/${node.id}`, {
-    method: 'PUT',
-    body: JSON.stringify(nodePayloadFromNode(node, { is_active: node.is_active === false }))
-  })
-  await loadAll()
-  showToast(node.is_active === false ? '节点已启用' : '节点已停用')
-}
-
-async function copyNode(node) {
-  const payload = nodePayloadFromNode(node, {
-    node_code: `${node.node_code || 'NODE'}_COPY_${Date.now().toString().slice(-4)}`,
-    name: `${node.name} 副本`,
-    sort_order: Math.max(0, ...sortedNodes.value.map(item => Number(item.sort_order ?? item.day_offset ?? 0))) + 1
-  })
-  await postJson(`/api/b/followup/templates/${selectedTemplateId.value}/nodes`, payload)
-  await loadAll()
-  showToast('节点已复制')
-}
-
-async function moveNode(node, direction) {
-  const nodes = sortedNodes.value
-  const index = nodes.findIndex(item => item.id === node.id)
-  const target = nodes[index + direction]
-  if (!target) return
-  const currentOrder = Number(node.sort_order ?? index)
-  const targetOrder = Number(target.sort_order ?? (index + direction))
-  await Promise.all([
-    apiJson(`/api/b/followup/nodes/${node.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(nodePayloadFromNode(node, { sort_order: targetOrder }))
-    }),
-    apiJson(`/api/b/followup/nodes/${target.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(nodePayloadFromNode(target, { sort_order: currentOrder }))
-    })
-  ])
-  await loadAll()
-  showToast('节点顺序已更新')
-}
-
-async function deleteNode() {
-  await apiJson(`/api/b/followup/nodes/${nodeForm.id}`, { method: 'DELETE' })
-  nodeModal.value = false
-  await loadAll()
-  showToast('节点已删除')
-}
-
-function newKnowledge() {
-  Object.assign(knowledgeForm, { id: null, title: '', category: 'diet', task_type: '', priority: 5, trigger_keywords: '', content: '' })
-  knowledgeModal.value = true
-}
-
-function editKnowledge(item) {
-  Object.assign(knowledgeForm, {
-    id: item.id,
-    title: item.title || '',
-    category: item.category || 'script',
-    task_type: item.task_type || '',
-    priority: item.priority || 5,
-    trigger_keywords: item.trigger_keywords || '',
-    content: item.content || ''
-  })
-  knowledgeModal.value = true
-}
-
-async function saveKnowledge() {
-  const payload = {
-    title: knowledgeForm.title,
-    category: knowledgeForm.category,
-    task_type: knowledgeForm.task_type || null,
-    priority: Number(knowledgeForm.priority) || 5,
-    trigger_keywords: knowledgeForm.trigger_keywords,
-    content: knowledgeForm.content,
-    is_active: true
-  }
-  if (knowledgeForm.id) {
-    await apiJson(`/api/b/followup/knowledge/${knowledgeForm.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-  } else {
-    await postJson('/api/b/followup/knowledge', payload)
-  }
-  knowledgeModal.value = false
-  await loadAll()
-  showToast('知识库已保存')
-}
-
-async function deleteKnowledge() {
-  await apiJson(`/api/b/followup/knowledge/${knowledgeForm.id}`, { method: 'DELETE' })
-  knowledgeModal.value = false
-  await loadAll()
-  showToast('知识条目已删除')
-}
-
-function newRule() {
-  Object.assign(ruleForm, {
-    id: null,
-    name: '',
-    rule_type: 'no_reply',
-    task_type: 'daily_checkin',
-    action: 'manual_handoff',
-    trigger_keywords: '',
-    response_template: ''
-  })
-  ruleModal.value = true
-}
-
-function editRule(rule) {
-  Object.assign(ruleForm, {
-    id: rule.id,
-    name: rule.name || '',
-    rule_type: rule.rule_type || 'no_reply',
-    task_type: rule.task_type || '',
-    action: rule.action || 'manual_handoff',
-    trigger_keywords: rule.trigger_keywords || '',
-    response_template: rule.response_template || ''
-  })
-  ruleModal.value = true
-}
-
-async function saveRule() {
-  const payload = {
-    name: ruleForm.name,
-    rule_type: ruleForm.rule_type,
-    task_type: ruleForm.task_type || null,
-    action: ruleForm.action,
-    trigger_keywords: ruleForm.trigger_keywords,
-    response_template: ruleForm.response_template,
-    is_active: true
-  }
-  if (ruleForm.id) {
-    await apiJson(`/api/b/followup/ai-rules/${ruleForm.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-  } else {
-    await postJson('/api/b/followup/ai-rules', payload)
-  }
-  ruleModal.value = false
-  await loadAll()
-  showToast(ruleForm.id ? 'AI规则已更新' : 'AI规则已创建')
-}
-
-async function deleteRule() {
-  if (!ruleForm.id) return
-  await apiJson(`/api/b/followup/ai-rules/${ruleForm.id}`, { method: 'DELETE' })
-  ruleModal.value = false
-  await loadAll()
-  showToast('AI规则已删除')
-}
 
 function knowledgeTitle(id) {
   return knowledgeItems.value.find(item => item.id === Number(id))?.title || `知识#${id}`
@@ -968,7 +470,10 @@ function actionText(v) {
   return ({ ai_reply: 'AI回复', manual_handoff: '提醒健康管理师', doctor_handoff: '重点关注', notify: '通知', close: '完成' }[v] || v)
 }
 
-onMounted(loadAll)
+onMounted(async () => {
+  await loadAll()
+  fillTemplateForm(selectedTemplate.value)
+})
 </script>
 
 <style scoped>
