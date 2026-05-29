@@ -287,7 +287,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import RecordView from './RecordView.vue'
 import FollowTrackingTab from '../components/FollowTrackingTab.vue'
@@ -302,10 +302,10 @@ import { getStoredScenario } from '../config/scenarios'
 import { useFollowupContent } from '../composables/useFollowupContent'
 import { useFollowupPlanning } from '../composables/useFollowupPlanning'
 import { usePatientDisplay } from '../composables/usePatientDisplay'
+import { usePatientStageActions } from '../composables/usePatientStageActions'
 import {
   aiActionLabel,
   patientActionLabel,
-  taskStatusLabel,
   trackingStatusLabel,
   usePatientTracking
 } from '../composables/usePatientTracking'
@@ -313,6 +313,11 @@ import { useReportAudit } from '../composables/useReportAudit'
 import { useReportGeneration } from '../composables/useReportGeneration'
 import { useReportList } from '../composables/useReportList'
 import { useReportViewer } from '../composables/useReportViewer'
+import {
+  normalizeAdvicePayload,
+  usePatientWorkspace
+} from '../composables/usePatientWorkspace'
+import { useWecomBinding } from '../composables/useWecomBinding'
 
 const router = useRouter()
 const route = useRoute()
@@ -433,17 +438,7 @@ const followSearch = ref('')
 const followRiskFilter = ref('')
 const followStageFilter = ref('')
 const patientEditMode = ref(false)
-const adviceGenerating = ref(false)
-const tongueSubmitting = ref(false)
-const tongueSyncing = ref(false)
 const activeAssistant = ref('hlp')
-const wecomModalOpen = ref(false)
-const wecomBindingPatientId = ref('')
-const wecomBindingSaving = ref(false)
-const wecomForm = reactive({
-  external_userid: '',
-  userid: '',
-})
 
 const followupPlanSaving = ref(false)
 const {
@@ -624,15 +619,6 @@ function makeTaskFromPatient(p) {
 
 /**
  * @isdoc
- * @description 新建任务入口（基于当前患者）
- * @returns {void}
- */
-function openNewTaskFromActive() {
-  // 已移除“新建任务”按钮入口：任务仅从患者行“任务下发”进入
-}
-
-/**
- * @isdoc
  * @description 从患者行创建任务并进入详情
  * @param {any} p
  * @returns {void}
@@ -649,55 +635,6 @@ function createTaskForPatient(p) {
     })
   }
   // 左侧固定展示患者列表
-}
-
-/**
- * @isdoc
- * @description 任务流程节点（示意）
- * @param {any} t
- * @returns {{k:string,label:string,state:'todo'|'doing'|'done'}[]}
- */
-function taskFlowNodes(t) {
-  const s = t?.status || 'draft'
-  const at = (k) => {
-    if (s === 'draft') return k === 'assign' ? 'doing' : 'todo'
-    if (s === 'assigned') return (k === 'assign' ? 'done' : k === 'execute' ? 'doing' : 'todo')
-    if (s === 'executing') return (k === 'assign' ? 'done' : k === 'execute' ? 'done' : k === 'review' ? 'doing' : 'todo')
-    if (s === 'review') return (k === 'assign' || k === 'execute' ? 'done' : k === 'review' ? 'done' : k === 'done' ? 'doing' : 'todo')
-    if (s === 'done') return (k === 'assign' || k === 'execute' || k === 'review' || k === 'done') ? 'done' : 'todo'
-    return 'todo'
-  }
-  return [
-    { k: 'assign', label: '分派', state: at('assign') },
-    { k: 'execute', label: '执行', state: at('execute') },
-    { k: 'review', label: '复核', state: at('review') },
-    { k: 'done', label: '闭环', state: at('done') },
-  ]
-}
-
-/**
- * @isdoc
- * @description 推进任务状态并写入日志
- * @param {'assign'|'execute'|'review'|'done'} action
- * @returns {void}
- */
-function advanceTask(action) {
-  const t = activeTask.value
-  if (!t) return
-  let nextStatus = t.status
-  if (action === 'assign') nextStatus = 'assigned'
-  if (action === 'execute') nextStatus = 'executing'
-  if (action === 'review') nextStatus = 'review'
-  if (action === 'done') nextStatus = 'done'
-
-  const note = window.prompt('补充说明（可选）：', '') || ''
-  followTasks.value = (followTasks.value || []).map((x) => {
-    if (x.id !== t.id) return x
-    const y = { ...x, status: nextStatus }
-    y.logs = Array.isArray(y.logs) ? y.logs : []
-    y.logs.unshift({ at: '现在', by: '操作员', action: `状态变更：${taskStatusLabel(nextStatus)}`, note })
-    return y
-  })
 }
 
 onMounted(() => {
@@ -986,50 +923,6 @@ async function savePlanForActiveAndBackend() {
   } catch (e) {
     toast?.show(e.message || '保存下发设置失败')
   }
-}
-
-/**
- * @isdoc
- * @description 保存患者表单（mock：写入时间线，提示已保存）
- * @returns {void}
- */
-function savePatientForm() {
-  const p = activePatient.value
-  if (!p) return
-  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'b', text: '更新患者信息', meta: '已保存' })
-}
-
-/**
- * @isdoc
- * @description 下发任务：状态切换为 follow，并进入执行跟踪页
- * @returns {void}
- */
-async function startAiFollowup() {
-  const p = activePatient.value
-  if (!p) return
-  if (p._apiId) {
-    await simulatePlanToFollowup()
-    return
-  }
-  // 先保存一次，保证计划和内容包存在
-  applySelectedTemplateToPatient()
-
-  p.stage = 'follow'
-  p.stageLabel = '任务执行中'
-  p.serviceStatus = '任务执行中'
-  p.nextStep = '按计划执行任务'
-
-  p.timeline = Array.isArray(p.timeline) ? p.timeline : []
-  p.timeline.push({ at: '现在', tone: 'g', text: '下发健康管理任务', meta: `Day ${planDay.value.replace('day', '')}` })
-
-  // 在聊天里保留一条任务提示（兼容原型预览数据）
-  p.chat = Array.isArray(p.chat) ? p.chat : []
-  p.chat.push({ from: 'ai', text: `已下发健康管理任务（Day ${planDay.value.replace('day', '')}），将按任务模板推送提醒和打卡入口。` })
-  p.chat.push({ type: 'card', ico: '🧾', title: `查看健康管理任务（Day ${planDay.value.replace('day', '')}）`, sub: '任务已生成 · 点击查看' })
-
-  followPatientId.value = p.id
-  setSubTab('follow')
 }
 
 const aiAssistants = [
@@ -1388,8 +1281,8 @@ const reportFollowupCreatingId = ref('')
 const reportFollowupTaskMap = ref({})
 const {
   closeAudit,
-  currentAuditSections,
-  openAudit,
+  finalizeReport,
+  openReportRowPrimary,
   rpAuditId,
   rpAuditImagingAdvice,
   rpAuditOverallAdvice,
@@ -1400,13 +1293,25 @@ const {
   rpAuditTongueAdvice,
   rpAuditVersion,
   rpAuditWasReviewed,
+  rpFinalizing,
   showAuditFollowupNext,
 } = useReportAudit({
   apiJson,
+  generateReportJob,
+  goRecord,
+  isReportGenerating,
   loadReportFollowupTask,
+  loadReports,
+  makeReportFlow,
+  markReportGenerating,
   normalizeAdvicePayload,
+  queue,
   reportTerms,
   rpActiveId,
+  rpList,
+  rpLoaded,
+  toast,
+  unmarkReportGenerating,
 })
 const auditFollowupTask = computed(() => existingReportFollowupTask(rpAuditId.value, null))
 const {
@@ -1424,128 +1329,6 @@ const {
   rpList,
   toast,
 })
-
-async function finalizeReport(reportId) {
-  if (!reportId) return
-  rpFinalizing.value = true
-  try {
-    if (!String(reportId || '').startsWith('r')) {
-      await apiJson(`/api/b/reports/${reportId}/advice`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: rpAuditImagingAdvice.value,
-          sections: currentAuditSections(),
-          preserve_history: true
-        })
-      })
-      const data = await apiJson(`/api/b/reports/${reportId}/advice/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: rpAuditImagingAdvice.value,
-          summary: rpAuditOverallAdvice.value,
-          sections: currentAuditSections()
-        })
-      })
-      const r = rpList.value.find(x => x.id === reportId)
-      if (r) {
-        r.reportStatus = '已审核'
-        r.aiStatus = '已完成'
-        r.summary = rpAuditOverallAdvice.value
-        r.aiReadSummary = rpAuditImagingAdvice.value
-        r.flow = makeReportFlow(r.uploadAt, true)
-      }
-      rpAuditStatus.value = data.advice?.status || 'archived'
-      rpAuditVersion.value = data.advice?.version || rpAuditVersion.value
-      rpAuditWasReviewed.value = true
-      rpLoaded.value = false
-      await loadReports()
-      await loadReportFollowupTask(reportId)
-      return
-    }
-  } catch (e) {
-    console.error('审核报告失败', e)
-    if (!String(reportId || '').startsWith('r')) {
-      toast?.show(e.message || '审核失败')
-      return
-    }
-  } finally {
-    rpFinalizing.value = false
-  }
-
-  try {
-    const r = rpList.value.find(x => x.id === reportId)
-    if (r) r.reportStatus = '已审核'
-    rpAuditId.value = ''
-  } finally {
-    rpFinalizing.value = false
-  }
-}
-
-async function approveReport(reportId) {
-  if (!reportId) return
-  rpFinalizing.value = true
-  try {
-    // 审核AI建议：调用 approve-all 接口，只批准建议，不触发LLM重新生成
-    const res = await fetch(`/api/b/reports/${reportId}/recommendations/approve-all`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }
-    })
-    const data = await res.json()
-    if (data.success) {
-      // 本地更新状态
-      const r = rpList.value.find(x => x.id === reportId)
-      if (r) r.reportStatus = '已审核'
-    } else {
-      alert(data.message || '审核失败')
-    }
-  } catch (e) {
-    console.error('审核失败', e)
-  } finally {
-    rpFinalizing.value = false
-  }
-}
-
-async function openReportRowPrimary(r) {
-  if (!r) return
-  if (r.isReportPlaceholder) {
-    await generateReportForReportRow(r)
-    return
-  }
-  openAudit(r)
-}
-
-async function generateReportForReportRow(r) {
-  if (!r?.rawRecordId) {
-    toast?.show('该患者还没有健康档案，请先建档后再生成报告')
-    const patient = queue.value.find(p => p._apiId === r?.rawPatientId)
-    if (patient) goRecord(patient)
-    return
-  }
-
-  const generateKey = r.rawPatientId || r.id
-  if (isReportGenerating(generateKey)) return
-  markReportGenerating(generateKey)
-
-  try {
-    toast?.show('报告生成任务已提交，AI处理中...')
-    const { completed } = await generateReportJob(r.rawRecordId)
-
-    rpLoaded.value = false
-    await loadReports()
-    if (completed) {
-      toast?.show('健康报告已生成，请审核确认')
-    } else {
-      toast?.show('报告仍在生成中，请稍后刷新查看')
-    }
-  } catch (e) {
-    toast?.show(e.message || '生成健康报告失败')
-  } finally {
-    unmarkReportGenerating(generateKey)
-  }
-}
 
 /**
  * @isdoc
@@ -1565,10 +1348,6 @@ function assistantStatus(key) {
   return enabledKeys.has(key) ? 'g' : 'o'
 }
 
-function assistantStatusLabel(key) {
-  return assistantStatus(key) === 'g' ? '已启用' : '待启用'
-}
-
 /**
  * @isdoc
  * @description 负责人展示：统一为“×医生”
@@ -1583,166 +1362,6 @@ function ownerLabel(owner) {
 
 /**
  * @isdoc
- * @description 右侧“下一步说明”
- * @param {any} p
- * @returns {string}
- */
-function nextHint(p) {
-  const k = statusKey(p)
-  if (k === 'new') return `请先完成患者建档信息，后续才能上传检查报告并生成${scenario.value.reportLabel}。`
-  if (k === 'gen') return `请上传/补全检查报告，系统将自动解析并生成${scenario.value.reportLabel}草稿。`
-  if (k === 'review') return `${scenario.value.reportLabel}已生成，等待人工确认后进入随访任务下发。`
-  if (k === 'plan') return '请选择随访任务模板，预览任务节点并确认下发。'
-  return '当前处于任务执行中，可查看已下发任务与打卡记录。'
-}
-
-/**
- * @isdoc
- * @description 阶段说明（按你给的文案）
- * @param {any} p
- * @returns {string}
- */
-function nextHintV2(p) {
-  const k = statusKey(p)
-  if (k === 'gen') return `系统将根据档案资料生成${scenario.value.reportLabel}草稿。`
-  if (k === 'review') return `${scenario.value.reportLabel}已生成，建议优先完成确认。`
-  if (k === 'plan') return `${scenario.value.reportLabel}已确认，等待下发随访任务。`
-  if (k === 'follow') return '患者任务执行中，可查看任务记录。'
-  return `请先完成患者档案建立，后续才能生成${scenario.value.reportLabel}。`
-}
-
-/**
- * @isdoc
- * @description 流程节点（5节点）与状态
- * @param {any} p
- * @returns {{k:string,label:string,state:'done'|'current'|'todo'}[]}
- */
-function flowNodes(p) {
-  const k = statusKey(p)
-  const labels = [
-    { k: 'a', label: '建立档案' },
-    { k: 'b', label: `${scenario.value.reportLabel}生成` },
-    { k: 'c', label: isCheckupScenario.value ? '总检确认' : '健康报告审核' },
-    { k: 'd', label: '随访任务下发' },
-    { k: 'e', label: '任务执行' },
-  ]
-
-  // 当前节点：按“当前状态”定位到主流程节点
-  // 健康报告待生成 → 当前=健康报告生成
-  // 健康报告待审核 → 当前=健康报告审核
-  // 任务待下发 → 当前=随访任务下发
-  // 任务执行中 → 当前=任务执行
-  const curIdx = k === 'follow' ? 4 : k === 'plan' ? 3 : k === 'review' ? 2 : 1
-
-  return labels.map((x, i) => {
-    const state = i < curIdx ? 'done' : i === curIdx ? 'current' : 'todo'
-    return { ...x, state }
-  })
-}
-
-/**
- * @isdoc
- * @description 阶段操作按钮（最多2个）
- * @param {any} p
- * @returns {{label:string,primary:boolean,onClick:()=>void}[]}
- */
-function stageActions(p) {
-  const k = statusKey(p)
-  if (k === 'gen') {
-    const generating = reportGeneratingIds.value.has(p?.id)
-    return [
-      { label: generating ? '生成中...' : (isCheckupScenario.value ? '生成解读' : '生成报告'), primary: true, disabled: generating, onClick: () => generateReportForPatient(p) },
-      { label: '全流程管理', primary: false, onClick: () => openPatientWorkspace(p) },
-    ]
-  }
-  if (k === 'review') {
-    return [
-      { label: isCheckupScenario.value ? '总检确认' : '审核报告', primary: true, onClick: () => openPatientWorkspace(p) },
-      { label: '报告列表', primary: false, onClick: () => setSubTab('review') },
-    ]
-  }
-  if (k === 'plan') {
-    return [{ label: '随访任务下发', primary: true, onClick: () => openPatientWorkspace(p) }]
-  }
-  if (k === 'follow') {
-    return [
-      { label: '查看全流程', primary: true, onClick: () => openPatientWorkspace(p) },
-      { label: '执行跟踪', primary: false, onClick: () => setSubTab('follow') },
-    ]
-  }
-  return [{ label: '建立档案', primary: true, onClick: () => goRecord(p) }]
-}
-
-/**
- * @isdoc
- * @description 右侧主操作按钮文案
- * @param {any} p
- * @returns {string}
- */
-function primaryLabel(p) {
-  const k = statusKey(p)
-  if (k === 'new') return '新建档案'
-  if (k === 'gen') return '上传报告'
-  if (k === 'review') return isCheckupScenario.value ? '总检确认' : '审核报告'
-  if (k === 'plan') return '随访任务下发'
-  return '执行跟踪'
-}
-
-/**
- * @isdoc
- * @description 右侧主操作按钮行为（原型：路由/切换tab/提示）
- * @param {any} p
- */
-function doPrimary(p) {
-  const k = statusKey(p)
-  if (k === 'new') return goRecord()
-  if (k === 'gen') return setSubTab('record')
-  if (k === 'review') return setSubTab('review')
-  if (k === 'plan') return setSubTab('followup-plan')
-  return setSubTab('follow')
-}
-
-/**
- * @isdoc
- * @description 右侧最近动态：严格按当前阶段展示（2-3条），避免越级出现 AI 随访/异常等内容
- * @param {any} p
- * @returns {{at:string,text:string,meta?:string,tone:string}[]}
- */
-function stageTimeline(p) {
-  const k = statusKey(p)
-  const baseAt = String(p?.timeline?.[p.timeline.length - 1]?.at || '刚刚')
-  if (k === 'gen' || k === 'new') {
-    return [
-      { at: baseAt, tone: 'b', text: '档案资料已提交' },
-      { at: '—', tone: 'b', text: '检查报告已归档' },
-      { at: '—', tone: 'o', text: `等待生成${scenario.value.reportLabel}` },
-    ]
-  }
-  if (k === 'review') {
-    return [
-      { at: baseAt, tone: 'p', text: `${scenario.value.reportLabel}已生成` },
-      { at: '—', tone: 'o', text: isCheckupScenario.value ? '进入总检确认队列' : '进入待审核队列' },
-      { at: '—', tone: 'o', text: isCheckupScenario.value ? '等待总检确认' : '等待人工审核' },
-    ]
-  }
-  if (k === 'plan') {
-    return [
-      { at: baseAt, tone: 'g', text: `${scenario.value.reportLabel}已确认` },
-      { at: '—', tone: 'b', text: '患者报告已推送' },
-      { at: '—', tone: 'o', text: '等待下发随访任务' },
-    ]
-  }
-  // follow
-  return [
-    { at: baseAt, tone: 'b', text: '任务已下发' },
-    { at: '—', tone: 'g', text: '等待用户打卡' },
-    { at: '—', tone: 'p', text: '可查看任务执行记录' },
-  ]
-}
-
-
-/**
- * @isdoc
  * @description 获取患者最近一次互动/更新的时间文本（mock：取 chat 最后一次，其次 timeline 最后一次）
  * @param {any} p 患者对象
  * @returns {string}
@@ -1751,34 +1370,6 @@ function lastTouchLabel(p) {
   const at = String(p?.chat?.[p.chat.length - 1]?.at || p?.timeline?.[p.timeline.length - 1]?.at || '').trim()
   return at ? `最近：${at}` : '最近：—'
 }
-
-/**
- * @isdoc
- * @description 判断最近一条消息的发送方（用于计算待回复/待患者回复）
- * @param {any} p 患者对象
- * @returns {'patient' | 'ai' | 'none'}
- */
-function lastChatRole(p) {
-  const last = p?.chat?.[p.chat.length - 1]
-  const from = String(last?.from || '').trim()
-  if (!from) return 'none'
-  if (from === '患者' || /患者/.test(from)) return 'patient'
-  if (from === '系统' || /AI/.test(from) || /系统/.test(from)) return 'ai'
-  return 'ai'
-}
-
-const steps = computed(() => ([
-  { label: '建档', ic: '档', sub: '04-10', cls: 'done' },
-  { label: '上传上报', ic: '云', sub: '待上传', cls: 'active' },
-  { label: `AI${scenario.value.reportLabel}`, ic: 'AI', sub: '待生成', cls: '' },
-  { label: isCheckupScenario.value ? '总检确认' : '人工审核', ic: '审', sub: isCheckupScenario.value ? '待确认' : '待审核', cls: '' },
-  { label: '推送患者', ic: '推', sub: '待推送', cls: '' },
-  { label: '匹配AI助手', ic: '机', sub: '进行中', cls: '' },
-  { label: '异常识别', ic: '警', sub: '监测', cls: '' },
-  { label: '复查提醒', ic: '铃', sub: '已排程', cls: '' },
-  { label: '复查回收', ic: '收', sub: '待回收', cls: '' },
-  { label: '档案更新', ic: '更', sub: '—', cls: '' }
-]))
 
 // subTabs/allowedSubTabs/setSubTab 已提前定义（由路由 query.tab 驱动）
 
@@ -1792,17 +1383,6 @@ const stageTabs = computed(() => {
     { key: 'follow', label: '任务执行中', count: count('follow') },
   ]
 })
-
-const nextActions = [
-  '上传复查报告',
-  `推送${scenario.value.reportLabel}`,
-  '下发健康管理任务',
-  '发送饮食建议',
-  '发送运动计划',
-  '创建电话随访',
-  '标记异常',
-  '创建复查提醒'
-]
 
 queue.value = []
 
@@ -1951,83 +1531,95 @@ const planPatients = computed(() => queue.value.filter((p) => statusKey(p) === '
 const activePatient = computed(() => {
   return queue.value.find((p) => p.id === activePatientId.value) || queue.value[0] || {}
 })
-
-const wecomBindingPatient = computed(() => {
-  return queue.value.find((p) => p.id === wecomBindingPatientId.value) || activePatient.value || null
+const defaultOwner = computed(() => scenario.value.defaultOwner)
+const {
+  activeAdvice,
+  addManagementLog,
+  adviceGenerating,
+  adviceLocked,
+  adviceStatusLabel,
+  approveAdviceToFinal,
+  computedRisk,
+  copyWorkspaceTongueLink,
+  createFirstFollowupTaskForActive,
+  ensurePatientWorkflow,
+  generateReportForPatient,
+  handleImagingUpload,
+  hydratePatientWorkspace,
+  openPatientWorkspace,
+  patientFlowSteps,
+  regenerateAdviceForActive,
+  removeAsset,
+  riskLayerItems,
+  saveAdviceDraft,
+  saveFollowPlan,
+  startWorkspaceTongueDiagnosis,
+  submitAdviceReview,
+  syncWorkspaceTongueReport,
+  tongueSubmitting,
+  tongueSyncing,
+  updateActiveAdviceContent,
+  updateActiveFollowPlan,
+  updateActivePatientField,
+  workspaceTongueActionLabel,
+  workspaceTongueQrUrl,
+  workspaceTongueStatusLabel,
+} = usePatientWorkspace({
+  activePatient,
+  activePatientId,
+  apiJson,
+  createReportFollowupTask,
+  defaultOwner,
+  existingReportFollowupTask,
+  formatDateInput,
+  generateReportJob,
+  goRecord,
+  isReportGenerating,
+  loadReports,
+  markReportGenerating,
+  nextFollowDateByCycle,
+  noduleTypeLabel,
+  rememberReportFollowupTasks,
+  reportFollowupCreatingId,
+  riskLevelLabel,
+  riskToneFromLevel,
+  rpLoaded,
+  setSubTab,
+  statusLabel,
+  toast,
+  unmarkReportGenerating,
 })
-
-function isWecomBound(p) {
-  return p?.wecomBindStatus === 'bound' || !!p?.wecomExternalUserid || !!p?.wecomUserid
-}
-
-function wecomStatusText(p) {
-  return isWecomBound(p) ? '已绑定' : '未绑定'
-}
-
-function applyWecomBinding(patientData) {
-  const apiId = patientData?.id
-  const target = queue.value.find((p) => p._apiId === apiId || p.id === apiId)
-  if (!target) return
-  target.wecomExternalUserid = patientData.wecom_external_userid || ''
-  target.wecomUserid = patientData.wecom_userid || ''
-  target.wecomBindStatus = patientData.wecom_bind_status || (target.wecomExternalUserid || target.wecomUserid ? 'bound' : 'unbound')
-  target.wecomBoundAt = patientData.wecom_bound_at || ''
-}
-
-function openWecomBind(p = activePatient.value) {
-  if (!p?._apiId) {
-    toast?.show('演示患者暂不支持绑定企业微信身份')
-    return
-  }
-  wecomBindingPatientId.value = p.id
-  wecomForm.external_userid = p.wecomExternalUserid || ''
-  wecomForm.userid = p.wecomUserid || ''
-  wecomModalOpen.value = true
-}
-
-async function submitWecomBind() {
-  const p = wecomBindingPatient.value
-  if (!p?._apiId) return
-  const externalUserid = String(wecomForm.external_userid || '').trim()
-  const userid = String(wecomForm.userid || '').trim()
-  if (!externalUserid && !userid) {
-    toast?.show('请至少填写 external_userid 或 userid')
-    return
-  }
-  wecomBindingSaving.value = true
-  try {
-    const data = await apiJson(`/api/b/patients/${p._apiId}/wecom-bind`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        wecom_external_userid: externalUserid,
-        wecom_userid: userid,
-      }),
-    })
-    applyWecomBinding(data)
-    wecomModalOpen.value = false
-    toast?.show('企业微信身份已绑定')
-  } catch (e) {
-    toast?.show(e.message || '绑定企业微信身份失败')
-  } finally {
-    wecomBindingSaving.value = false
-  }
-}
-
-async function unbindWecom(p = activePatient.value) {
-  if (!p?._apiId) {
-    toast?.show('演示患者暂不支持解绑企业微信身份')
-    return
-  }
-  if (!window.confirm(`确认解绑 ${p.name || '该患者'} 的企业微信身份？`)) return
-  try {
-    const data = await apiJson(`/api/b/patients/${p._apiId}/wecom-bind`, { method: 'DELETE' })
-    applyWecomBinding(data)
-    toast?.show('企业微信身份已解绑')
-  } catch (e) {
-    toast?.show(e.message || '解绑企业微信身份失败')
-  }
-}
+const {
+  flowNodes,
+  nextHintV2,
+  stageActions,
+  stageTimeline,
+} = usePatientStageActions({
+  generateReportForPatient,
+  goRecord,
+  isCheckupScenario,
+  openPatientWorkspace,
+  reportGeneratingIds,
+  scenario,
+  setSubTab,
+  statusKey,
+})
+const {
+  isWecomBound,
+  openWecomBind,
+  submitWecomBind,
+  unbindWecom,
+  wecomBindingPatient,
+  wecomBindingSaving,
+  wecomForm,
+  wecomModalOpen,
+  wecomStatusText,
+} = useWecomBinding({
+  activePatient,
+  apiJson,
+  queue,
+  toast,
+})
 
 function nowText() {
   return new Date().toLocaleString('zh-CN', { hour12: false })
@@ -2201,42 +1793,6 @@ function reportDbStatusLabel(status) {
   return map[status] || status || '未生成'
 }
 
-function normalizeAdvicePayload(advice, fallback = {}) {
-  const sections = advice?.sections || fallback.sections || {}
-  return {
-    version: advice?.version || fallback.version || 1,
-    status: advice?.status || fallback.status || 'draft',
-    updatedAt: advice?.updated_at || advice?.updatedAt || fallback.updatedAt || '',
-    content: advice?.content || fallback.content || '',
-    sections: {
-      imaging_report_advice: sections.imaging_report_advice || advice?.content || fallback.content || '',
-      overall_assessment: sections.overall_assessment || '',
-      risk_assessment: sections.risk_assessment || '',
-      tongue_conclusion: sections.tongue_conclusion || ''
-    },
-    history: (advice?.history || fallback.history || []).map((h, idx) => ({
-      id: h.id || `${h.saved_at || h.savedAt || idx}-${h.version || idx}`,
-      version: h.version || 1,
-      status: h.status || 'draft',
-      content: h.content || '',
-      sections: h.sections || {},
-      savedAt: h.saved_at || h.savedAt || ''
-    }))
-  }
-}
-
-function normalizeImagingReport(item) {
-  return {
-    id: item.id,
-    name: item.file_name || item.name || '影像报告',
-    size: item.file_size || item.size || 0,
-    uploadedAt: item.uploaded_at || item.uploadedAt || '',
-    uploader: item.uploader_name || item.uploaded_by || scenario.value.defaultOwner,
-    type: item.file_type || item.type || 'file',
-    backend: true
-  }
-}
-
 async function apiJson(url, options = {}) {
   const res = await fetch(url, { credentials: 'include', ...options })
   const data = await res.json().catch(() => ({}))
@@ -2257,574 +1813,9 @@ async function apiPostJson(url, payload = {}) {
   })
 }
 
-function makeDefaultAdvice(p) {
-  return {
-    version: 1,
-    status: 'draft',
-    updatedAt: '',
-    content: p?.aiReadSummary || p?.report?.summary || '',
-    history: []
-  }
-}
-
-function ensurePatientWorkflow(p) {
-  if (!p || !p.id) return p
-  p.profileNote = p.profileNote || '既往史、家族史、症状、体征信息待完善。'
-  p.assets = p.assets || {}
-  p.assets.imagingReports = Array.isArray(p.assets.imagingReports) ? p.assets.imagingReports : []
-  p.tongueTask = p.tongueTask || null
-  p.tongueH5Url = p.tongueH5Url || p.tongueTask?.h5_url || ''
-  p.tongueMobileOpenUrl = p.tongueMobileOpenUrl || ''
-  p.workspaceRecords = Array.isArray(p.workspaceRecords) ? p.workspaceRecords : []
-  p.workspaceReports = Array.isArray(p.workspaceReports) ? p.workspaceReports : []
-  p.workspacePlans = Array.isArray(p.workspacePlans) ? p.workspacePlans : []
-  p.workspaceTasks = Array.isArray(p.workspaceTasks) ? p.workspaceTasks : []
-  p.latestReport = p.latestReport || null
-  p.adviceDraft = p.adviceDraft || makeDefaultAdvice(p)
-  p.finalReport = p.finalReport || { content: '', archivedAt: '', version: '' }
-  p.followPlan = p.followPlan || {
-    cycle: p.planTask?.cycle || (p.riskTone === 'r' ? '3个月' : p.riskTone === 'o' ? '6个月' : '12个月'),
-    channel: p.planTask?.channel || '小程序',
-    note: `${p.nodules || '结节'}随访，关注分级、大小、症状变化和资料补充。`
-  }
-  p.managementLogs = Array.isArray(p.managementLogs) ? p.managementLogs : [
-    { id: `${p.id}-log-1`, at: '建档后', by: p.owner || scenario.value.defaultOwner, action: '建立患者档案', note: p.nodules || '' },
-    { id: `${p.id}-log-2`, at: '待处理', by: '系统', action: '等待报告意见审核', note: statusLabel(p) },
-  ]
-  return p
-}
-
-watch(
-  () => activePatient.value?.id,
-  () => ensurePatientWorkflow(activePatient.value),
-  { immediate: true }
-)
-
-async function openPatientWorkspace(p) {
-  if (p?.id) activePatientId.value = p.id
-  const current = ensurePatientWorkflow(p || activePatient.value)
-  setSubTab('detail')
-  await hydratePatientWorkspace(current)
-}
-
 function openQueueFollowupPlan(p) {
   if (p?.id) activePatientId.value = p.id
   setSubTab('followup-plan')
-}
-
-function buildProfileNote(records, fallback = '') {
-  const list = Array.isArray(records) ? records : []
-  const latest = list
-    .slice()
-    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
-  if (!latest) return fallback || '既往史、家族史、症状、体征信息待完善。'
-  const fields = [
-    latest.main_complaint,
-    latest.medical_history,
-    latest.past_history,
-    latest.family_history,
-    latest.symptoms,
-    latest.physical_exam,
-    latest.health_condition
-  ].filter(Boolean)
-  if (fields.length) return fields.join('\n')
-  return fallback || `最近档案：${latest.record_code || latest.created_at || `#${latest.id}`}`
-}
-
-async function hydratePatientWorkspace(p) {
-  if (!p?._apiId) return
-  p.workspaceLoading = true
-  try {
-    const [detail, records, reports, plans, tasks] = await Promise.all([
-      apiJson(`/api/b/patients/${p._apiId}`),
-      apiJson(`/api/b/patients/${p._apiId}/records`),
-      apiJson(`/api/b/reports?patient_id=${p._apiId}&per_page=20`),
-      apiJson(`/api/b/followup/patient-plans?patient_id=${p._apiId}`),
-      apiJson(`/api/b/followup/tasks?patient_id=${p._apiId}&per_page=50`)
-    ])
-    if (detail?.name) {
-      p.name = detail.name || p.name
-      p.gender = detail.gender || p.gender
-      p.age = detail.age || p.age
-      p.phone = detail.phone || p.phone
-      p.phoneMasked = detail.phone ? detail.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : p.phoneMasked
-      p.nodules = noduleTypeLabel(detail.nodule_type || p.noduleType)
-      p.noduleType = detail.nodule_type || p.noduleType
-      p.source = detail.source_channel || p.source
-      p.wecomExternalUserid = detail.wecom_external_userid || p.wecomExternalUserid
-      p.wecomUserid = detail.wecom_userid || p.wecomUserid
-      p.wecomBindStatus = detail.wecom_bind_status || p.wecomBindStatus
-      p.profileNote = buildProfileNote(detail.health_records || records, p.profileNote)
-    }
-    p.workspaceRecords = (Array.isArray(records) ? records : [])
-      .slice()
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    p.workspaceReports = (reports.reports || reports.items || [])
-      .slice()
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    p.workspacePlans = (Array.isArray(plans) ? plans : [])
-      .slice()
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    p.workspaceTasks = (tasks.items || tasks || [])
-      .slice()
-      .sort((a, b) => String(b.scheduled_send_at || b.due_at || b.created_at || '').localeCompare(String(a.scheduled_send_at || a.due_at || a.created_at || '')))
-    rememberReportFollowupTasks(p.workspaceTasks)
-
-    const latestRecord = p.workspaceRecords[0]
-    if (latestRecord?.id) {
-      p.workspaceRecordId = latestRecord.id
-      p.latestReport = latestRecord.latest_report || null
-      const imaging = await apiJson(`/api/b/records/${latestRecord.id}/imaging-reports`)
-      p.assets.imagingReports = (imaging.items || []).map(normalizeImagingReport)
-      const tongue = await apiJson(`/api/b/tongue-diagnosis/tasks/by-record/${latestRecord.id}`)
-      p.tongueTask = (tongue.items || [])[0] || null
-      p.tongueH5Url = p.tongueTask?.h5_url || p.tongueH5Url || ''
-      p.tongueMobileOpenUrl = p.tongueTask?.mobile_open_url || p.tongueMobileOpenUrl || ''
-    }
-
-    const latestReport = p.workspaceReports[0]
-    if (latestReport?.id) {
-      p.workspaceReportId = latestReport.id
-      p.latestReport = {
-        id: latestReport.id,
-        report_code: latestReport.report_code,
-        status: latestReport.status,
-        risk_level: latestReport.risk_level,
-        report_summary: latestReport.report_summary,
-        imaging_conclusion: latestReport.imaging_conclusion,
-        reviewed_at: latestReport.reviewed_at,
-        created_at: latestReport.created_at,
-        updated_at: latestReport.updated_at
-      }
-      p.risk = riskLevelLabel(latestReport.risk_level || p.risk)
-      p.riskTone = riskToneFromLevel(latestReport.risk_level || p.risk)
-      const advice = await apiJson(`/api/b/reports/${latestReport.id}/advice`)
-      p.adviceDraft = normalizeAdvicePayload(advice.advice, p.adviceDraft)
-      if (latestReport.status === 'finalized' || latestReport.status === 'published' || p.adviceDraft.status === 'archived') {
-        p.finalReport = {
-          content: p.adviceDraft.content || latestReport.imaging_conclusion || latestReport.report_summary || '',
-          archivedAt: latestReport.reviewed_at || p.adviceDraft.updatedAt || '',
-          version: p.adviceDraft.version || 1
-        }
-        p.stage = 'plan'
-      }
-    }
-  } catch (e) {
-    console.error('加载患者工作台失败', e)
-  } finally {
-    p.workspaceLoading = false
-  }
-}
-
-async function generateReportForPatient(p) {
-  const patient = ensurePatientWorkflow(p || activePatient.value)
-  if (!patient?._apiId) {
-    toast?.show('请先保存患者信息后再生成报告')
-    return
-  }
-  if (isReportGenerating(patient.id)) return
-
-  markReportGenerating(patient.id)
-  try {
-    if (!patient.workspaceRecordId) {
-      await hydratePatientWorkspace(patient)
-    }
-    if (!patient.workspaceRecordId) {
-      toast?.show('请先完成患者建档，再生成健康报告')
-      goRecord(patient)
-      return
-    }
-
-    toast?.show('报告生成任务已提交，AI处理中...')
-    const { completed } = await generateReportJob(patient.workspaceRecordId)
-
-    rpLoaded.value = false
-    await hydratePatientWorkspace(patient)
-    await loadReports()
-    if (completed) {
-      patient.stage = 'review'
-      toast?.show('健康报告已生成，请到健康报告审核中确认')
-      setSubTab('review')
-    } else {
-      toast?.show('报告仍在生成中，请稍后到健康报告审核查看')
-    }
-  } catch (e) {
-    toast?.show(e.message || '生成健康报告失败')
-  } finally {
-    unmarkReportGenerating(patient.id)
-  }
-}
-
-const activeAdvice = computed(() => {
-  const p = ensurePatientWorkflow(activePatient.value)
-  return p?.adviceDraft || makeDefaultAdvice(p)
-})
-
-function updateActivePatientField({ field, value }) {
-  if (!field) return
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (!p) return
-  p[field] = value
-}
-
-function updateActiveAdviceContent(value) {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (!p) return
-  p.adviceDraft = p.adviceDraft || makeDefaultAdvice(p)
-  p.adviceDraft.content = value
-}
-
-const adviceLocked = computed(() => {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const status = p?.adviceDraft?.status
-  const reportStatus = p?.latestReport?.status
-  return !!p?.finalReport?.content || ['archived', 'approved'].includes(status) || ['finalized', 'published', 'archived'].includes(reportStatus)
-})
-
-const workspaceTongueActionLabel = computed(() => {
-  const task = activePatient.value?.tongueTask
-  if (task?.status === 'h5_sso_created') return '重新打开舌诊 H5'
-  if (task?.status === 'completed') return '已完成舌诊'
-  return '打开舌诊 H5'
-})
-
-const workspaceTongueStatusLabel = computed(() => {
-  const status = activePatient.value?.tongueTask?.status
-  const map = {
-    h5_sso_created: 'H5已生成',
-    completed: '舌诊已完成',
-    failed: '检测失败',
-    waiting_inquiry: '待完成'
-  }
-  return map[status] || status || ''
-})
-
-const workspaceTongueQrUrl = computed(() => {
-  const url = activePatient.value?.tongueMobileOpenUrl || activePatient.value?.tongueH5Url || ''
-  if (!url) return ''
-  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(url)}`
-})
-
-function adviceStatusLabel(status) {
-  const map = {
-    draft: '草稿',
-    reviewing: '待审核',
-    approved: '审核通过',
-    archived: '已写入最终报告',
-  }
-  return map[status] || '草稿'
-}
-
-const patientFlowSteps = computed(() => {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const adviceStatus = p?.adviceDraft?.status || 'draft'
-  const hasFinal = !!p?.finalReport?.content
-  const hasPlan = !!p?.followPlan?.note
-  const nodes = [
-    { key: 'archive', no: 1, label: '档案' },
-    { key: 'risk', no: 2, label: '评估' },
-    { key: 'advice', no: 3, label: '建议' },
-    { key: 'review', no: 4, label: '审核' },
-    { key: 'final', no: 5, label: '最终报告' },
-    { key: 'follow', no: 6, label: '随访管理' },
-  ]
-  const current = hasFinal && hasPlan ? 5 : hasFinal ? 4 : adviceStatus === 'reviewing' ? 3 : 2
-  return nodes.map((n, idx) => ({ ...n, state: idx < current ? 'done' : idx === current ? 'current' : 'todo' }))
-})
-
-const computedRisk = computed(() => {
-  const p = activePatient.value || {}
-  if (p.riskTone === 'r' || p.risk === '高风险') return { level: '高风险', tone: 'r' }
-  if (p.riskTone === 'o' || p.risk === '中风险') return { level: '中风险', tone: 'o' }
-  if (p.riskTone === 'g' || p.risk === '低风险') return { level: '低风险', tone: 'g' }
-  return { level: '待评估', tone: 'g' }
-})
-
-const riskLayerItems = computed(() => {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const completenessRisk = (p.assets?.imagingReports || []).length ? { level: '资料较完整', tone: 'g' } : { level: '资料缺口', tone: 'o' }
-  const tongueRisk = p.tongueTask?.status === 'completed'
-    ? { level: '舌诊已回流', tone: 'g' }
-    : p.tongueH5Url
-      ? { level: 'H5链接已生成', tone: 'g' }
-      : { level: '待生成手机链接', tone: 'o' }
-  return [
-    { key: 'nodule', label: '结节分层', level: computedRisk.value.level, tone: computedRisk.value.tone, reason: `${p.nodules || '结节'}当前标记为${computedRisk.value.level}，需结合分级、大小、数量和症状复核。` },
-    { key: 'material', label: '资料完整度', level: completenessRisk.level, tone: completenessRisk.tone, reason: (p.assets?.imagingReports || []).length ? '已上传影像报告，可进入报告解析/复核。' : '缺少原始影像报告，AI只能基于表单生成初步建议。' },
-    { key: 'history', label: '病史风险', level: p.profileNote?.includes('家族') ? '需关注' : '常规', tone: p.profileNote?.includes('家族') ? 'o' : 'g', reason: p.profileNote || '病史信息待完善。' },
-    { key: 'tongue', label: '舌诊资料', level: tongueRisk.level, tone: tongueRisk.tone, reason: 'B端生成手机H5链接，由患者手机或健康管理师手机完成采集；结果回流后写入档案和报告。' },
-  ]
-})
-
-function addManagementLog(action, note = '') {
-  const p = ensurePatientWorkflow(activePatient.value)
-  p.managementLogs = p.managementLogs || []
-  p.managementLogs.unshift({ id: `${Date.now()}-${Math.random()}`, at: nowText(), by: p.owner || scenario.value.defaultOwner, action, note })
-}
-
-async function handleImagingUpload(event) {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const files = Array.from(event.target.files || [])
-  if (!files.length) return
-  try {
-    if (p.workspaceRecordId) {
-      const form = new FormData()
-      files.forEach(file => form.append('imaging_reports', file))
-      const data = await apiJson(`/api/b/records/${p.workspaceRecordId}/imaging-reports`, { method: 'POST', body: form })
-      const existing = (p.assets.imagingReports || []).filter(x => !x.backend)
-      p.assets.imagingReports = [...(data.items || []).map(normalizeImagingReport), ...existing]
-    } else {
-      files.forEach(file => {
-        p.assets.imagingReports.unshift({
-          id: `${Date.now()}-${file.name}-${Math.random()}`,
-          name: file.name,
-          size: file.size,
-          uploadedAt: nowText(),
-          uploader: p.owner || scenario.value.defaultOwner,
-          type: file.type || 'file'
-        })
-      })
-    }
-    addManagementLog('上传影像报告', files.map(f => f.name).join('、'))
-  } catch (e) {
-    toast?.show(e.message || '影像报告上传失败')
-  } finally {
-    event.target.value = ''
-  }
-}
-
-async function startWorkspaceTongueDiagnosis() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (!p._apiId || !p.workspaceRecordId) {
-    toast?.show('请先保存患者档案，再发起舌诊')
-    return
-  }
-  tongueSubmitting.value = true
-  try {
-    const data = await apiJson('/api/b/tongue-diagnosis/h5-sso', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: p._apiId, record_id: p.workspaceRecordId })
-    })
-    p.tongueTask = data.task
-    p.tongueH5Url = data.h5_url || data.task?.h5_url || ''
-    p.tongueMobileOpenUrl = data.mobile_open_url || ''
-    addManagementLog('打开舌诊H5', data.task?.out_id || '')
-    if (p.tongueH5Url) window.open(p.tongueH5Url, '_blank', 'noopener')
-    toast?.show('手机舌诊链接已生成')
-  } catch (e) {
-    toast?.show(e.message || 'H5舌诊打开失败')
-  } finally {
-    tongueSubmitting.value = false
-  }
-}
-
-async function copyWorkspaceTongueLink() {
-  const url = activePatient.value?.tongueMobileOpenUrl || activePatient.value?.tongueH5Url || ''
-  if (!url) return
-  try {
-    await navigator.clipboard.writeText(url)
-    toast?.show('舌诊链接已复制')
-  } catch (e) {
-    toast?.show('复制失败，请手动选择链接')
-  }
-}
-
-async function syncWorkspaceTongueReport() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const taskId = p.tongueTask?.id
-  if (!taskId) {
-    toast?.show('请先生成舌诊H5链接')
-    return
-  }
-  tongueSyncing.value = true
-  try {
-    const data = await apiJson(`/api/b/tongue-diagnosis/tasks/${taskId}/sync-report`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    })
-    p.tongueTask = data.task || p.tongueTask
-    p.tongueH5Url = p.tongueTask?.h5_url || p.tongueH5Url || ''
-    p.tongueMobileOpenUrl = p.tongueTask?.mobile_open_url || p.tongueMobileOpenUrl || ''
-    addManagementLog('同步舌诊结果', p.tongueTask?.status || '')
-    toast?.show(p.tongueTask?.tongue_feature ? '舌诊结果已同步' : '暂未查询到舌诊报告')
-  } catch (e) {
-    toast?.show(e.message || '舌诊结果同步失败')
-  } finally {
-    tongueSyncing.value = false
-  }
-}
-
-async function removeAsset(type, id) {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const hit = (p.assets[type] || []).find(x => x.id === id)
-  if (type === 'imagingReports' && hit?.backend && p.workspaceRecordId) {
-    try {
-      await apiJson(`/api/b/records/${p.workspaceRecordId}/imaging-reports/${id}`, { method: 'DELETE' })
-    } catch (e) {
-      toast?.show(e.message || '删除影像报告失败')
-      return
-    }
-  }
-  p.assets[type] = (p.assets[type] || []).filter(x => x.id !== id)
-  addManagementLog('删除资料', type)
-}
-
-async function regenerateAdviceForActive() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (adviceLocked.value) {
-    toast?.show('最终报告已归档，不能再次生成建议')
-    return
-  }
-  adviceGenerating.value = true
-  try {
-    const previous = p.adviceDraft.content
-    if (previous) {
-      p.adviceDraft.history = p.adviceDraft.history || []
-      p.adviceDraft.history.unshift({
-        id: `${Date.now()}-${p.adviceDraft.version}`,
-        version: p.adviceDraft.version || 1,
-        status: p.adviceDraft.status || 'draft',
-        content: previous,
-        savedAt: p.adviceDraft.updatedAt || nowText()
-      })
-    }
-    p.adviceDraft.version = (p.adviceDraft.version || 1) + 1
-    p.adviceDraft.status = 'draft'
-    p.adviceDraft.updatedAt = nowText()
-    p.adviceDraft.content = `基于${p.name}当前档案，${p.nodules}建议按${computedRisk.value.level}路径管理。请补充原始影像报告，结合分级、大小、症状、病史进行复核；若分级不清或资料缺失，应优先完善检查资料后再形成最终报告。随访建议：${p.followPlan?.cycle || '6个月'}复查，通过${p.followPlan?.channel || '小程序'}进行提醒和记录。`
-    if (p.workspaceReportId) {
-      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: p.adviceDraft.content, preserve_history: true })
-      })
-      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
-    }
-    addManagementLog('再次生成建议草稿', `V${p.adviceDraft.version}`)
-  } catch (e) {
-    toast?.show(e.message || '再次生成建议失败')
-  } finally {
-    adviceGenerating.value = false
-  }
-}
-
-async function saveAdviceDraft() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (adviceLocked.value) {
-    toast?.show('最终报告已归档，不能编辑建议')
-    return false
-  }
-  if (!String(p.adviceDraft.content || '').trim()) {
-    toast?.show('请先生成或填写建议内容')
-    return false
-  }
-  if (p.workspaceReportId) {
-    try {
-      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: p.adviceDraft.content, preserve_history: true })
-      })
-      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
-    } catch (e) {
-      toast?.show(e.message || '保存建议草稿失败')
-      return false
-    }
-  }
-  p.adviceDraft.status = 'draft'
-  p.adviceDraft.updatedAt = nowText()
-  addManagementLog('保存建议草稿', `V${p.adviceDraft.version || 1}`)
-  return true
-}
-
-async function submitAdviceReview() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (adviceLocked.value) {
-    toast?.show('最终报告已归档，不能再次提交审核')
-    return
-  }
-  if (!String(p.adviceDraft.content || '').trim()) {
-    toast?.show('请先生成或填写建议内容')
-    return
-  }
-  if (p.workspaceReportId) {
-    try {
-      const saved = await saveAdviceDraft()
-      if (!saved) return
-      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice/submit-review`, { method: 'POST' })
-      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
-    } catch (e) {
-      toast?.show(e.message || '提交建议审核失败')
-      return
-    }
-  }
-  p.adviceDraft.status = 'reviewing'
-  p.adviceDraft.updatedAt = nowText()
-  p.stage = 'review'
-  addManagementLog('提交建议审核', `V${p.adviceDraft.version || 1}`)
-}
-
-async function approveAdviceToFinal() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (adviceLocked.value) {
-    toast?.show('最终报告已归档')
-    return
-  }
-  if (p.adviceDraft.status !== 'reviewing') return
-  if (p.workspaceReportId) {
-    try {
-      const data = await apiJson(`/api/b/reports/${p.workspaceReportId}/advice/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: p.adviceDraft.content, summary: p.report?.summary || '' })
-      })
-      p.adviceDraft = normalizeAdvicePayload(data.advice, p.adviceDraft)
-    } catch (e) {
-      toast?.show(e.message || '审核通过失败')
-      return
-    }
-  }
-  p.adviceDraft.status = 'archived'
-  p.finalReport = {
-    content: p.adviceDraft.content,
-    archivedAt: nowText(),
-    version: p.adviceDraft.version || 1
-  }
-  p.stage = 'plan'
-  addManagementLog('审核通过并写入最终报告', `V${p.adviceDraft.version || 1}`)
-  rpLoaded.value = false
-  await hydratePatientWorkspace(p)
-}
-
-async function createFirstFollowupTaskForActive(reportId = null) {
-  const p = ensurePatientWorkflow(activePatient.value)
-  const targetReportId = reportId || p.workspaceReportId || p.latestReport?.id
-  if (!targetReportId) {
-    toast?.show('请先生成并审核健康报告')
-    return
-  }
-  if (existingReportFollowupTask(targetReportId, p)) {
-    toast?.show('该报告已存在首次随访任务')
-    return
-  }
-  reportFollowupCreatingId.value = String(targetReportId)
-  try {
-    const task = await createReportFollowupTask(targetReportId)
-    p.workspaceTasks = [task, ...(p.workspaceTasks || [])]
-    addManagementLog('创建首次随访任务', `${task.title || '报告后首次随访'} · ${task.due_at || '待排期'}`)
-    toast?.show('已创建报告后首次随访任务')
-    await hydratePatientWorkspace(p)
-  } catch (e) {
-    if (e.status === 409) {
-      toast?.show('该报告已存在随访任务')
-      await hydratePatientWorkspace(p)
-    } else {
-      toast?.show(e.message || '创建首次随访任务失败')
-    }
-  } finally {
-    reportFollowupCreatingId.value = ''
-  }
 }
 
 async function createReportFollowupTask(reportId) {
@@ -2873,42 +1864,6 @@ async function openReportFollowupTask(reportId) {
   if (matched) selectTask(matched.id)
   rpAuditId.value = ''
   setSubTab('follow')
-}
-
-function updateActiveFollowPlan({ field, value }) {
-  if (!field) return
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (!p) return
-  p.followPlan = p.followPlan || {}
-  p.followPlan[field] = value
-}
-
-async function saveFollowPlan() {
-  const p = ensurePatientWorkflow(activePatient.value)
-  if (!p?._apiId) {
-    toast?.show('请先保存患者信息后再保存任务配置')
-    return
-  }
-  try {
-    const data = await apiJson(`/api/b/patients/${p._apiId}/follow-ups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        follow_up_type: p.followPlan.channel || '小程序',
-        follow_up_date: formatDateInput(new Date()),
-        content: p.followPlan.note || '',
-        next_follow_up_date: nextFollowDateByCycle(p.followPlan.cycle),
-        next_follow_up_action: `${p.followPlan.cycle || '6个月'}复查；${p.followPlan.channel || '小程序'}触达`
-      })
-    })
-    p.followPlan.savedAt = data.created_at || nowText()
-    p.followPlan.backendId = data.id
-    p.stage = p.finalReport?.content ? 'follow' : 'plan'
-    addManagementLog('保存任务配置', `${p.followPlan.cycle} · ${p.followPlan.channel}`)
-    toast?.show('任务配置已保存')
-  } catch (e) {
-    toast?.show(e.message || '保存任务配置失败')
-  }
 }
 
 watch(

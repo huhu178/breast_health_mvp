@@ -2,10 +2,22 @@ import { computed, ref } from 'vue'
 
 export function useReportAudit({
   apiJson,
+  generateReportJob,
+  goRecord,
+  isReportGenerating,
   loadReportFollowupTask,
+  loadReports,
+  makeReportFlow,
+  markReportGenerating,
   normalizeAdvicePayload,
+  openAuditOnReady = true,
+  queue,
   reportTerms,
   rpActiveId,
+  rpList,
+  rpLoaded,
+  toast,
+  unmarkReportGenerating,
 }) {
   const rpAuditId = ref('')
   const rpAuditPara1 = ref('')
@@ -17,6 +29,7 @@ export function useReportAudit({
   const rpAuditStatus = ref('')
   const rpAuditVersion = ref(1)
   const rpAuditWasReviewed = ref(false)
+  const rpFinalizing = ref(false)
 
   const showAuditFollowupNext = computed(() => (
     !!rpAuditId.value
@@ -77,10 +90,108 @@ export function useReportAudit({
     }
   }
 
+  async function finalizeReport(reportId) {
+    if (!reportId) return
+    rpFinalizing.value = true
+    try {
+      if (!String(reportId || '').startsWith('r')) {
+        await apiJson(`/api/b/reports/${reportId}/advice`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: rpAuditImagingAdvice.value,
+            sections: currentAuditSections(),
+            preserve_history: true
+          })
+        })
+        const data = await apiJson(`/api/b/reports/${reportId}/advice/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: rpAuditImagingAdvice.value,
+            summary: rpAuditOverallAdvice.value,
+            sections: currentAuditSections()
+          })
+        })
+        const r = rpList.value.find(x => x.id === reportId)
+        if (r) {
+          r.reportStatus = '已审核'
+          r.aiStatus = '已完成'
+          r.summary = rpAuditOverallAdvice.value
+          r.aiReadSummary = rpAuditImagingAdvice.value
+          r.flow = makeReportFlow(r.uploadAt, true)
+        }
+        rpAuditStatus.value = data.advice?.status || 'archived'
+        rpAuditVersion.value = data.advice?.version || rpAuditVersion.value
+        rpAuditWasReviewed.value = true
+        rpLoaded.value = false
+        await loadReports()
+        await loadReportFollowupTask(reportId)
+        return
+      }
+    } catch (e) {
+      console.error('审核报告失败', e)
+      if (!String(reportId || '').startsWith('r')) {
+        toast?.show(e.message || '审核失败')
+        return
+      }
+    } finally {
+      rpFinalizing.value = false
+    }
+
+    try {
+      const r = rpList.value.find(x => x.id === reportId)
+      if (r) r.reportStatus = '已审核'
+      rpAuditId.value = ''
+    } finally {
+      rpFinalizing.value = false
+    }
+  }
+
+  async function generateReportForReportRow(r) {
+    if (!r?.rawRecordId) {
+      toast?.show('该患者还没有健康档案，请先建档后再生成报告')
+      const patient = queue.value.find(p => p._apiId === r?.rawPatientId)
+      if (patient) goRecord(patient)
+      return
+    }
+
+    const generateKey = r.rawPatientId || r.id
+    if (isReportGenerating(generateKey)) return
+    markReportGenerating(generateKey)
+
+    try {
+      toast?.show('报告生成任务已提交，AI处理中...')
+      const { completed } = await generateReportJob(r.rawRecordId)
+
+      rpLoaded.value = false
+      await loadReports()
+      if (completed) {
+        toast?.show('健康报告已生成，请审核确认')
+      } else {
+        toast?.show('报告仍在生成中，请稍后刷新查看')
+      }
+    } catch (e) {
+      toast?.show(e.message || '生成健康报告失败')
+    } finally {
+      unmarkReportGenerating(generateKey)
+    }
+  }
+
+  async function openReportRowPrimary(r) {
+    if (!r) return
+    if (r.isReportPlaceholder) {
+      await generateReportForReportRow(r)
+      return
+    }
+    if (openAuditOnReady) openAudit(r)
+  }
+
   return {
     closeAudit,
-    currentAuditSections,
-    openAudit,
+    finalizeReport,
+    generateReportForReportRow,
+    openReportRowPrimary,
     rpAuditId,
     rpAuditImagingAdvice,
     rpAuditOverallAdvice,
@@ -91,6 +202,7 @@ export function useReportAudit({
     rpAuditTongueAdvice,
     rpAuditVersion,
     rpAuditWasReviewed,
+    rpFinalizing,
     showAuditFollowupNext,
   }
 }
