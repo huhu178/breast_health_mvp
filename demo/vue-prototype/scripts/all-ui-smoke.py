@@ -30,6 +30,14 @@ def main() -> None:
         "--screenshot-dir",
         str(root / "workflow"),
     ])
+    run_step("follow-up workflow save", [
+        sys.executable,
+        "scripts/workflow-save-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--screenshot-dir",
+        str(root / "workflow-save"),
+    ])
     run_step("report-to-follow-up", [
         sys.executable,
         "scripts/followup-ui-smoke.py",

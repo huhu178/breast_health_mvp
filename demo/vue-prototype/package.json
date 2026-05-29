@@ -11,6 +11,7 @@
     "smoke": "npm run build && npm run test:composables && node scripts/prototype-smoke.mjs",
     "smoke:ui": "python3 scripts/followup-ui-smoke.py",
     "smoke:workflow-ui": "python3 scripts/workflow-ui-smoke.py",
+    "smoke:workflow-save-ui": "python3 scripts/workflow-save-ui-smoke.py",
     "smoke:all-ui": "python3 scripts/all-ui-smoke.py"
   },
   "dependencies": {
