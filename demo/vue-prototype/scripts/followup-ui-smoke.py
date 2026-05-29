@@ -9,6 +9,8 @@ Prerequisites:
 The script creates a disposable finalized report via backend APIs, verifies
 that the Vue UI can manually create the first follow-up task, submits the
 public check-in form, confirms the B-side UI sees the reply, and cleans up.
+It also validates that the follow tracking page keeps its three-column layout
+visible and writes a screenshot for layout regressions.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from http.cookiejar import CookieJar
+from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -107,7 +110,32 @@ def create_finalized_report(api: ApiClient) -> tuple[int, int, str]:
     return patient_id, report_id, patient["name"]
 
 
-def run_browser_smoke(frontend_url: str, patient_name: str, report_id: int) -> None:
+def assert_follow_tracking_layout(page, screenshot_dir: Path | None = None) -> None:
+    columns = {
+        "患者列表": page.locator(".follow-patient-col").first,
+        "患者聊天记录": page.locator(".tracking-list-col").first,
+        "任务执行表": page.locator(".tracking-detail-col").first,
+    }
+    for name, locator in columns.items():
+        expect(locator, f"{name}列不可见").to_be_visible(timeout=10000)
+        box = locator.bounding_box()
+        if not box or box["width"] < 180 or box["height"] < 300:
+            raise AssertionError(f"{name}列尺寸异常：{box}")
+
+    left = columns["患者列表"].bounding_box()
+    middle = columns["患者聊天记录"].bounding_box()
+    right = columns["任务执行表"].bounding_box()
+    if not left or not middle or not right:
+        raise AssertionError("执行跟踪列布局缺少可测量区域")
+    if not (left["x"] < middle["x"] < right["x"]):
+        raise AssertionError(f"执行跟踪三列顺序异常：left={left}, middle={middle}, right={right}")
+
+    if screenshot_dir:
+        screenshot_dir.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=str(screenshot_dir / "follow-tracking-layout.png"), full_page=True)
+
+
+def run_browser_smoke(frontend_url: str, patient_name: str, report_id: int, screenshot_dir: Path | None) -> None:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -171,6 +199,7 @@ def run_browser_smoke(frontend_url: str, patient_name: str, report_id: int) -> N
         if refresh.count():
             refresh.first.click()
             page.wait_for_timeout(800)
+        assert_follow_tracking_layout(page, screenshot_dir)
 
         page.goto(f"{frontend_url}/patient", wait_until="networkidle")
         page.locator("input[placeholder*='姓名'], input[placeholder*='手机号']").first.fill(patient_name)
@@ -184,6 +213,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--frontend-url", default="http://127.0.0.1:5173")
     parser.add_argument("--backend-url", default="http://127.0.0.1:5000")
+    parser.add_argument("--screenshot-dir", default="/tmp/followup-ui-smoke")
     parser.add_argument("--keep", action="store_true", help="保留脚本创建的测试患者")
     args = parser.parse_args()
 
@@ -192,7 +222,8 @@ def main() -> None:
     try:
         api.login()
         patient_id, report_id, patient_name = create_finalized_report(api)
-        run_browser_smoke(args.frontend_url.rstrip("/"), patient_name, report_id)
+        screenshot_dir = Path(args.screenshot_dir) if args.screenshot_dir else None
+        run_browser_smoke(args.frontend_url.rstrip("/"), patient_name, report_id, screenshot_dir)
         print("[OK] follow-up UI smoke passed")
     finally:
         if patient_id and not args.keep:
