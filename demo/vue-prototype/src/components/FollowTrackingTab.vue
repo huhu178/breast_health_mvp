@@ -1,5 +1,5 @@
 <template>
-  <div class="follow-workbench">
+  <div class="follow-tracking-layout">
     <div class="follow-stats-bar">
       <div class="follow-stat-item">
         <div class="follow-stat-label">任务执行中</div>
@@ -241,7 +241,7 @@ defineEmits([
 </script>
 
 <style scoped>
-.follow-workbench{display:contents}
+.follow-tracking-layout{height:100%;min-height:0;display:grid;grid-template-columns:minmax(260px,300px) minmax(420px,.95fr) minmax(420px,1.05fr);gap:10px;overflow:hidden}
 .card{background:#fff;border:1px solid #e6edf7;border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
 .card-title{font-size:14px;font-weight:950;color:#0f172a}
 .muted{color:#64748b;font-weight:750}
@@ -349,11 +349,11 @@ defineEmits([
 .mini-image-placeholder{height:96px;border-radius:8px;background:linear-gradient(135deg,#fde68a,#fb923c);display:grid;place-items:center;color:#7c2d12;font-size:13px;font-weight:950}
 .mini-image-card span{font-size:11px;font-weight:850;color:#047857}
 @media (max-width: 1500px){
-  .follow-workbench{grid-template-columns:minmax(240px,280px) minmax(320px,.85fr) minmax(380px,1fr)}
+  .follow-tracking-layout{grid-template-columns:minmax(240px,280px) minmax(320px,.85fr) minmax(380px,1fr)}
   .follow-flow-step{padding:7px 6px}
 }
 @media (max-width: 1280px){
-  .follow-workbench{grid-template-columns:250px minmax(0,1fr);grid-template-rows:auto minmax(420px,1fr)}
+  .follow-tracking-layout{grid-template-columns:250px minmax(0,1fr);grid-template-rows:auto minmax(420px,1fr)}
   .follow-patient-col{grid-column:1;grid-row:1 / span 2}
   .tracking-list-col{grid-column:2;grid-row:1}
   .tracking-detail-col{grid-column:2;grid-row:2}

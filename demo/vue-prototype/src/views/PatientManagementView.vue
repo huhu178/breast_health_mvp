@@ -130,7 +130,7 @@
       />
 
       <!-- follow tab：患者随访聊天记录查看（三栏：患者列表 | 手机聊天 | 助手面板） -->
-      <div v-else-if="subTab === 'follow'" class="follow-workbench">
+      <div v-else-if="subTab === 'follow'" class="follow-page-shell">
 
         <FollowTrackingTab
           :stats="followTrackingStats"
@@ -159,19 +159,6 @@
           @select-task="selectTask"
         />
 
-        <LegacyFollowAssistantPreview
-          :plan-day="planDay"
-          :patient="followPatient"
-          :current-assistant="currentAssistant"
-          :chat-messages="simulatedAssistantChat"
-          :assistants="followAssistants"
-          :active-assistant="activeAssistant"
-          :content-rows="followContentConfigRows"
-          :generated-rows="followGeneratedRows"
-          :assistant-status="assistantStatus"
-          @update-active-assistant="activeAssistant = $event"
-          @enable-kb="setKbEnabled($event, true)"
-        />
       </div>
 
       <!-- review tab：报告处理主页面 -->
@@ -291,7 +278,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import RecordView from './RecordView.vue'
 import FollowTrackingTab from '../components/FollowTrackingTab.vue'
-import LegacyFollowAssistantPreview from '../components/LegacyFollowAssistantPreview.vue'
 import OtherPatientTabs from '../components/OtherPatientTabs.vue'
 import PatientDetailWorkspace from '../components/PatientDetailWorkspace.vue'
 import PatientQueueOverview from '../components/PatientQueueOverview.vue'
@@ -1628,10 +1614,8 @@ function backToQueue() {
 .profile-field input{width:100%;box-sizing:border-box;border:1px solid #dbe5f2;border-radius:9px;background:#fff;padding:8px 10px;color:#0f172a;font-size:13px;font-weight:650}
 .profile-field.wide{grid-column:1/-1}
 
-/* 随访执行页外层网格。内部列由 FollowTrackingTab/LegacyFollowAssistantPreview 接管。 */
-.follow-workbench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(260px,300px) minmax(420px,.95fr) minmax(420px,1.05fr);gap:10px;padding:12px;overflow:hidden}
-@media (max-width:1500px){.follow-workbench{grid-template-columns:minmax(240px,280px) minmax(320px,.85fr) minmax(380px,1fr)}}
-@media (max-width:1280px){.follow-workbench{grid-template-columns:250px minmax(0,1fr);grid-template-rows:auto minmax(420px,1fr)}}
+/* 随访执行页外层容器。三列布局由 FollowTrackingTab 自身接管。 */
+.follow-page-shell{flex:1;min-height:0;padding:12px;overflow:hidden;background:#fff}
 
 /* 报告查看弹窗 */
 .rp-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center}
