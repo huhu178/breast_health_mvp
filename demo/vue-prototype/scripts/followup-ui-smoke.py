@@ -121,6 +121,17 @@ def run_browser_smoke(frontend_url: str, patient_name: str, report_id: int) -> N
         page.goto(f"{frontend_url}/patient", wait_until="networkidle")
         expect(page.get_by_text("患者管理").first).to_be_visible(timeout=10000)
 
+        page.goto(f"{frontend_url}/patient?tab=review", wait_until="networkidle")
+        expect(page.get_by_text("报告列表").or_(page.get_by_text("体检报告列表")).first).to_be_visible(timeout=10000)
+        page.locator("input[placeholder*='姓名'], input[placeholder*='手机号']").first.fill(patient_name)
+        expect(page.get_by_text(patient_name).first).to_be_visible(timeout=10000)
+
+        page.goto(f"{frontend_url}/patient?tab=followup-plan", wait_until="networkidle")
+        expect(page.get_by_text("随访任务下发").first).to_be_visible(timeout=10000)
+        page.locator("input[placeholder*='姓名'], input[placeholder*='手机号']").first.fill(patient_name)
+        expect(page.get_by_text(patient_name).first).to_be_visible(timeout=10000)
+
+        page.goto(f"{frontend_url}/patient", wait_until="networkidle")
         search_inputs = page.locator("input[placeholder*='姓名'], input[placeholder*='手机号']")
         search_inputs.first.fill(patient_name)
         page.wait_for_timeout(800)
@@ -153,6 +164,13 @@ def run_browser_smoke(frontend_url: str, patient_name: str, report_id: int) -> N
         page.locator("textarea").first.fill("浏览器联调：睡眠正常，饮食清淡，步行20分钟，暂无不适。")
         page.get_by_role("button", name="提交打卡").click()
         expect(page.get_by_text("已完成本次打卡").or_(page.get_by_text("已提醒健康管理师关注")).first).to_be_visible(timeout=10000)
+
+        page.goto(f"{frontend_url}/patient?tab=follow", wait_until="networkidle")
+        expect(page.get_by_text("任务执行表").first).to_be_visible(timeout=10000)
+        refresh = page.get_by_role("button", name="刷新")
+        if refresh.count():
+            refresh.first.click()
+            page.wait_for_timeout(800)
 
         page.goto(f"{frontend_url}/patient", wait_until="networkidle")
         page.locator("input[placeholder*='姓名'], input[placeholder*='手机号']").first.fill(patient_name)
