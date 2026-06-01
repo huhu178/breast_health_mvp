@@ -105,6 +105,10 @@ export function useReportAudit({
             preserve_history: true
           })
         })
+        await apiJson(`/api/b/reports/${reportId}/advice/submit-review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
         const data = await apiJson(`/api/b/reports/${reportId}/advice/approve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
