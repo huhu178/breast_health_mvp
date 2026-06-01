@@ -22,6 +22,62 @@ def main() -> None:
     args = parser.parse_args()
 
     root = Path(args.screenshot_root)
+    run_step("patient record save", [
+        sys.executable,
+        "scripts/patient-save-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--screenshot-dir",
+        str(root / "patient-save"),
+    ])
+    run_step("report audit", [
+        sys.executable,
+        "scripts/report-audit-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--backend-url",
+        args.backend_url,
+        "--screenshot-dir",
+        str(root / "report-audit"),
+    ])
+    run_step("imaging upload", [
+        sys.executable,
+        "scripts/imaging-upload-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--backend-url",
+        args.backend_url,
+        "--screenshot-dir",
+        str(root / "imaging-upload"),
+    ])
+    run_step("audit follow-up", [
+        sys.executable,
+        "scripts/audit-followup-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--backend-url",
+        args.backend_url,
+        "--screenshot-dir",
+        str(root / "audit-followup"),
+    ])
+    run_step("multi-nodule record save", [
+        sys.executable,
+        "scripts/multi-nodule-record-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--screenshot-dir",
+        str(root / "multi-nodule"),
+    ])
+    run_step("triple report audit", [
+        sys.executable,
+        "scripts/triple-report-ui-smoke.py",
+        "--frontend-url",
+        args.frontend_url,
+        "--backend-url",
+        args.backend_url,
+        "--screenshot-dir",
+        str(root / "triple-report"),
+    ])
     run_step("follow-up workflow", [
         sys.executable,
         "scripts/workflow-ui-smoke.py",

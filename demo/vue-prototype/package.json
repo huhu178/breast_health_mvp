@@ -10,6 +10,12 @@
     "test:composables": "node scripts/api-client-smoke.mjs && node scripts/composable-smoke.mjs",
     "smoke": "npm run build && npm run test:composables && node scripts/prototype-smoke.mjs",
     "smoke:ui": "python3 scripts/followup-ui-smoke.py",
+    "smoke:patient-save-ui": "python3 scripts/patient-save-ui-smoke.py",
+    "smoke:report-audit-ui": "python3 scripts/report-audit-ui-smoke.py",
+    "smoke:imaging-upload-ui": "python3 scripts/imaging-upload-ui-smoke.py",
+    "smoke:audit-followup-ui": "python3 scripts/audit-followup-ui-smoke.py",
+    "smoke:multi-nodule-ui": "python3 scripts/multi-nodule-record-ui-smoke.py",
+    "smoke:triple-report-ui": "python3 scripts/triple-report-ui-smoke.py",
     "smoke:workflow-ui": "python3 scripts/workflow-ui-smoke.py",
     "smoke:workflow-save-ui": "python3 scripts/workflow-save-ui-smoke.py",
     "smoke:all-ui": "python3 scripts/all-ui-smoke.py"
