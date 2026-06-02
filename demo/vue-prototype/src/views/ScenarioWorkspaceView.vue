@@ -343,13 +343,13 @@ const workspaceMap = {
     kpis: [
       { icon: '咨', label: '到店咨询', value: '214', sub: '转建档 36', action: 'queue' },
       { icon: '药', label: '药师待跟进', value: '28', sub: '高优先级 6', action: 'follow' },
-      { icon: '访', label: '随访任务', value: '91', sub: '待下发 18', action: 'followup-plan' },
+      { icon: '视', label: '名师视频', value: '156', sub: '已观看 102', action: 'followup-plan' },
       { icon: '成', label: '服务完成率', value: '81.2%', sub: '近30天', action: 'follow' },
     ],
     rows: [
       { name: '赵*强', meta: '男 59岁 · 慢病服务', desc: '近期购药记录已同步，健康报告已生成，等待药师回访记录', status: '待跟进', tone: 'r', action: 'detail' },
       { name: '陈*霞', meta: '女 45岁 · 到店咨询', desc: '咨询结节报告与保健品使用，已建档并等待报告解读提醒', status: '待回复', tone: 'o', action: 'review' },
-      { name: '刘*峰', meta: '男 71岁 · 购药记录', desc: '慢病药物即将用尽，可下发用药提醒和健康打卡任务', status: '可触达', tone: 'b', action: 'followup-plan' },
+      { name: '刘*峰', meta: '男 71岁 · 购药记录', desc: '慢病药物即将用尽，可下发用药提醒和每日名师视频', status: '可触达', tone: 'b', action: 'followup-plan' },
     ],
     detailItems: [
       { k: '服务类型', v: '慢病服务' },
@@ -359,7 +359,7 @@ const workspaceMap = {
     ],
     actions: [
       { label: '查看患者详情', action: 'detail' },
-      { label: '发送用药提醒', action: 'followup-plan' },
+      { label: '下发名师视频', action: 'followup-plan' },
       { label: '创建随访任务', action: 'followup-plan' },
       { label: '记录药师意见', action: 'follow' }
     ],
@@ -367,6 +367,7 @@ const workspaceMap = {
       { title: '服务来源分析', action: 'queue', items: [{ label: '到店咨询建档', value: '36' }, { label: '购药记录关联', value: '58' }, { label: '线上问诊转入', value: '22' }] },
       { title: '药师工作量', action: 'follow', items: [{ label: '待回复咨询', value: '9' }, { label: '已完成回访', value: '46' }, { label: '待跟进任务', value: '18' }] },
       { title: '健康服务转化', action: 'review', items: [{ label: '咨询转建档', value: '16.8%' }, { label: '建档转报告', value: '72.4%' }, { label: '报告转随访', value: '61.5%' }] },
+      { title: '每日名师视频', action: 'followup-plan', items: [{ label: '今日待推送', value: '156' }, { label: '已观看', value: '102' }, { label: '未观看提醒', value: '31' }] },
       { title: '用药与健康提醒', action: 'followup-plan', items: [{ label: '用药提醒', value: '34' }, { label: '复购提醒', value: '17' }, { label: '报告解读提醒', value: '28' }] },
       { title: '重点患者跟进', action: 'follow', items: [{ label: '长期未响应', value: '12' }, { label: '报告未生成', value: '42', action: 'review' }, { label: '随访未完成', value: '18', action: 'follow' }] },
     ],
@@ -416,8 +417,8 @@ const pharmacyFunnel = [
   { label: '到店/线上咨询', value: '214', rate: '100%', width: '100%', action: 'queue' },
   { label: '完成建档', value: '36', rate: '16.8%', width: '74%', action: 'record' },
   { label: '生成健康报告', value: '26', rate: '72.4%', width: '58%', action: 'review' },
-  { label: '下发随访任务', value: '16', rate: '61.5%', width: '42%', action: 'followup-plan' },
-  { label: '完成打卡/回访', value: '13', rate: '81.2%', width: '34%', action: 'follow' },
+  { label: '下发名师视频', value: '19', rate: '73.1%', width: '46%', action: 'followup-plan' },
+  { label: '完成观看/打卡', value: '13', rate: '68.4%', width: '34%', action: 'follow' },
 ]
 
 const pharmacySources = [

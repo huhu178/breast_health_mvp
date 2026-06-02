@@ -387,11 +387,11 @@ const workflowCopy = computed(() => {
   if (scenario.value.key === 'pharmacy') {
     return {
       pageSub: '维护药店健康服务随访模板、用药提醒、报告解读提醒和药师回访话术',
-      templateSub: '定义用药提醒、健康打卡、复购提醒和药师回访周期',
-      editorSub: '维护结节健康知识、药事提醒话术，并编排固定企业微信推送任务',
-      knowledgeSub: '维护可复用的报告解读、用药注意、饮食运动和药师回访素材',
-      ruleSub: '配置饮食点评、未回复提醒、资料上传提醒和药师重点跟进规则',
-      keywordPlaceholder: '用药,复购,报告解读,饮食,运动,结节'
+      templateSub: '定义每日名师视频、用药提醒、健康打卡、复购提醒和药师回访周期',
+      editorSub: '维护名师讲解视频、结节健康知识、药事提醒话术，并编排固定企业微信推送任务',
+      knowledgeSub: '维护可复用的名师视频、报告解读、用药注意、饮食运动和药师回访素材',
+      ruleSub: '配置视频未观看提醒、饮食点评、未回复提醒、资料上传提醒和药师重点跟进规则',
+      keywordPlaceholder: '名师视频,用药,复购,报告解读,饮食,运动,结节'
     }
   }
   return {
@@ -406,6 +406,7 @@ const workflowCopy = computed(() => {
 
 const taskTypeOptions = [
   { value: 'knowledge_push', label: '知识推送' },
+  { value: 'video_push', label: '名师视频推送' },
   { value: 'daily_checkin', label: '每日打卡' },
   { value: 'diet_checkin', label: '饮食打卡/图片识别' },
   { value: 'exercise_reminder', label: '运动提醒' },
@@ -414,6 +415,7 @@ const taskTypeOptions = [
 ]
 
 const knowledgeCategoryOptions = [
+  { value: 'expert_video', label: '名师讲解视频' },
   { value: 'breast_nodule', label: '乳腺结节' },
   { value: 'lung_nodule', label: '肺结节' },
   { value: 'thyroid_nodule', label: '甲状腺结节' },
