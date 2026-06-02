@@ -57,6 +57,13 @@ def create_app():
         os.path.dirname(os.path.dirname(__file__)),
         'frontend', 'templates'
     )
+    fallback_template_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        'frontend', 'templates'
+    )
+    if not os.path.exists(os.path.join(template_dir, 'index.html')):
+        template_dir = fallback_template_dir
+
     static_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         'frontend', 'static'

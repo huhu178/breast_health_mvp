@@ -110,17 +110,17 @@
           <div class="combined-divider"></div>
           <div class="combined-col">
             <div class="col-sub">随访状态</div>
-            <div class="bar-row"><span>待处理报告</span><div class="bar"><span style="width:18%;background:#5b8ff9"></span></div><b>146</b></div>
-            <div class="bar-row"><span>待医生复核</span><div class="bar"><span style="width:12%;background:#5ad8a6"></span></div><b>82</b></div>
-            <div class="bar-row"><span>待推送患者</span><div class="bar"><span style="width:14%;background:#6dc8ec"></span></div><b>95</b></div>
-            <div class="bar-row"><span>随访中</span><div class="bar"><span style="width:86%;background:#4f83f1"></span></div><b>7,361</b></div>
-            <div class="bar-row"><span>随访已完成</span><div class="bar"><span style="width:92%;background:#65a30d"></span></div><b>9,248</b></div>
+            <div class="bar-row"><span>{{ analyticsCopy.statusBars.report }}</span><div class="bar"><span style="width:18%;background:#5b8ff9"></span></div><b>{{ analyticsCopy.statusBars.reportValue }}</b></div>
+            <div class="bar-row"><span>{{ analyticsCopy.statusBars.review }}</span><div class="bar"><span style="width:12%;background:#5ad8a6"></span></div><b>{{ analyticsCopy.statusBars.reviewValue }}</b></div>
+            <div class="bar-row"><span>{{ analyticsCopy.statusBars.push }}</span><div class="bar"><span style="width:14%;background:#6dc8ec"></span></div><b>{{ analyticsCopy.statusBars.pushValue }}</b></div>
+            <div class="bar-row"><span>{{ analyticsCopy.statusBars.following }}</span><div class="bar"><span style="width:86%;background:#4f83f1"></span></div><b>{{ analyticsCopy.statusBars.followingValue }}</b></div>
+            <div class="bar-row"><span>{{ analyticsCopy.statusBars.done }}</span><div class="bar"><span style="width:92%;background:#65a30d"></span></div><b>{{ analyticsCopy.statusBars.doneValue }}</b></div>
           </div>
         </div>
         <div class="insight-bar">
-          <span class="insight-dot r"></span>高风险待处理 <b>102</b> 人
-          <span class="insight-sep">·</span>24小时内未处理 <b>18</b> 份
-          <span class="insight-sep">·</span>今日需优先复核 <b>82</b> 人
+          <span class="insight-dot r"></span>{{ analyticsCopy.insights[0].label }} <b>{{ analyticsCopy.insights[0].value }}</b>
+          <span class="insight-sep">·</span>{{ analyticsCopy.insights[1].label }} <b>{{ analyticsCopy.insights[1].value }}</b>
+          <span class="insight-sep">·</span>{{ analyticsCopy.insights[2].label }} <b>{{ analyticsCopy.insights[2].value }}</b>
         </div>
       </section>
 
@@ -151,21 +151,102 @@ const scenario = computed(() => getStoredScenario())
 const liveReports = ref([])
 const loading = ref(false)
 
+const analyticsCopy = computed(() => {
+  if (scenario.value.key === 'pharmacy') {
+    return {
+      fallbackMetrics: [
+        { label: '建档患者数', value: '1,286', delta: '较昨日 +36', tone: 'blue', icon: 'users' },
+        { label: '到店咨询', value: '214', delta: '今日新增 +18', tone: 'orange', icon: 'shield' },
+        { label: '待生成报告', value: '42', delta: '健康评估待处理', tone: 'blue', icon: 'file' },
+        { label: '药师待跟进', value: '28', delta: '高优先级 6', tone: 'green', icon: 'check' },
+        { label: '随访待下发', value: '61', delta: '报告后任务', tone: 'purple', icon: 'send' },
+        { label: '服务完成率', value: '81.2%', delta: '近30天', tone: 'cyan', icon: 'clock' }
+      ],
+      liveLabels: {
+        total: '建档患者数',
+        high: '重点跟进患者',
+        pending: '待生成报告',
+        review: '药师待跟进',
+        push: '随访待下发',
+        done: '服务完成率'
+      },
+      statusBars: {
+        report: '待生成报告',
+        reportValue: '42',
+        review: '药师待跟进',
+        reviewValue: '28',
+        push: '随访待下发',
+        pushValue: '61',
+        following: '服务随访中',
+        followingValue: '736',
+        done: '服务已完成',
+        doneValue: '924'
+      },
+      insights: [
+        { label: '重点患者待跟进', value: '28人' },
+        { label: '今日到店咨询未建档', value: '12人' },
+        { label: '用药提醒待下发', value: '61人' }
+      ],
+      fallbackTodos: [
+        { label: '待生成报告', value: 42, tone: 'r', sub: '健康评估待处理' },
+        { label: '药师待跟进', value: 28, tone: 'o', sub: '回访和记录待办' },
+        { label: '随访待下发', value: 61, tone: 'b', sub: '报告后任务' },
+        { label: '重点患者', value: 18, tone: 'r', sub: '长期未响应或高风险' }
+      ]
+    }
+  }
+  return {
+    fallbackMetrics: kpis.analytics,
+    liveLabels: {
+      total: `${scenario.value.personLabel}总数`,
+      high: `高风险${scenario.value.personLabel}`,
+      pending: '待处理报告',
+      review: '待医生复核',
+      push: '待推送患者',
+      done: '随访完成率'
+    },
+    statusBars: {
+      report: '待处理报告',
+      reportValue: '146',
+      review: '待医生复核',
+      reviewValue: '82',
+      push: '待推送患者',
+      pushValue: '95',
+      following: '随访中',
+      followingValue: '7,361',
+      done: '随访已完成',
+      doneValue: '9,248'
+    },
+    insights: [
+      { label: '高风险待处理', value: '102人' },
+      { label: '24小时内未处理', value: '18份' },
+      { label: '今日需优先复核', value: '82人' }
+    ],
+    fallbackTodos: [
+      { label: '待处理报告', value: 146, tone: 'r', sub: '影像报告待处理' },
+      { label: '待复核', value: 82, tone: 'o', sub: '医生确认待办' },
+      { label: '待推送', value: 95, tone: 'b', sub: '报告待推送' },
+      { label: '异常预警', value: 102, tone: 'r', sub: '异常结果待处理' }
+    ]
+  }
+})
+
 const metrics = computed(() => {
-  if (!liveReports.value.length) return kpis.analytics
+  if (!liveReports.value.length) return analyticsCopy.value.fallbackMetrics
   const reports = liveReports.value
   const total = reports.length
   const high = reports.filter((item) => riskLabel(item.risk_level) === '高风险').length
   const pending = reports.filter((item) => item.status === 'not_generated').length
   const review = reports.filter((item) => ['generated', 'draft', 'reviewing'].includes(item.status)).length
   const push = reports.filter((item) => ['finalized', 'published'].includes(item.status)).length
+  const labels = analyticsCopy.value.liveLabels
   return [
-    { label: `${scenario.value.personLabel}总数`, value: formatNum(total), delta: '接口实时汇总', tone: 'blue', icon: 'users' },
-    { label: `高风险${scenario.value.personLabel}`, value: formatNum(high), delta: `占比 ${pct(high, total)}`, tone: 'orange', icon: 'shield' },
-    { label: '待处理报告', value: formatNum(pending), delta: '尚未生成', tone: 'blue', icon: 'file' },
-    { label: '待医生复核', value: formatNum(review), delta: '报告待确认', tone: 'green', icon: 'check' },
-    { label: '待推送患者', value: formatNum(push), delta: '已生成报告', tone: 'purple', icon: 'send' },
-    { label: '随访完成率', value: '78.6%', delta: '保留历史口径', tone: 'cyan', icon: 'clock' }
+    { label: labels.total, value: formatNum(total), delta: '接口实时汇总', tone: 'blue', icon: 'users' },
+    { label: labels.high, value: formatNum(high), delta: `占比 ${pct(high, total)}`, tone: 'orange', icon: 'shield' },
+    { label: labels.pending, value: formatNum(pending), delta: '尚未生成', tone: 'blue', icon: 'file' },
+    { label: labels.review, value: formatNum(review), delta: '报告待确认', tone: 'green', icon: 'check' },
+    { label: labels.push, value: formatNum(push), delta: '已生成报告', tone: 'purple', icon: 'send' },
+    { label: labels.done, value: '78.6%', delta: '保留历史口径', tone: 'cyan', icon: 'clock' }
   ]
 })
 
@@ -252,18 +333,14 @@ const totalPersons = computed(() => liveReports.value.length ? formatNum(liveRep
 const todoStats = computed(() => {
   const reports = liveReports.value
   if (!reports.length) {
-    return [
-      { label: '待处理报告', value: 146, tone: 'r', sub: '影像报告待处理' },
-      { label: '待复核', value: 82, tone: 'o', sub: '医生确认待办' },
-      { label: '待推送', value: 95, tone: 'b', sub: '报告待推送' },
-      { label: '异常预警', value: 102, tone: 'r', sub: '异常结果待处理' }
-    ]
+    return analyticsCopy.value.fallbackTodos
   }
+  const isPharmacy = scenario.value.key === 'pharmacy'
   return [
-    { label: '待处理报告', value: reports.filter((item) => item.status === 'not_generated').length, tone: 'r', sub: '尚未生成报告' },
-    { label: '待复核', value: reports.filter((item) => ['generated', 'draft', 'reviewing'].includes(item.status)).length, tone: 'o', sub: '医生确认待办' },
-    { label: '待推送', value: reports.filter((item) => ['finalized', 'published'].includes(item.status)).length, tone: 'b', sub: '报告待推送' },
-    { label: '异常预警', value: reports.filter((item) => riskLabel(item.risk_level) === '高风险').length, tone: 'r', sub: '高风险结果待处理' }
+    { label: isPharmacy ? '待生成报告' : '待处理报告', value: reports.filter((item) => item.status === 'not_generated').length, tone: 'r', sub: '尚未生成报告' },
+    { label: isPharmacy ? '药师待跟进' : '待复核', value: reports.filter((item) => ['generated', 'draft', 'reviewing'].includes(item.status)).length, tone: 'o', sub: isPharmacy ? '回访和记录待办' : '医生确认待办' },
+    { label: isPharmacy ? '随访待下发' : '待推送', value: reports.filter((item) => ['finalized', 'published'].includes(item.status)).length, tone: 'b', sub: isPharmacy ? '报告后任务' : '报告待推送' },
+    { label: isPharmacy ? '重点患者' : '异常预警', value: reports.filter((item) => riskLabel(item.risk_level) === '高风险').length, tone: 'r', sub: isPharmacy ? '重点跟进' : '高风险结果待处理' }
   ]
 })
 

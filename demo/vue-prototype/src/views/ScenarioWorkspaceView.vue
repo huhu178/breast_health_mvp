@@ -1,6 +1,6 @@
 <template>
   <div class="scenario-page" :class="{ 'checkup-page': scenario.key === 'checkup' }" :style="themeVars">
-    <template v-if="scenario.key === 'checkup'">
+    <template v-if="scenario.key === '__legacy_checkup'">
       <header class="scenario-head checkup-head">
         <div>
           <div class="scenario-title">筛查中心</div>
@@ -161,7 +161,7 @@
       </header>
 
       <section class="kpi-row">
-        <article v-for="k in workspace.kpis" :key="k.label" class="kpi">
+        <article v-for="k in workspace.kpis" :key="k.label" class="kpi" :class="{ clickable: k.action }" @click="goAction(k.action)">
           <div class="kpi-icon">{{ k.icon }}</div>
           <div>
             <div class="kpi-label">{{ k.label }}</div>
@@ -185,7 +185,7 @@
             </div>
           </div>
           <div class="rows">
-            <button v-for="row in workspace.rows" :key="row.name" type="button" class="queue-row">
+            <button v-for="row in workspace.rows" :key="row.name" type="button" class="queue-row" @click="goAction(row.action || 'patient-detail')">
               <div class="row-main">
                 <b>{{ row.name }}</b>
                 <span>{{ row.meta }}</span>
@@ -211,20 +211,61 @@
               <p>{{ workspace.explain }}</p>
             </div>
             <div class="action-grid">
-              <button v-for="a in workspace.actions" :key="a" class="btn" type="button">{{ a }}</button>
+              <button v-for="a in workspace.actions" :key="actionLabel(a)" class="btn" type="button" @click="goAction(a)">{{ actionLabel(a) }}</button>
             </div>
           </div>
         </aside>
       </main>
 
+      <section v-if="isPharmacy" class="pharmacy-insights">
+        <section class="card funnel-card">
+          <div class="card-head compact">
+            <div>
+              <div class="card-title">健康服务转化漏斗</div>
+              <div class="muted">咨询到建档、报告、随访和完成的闭环转化</div>
+            </div>
+          </div>
+          <div class="funnel-body">
+            <button
+              v-for="step in pharmacyFunnel"
+              :key="step.label"
+              type="button"
+              class="funnel-step"
+              :style="{ '--w': step.width }"
+              @click="goAction(step.action)"
+            >
+              <span>{{ step.label }}</span>
+              <b>{{ step.value }}</b>
+              <em>{{ step.rate }}</em>
+            </button>
+          </div>
+        </section>
+
+        <section class="card source-card">
+          <div class="card-head compact">
+            <div>
+              <div class="card-title">服务来源占比</div>
+              <div class="muted">到店咨询、购药记录、慢病服务和线上问诊</div>
+            </div>
+          </div>
+          <div class="source-body">
+            <button v-for="item in pharmacySources" :key="item.label" type="button" class="source-row" @click="goAction(item.action)">
+              <span>{{ item.label }}</span>
+              <i><em :style="{ width: item.width }"></em></i>
+              <b>{{ item.value }}</b>
+            </button>
+          </div>
+        </section>
+      </section>
+
       <section class="bottom-grid">
         <section v-for="panel in workspace.panels" :key="panel.title" class="card panel">
           <div class="card-head compact"><div class="card-title">{{ panel.title }}</div></div>
           <div class="panel-body">
-            <div v-for="it in panel.items" :key="it.label" class="panel-line">
+            <button v-for="it in panel.items" :key="it.label" type="button" class="panel-line" @click="goAction(it.action || panel.action || it.label)">
               <span>{{ it.label }}</span>
               <b>{{ it.value }}</b>
-            </div>
+            </button>
           </div>
         </section>
       </section>
@@ -234,9 +275,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { getStoredScenario } from '../config/scenarios'
 
+const router = useRouter()
 const scenario = computed(() => getStoredScenario())
+const isPharmacy = computed(() => scenario.value.key === 'pharmacy')
 
 const themeVars = computed(() => ({
   '--workspace-primary': scenario.value.theme?.primary || '#155eef',
@@ -247,119 +291,164 @@ const themeVars = computed(() => ({
 
 const workspaceMap = {
   checkup: {
-    title: '筛查中心',
-    subtitle: '体检批次管理 · 异常结果识别 · 转诊建议 · 复查预约',
-    primaryAction: '生成转诊建议',
+    title: '筛查质控',
+    subtitle: '体检批次质量 · 阳性检出 · 报告解读效率 · 随访完成率',
+    primaryAction: '查看质控明细',
     secondaryAction: '导入体检批次',
-    queueTitle: '异常结果队列',
-    queueSub: '按体检批次、结节类型和风险等级聚合处理',
+    queueTitle: '筛查批次质控',
+    queueSub: '按体检批次、套餐、结节类型和随访状态查看筛查质量',
     filterA: '体检批次：全部',
     filterB: '风险等级：全部',
-    detailTitle: '筛查结果详情',
-    detailState: '待确认建议',
-    explainTitle: 'AI解读依据',
-    explain: '系统基于体检报告结构化字段、结节分级、既往体检记录和当前风险分层，生成复查周期与转诊建议。',
+    detailTitle: '批次质控详情',
+    detailState: '处理中',
+    explainTitle: '质控口径',
+    explain: '系统基于体检报告结构化字段、结节类型、风险分层、报告解读状态和随访触达状态，统计筛查质量与后续管理完成情况。',
     kpis: [
       { icon: '批', label: '今日体检批次', value: '12', sub: '已导入 9 批' },
-      { icon: '异', label: '异常结果', value: '86', sub: '高风险 14' },
-      { icon: '转', label: '建议转诊', value: '18', sub: '待确认 6' },
-      { icon: '约', label: '复查预约', value: '42', sub: '今日新增 8' },
+      { icon: '阳', label: '结节检出', value: '86', sub: '高风险 14' },
+      { icon: '解', label: '待解读报告', value: '31', sub: '较昨日 +5' },
+      { icon: '访', label: '随访完成率', value: '78.6%', sub: '近30天' },
     ],
     rows: [
-      { name: '孙*', meta: '女 48岁 · 单位团检', desc: '甲状腺结节 TI-RADS 3 类，建议 6 个月复查超声', status: '待确认', tone: 'o' },
-      { name: '李*华', meta: '男 55岁 · 肺结节专项', desc: '肺部磨玻璃结节 7mm，建议门诊进一步评估', status: '建议转诊', tone: 'r' },
-      { name: '王*', meta: '女 37岁 · 女性健康专项', desc: '乳腺结节 BI-RADS 3 类，建议建立随访计划', status: '待随访', tone: 'b' },
+      { name: '春季单位体检A-03', meta: '单位团检 · 286人', desc: '结节检出 46 人，高风险 8 人，31 份报告待解读', status: '处理中', tone: 'o' },
+      { name: '肺结节专项筛查', meta: '专项套餐 · 128人', desc: '肺结节检出率 18.7%，高风险患者已进入患者管理队列', status: '待随访', tone: 'b' },
+      { name: '女性健康专项', meta: '个人体检 · 96人', desc: '乳腺/甲状腺结节患者已生成报告解读和随访任务', status: '已完成', tone: 'g' },
     ],
     detailItems: [
-      { k: '体检套餐', v: '肺结节专项' },
-      { k: '异常指标', v: '肺部磨玻璃结节 7mm' },
-      { k: '推荐去向', v: '呼吸科门诊' },
-      { k: '复查周期', v: '3个月' },
+      { k: '体检批次', v: '春季单位体检A-03' },
+      { k: '筛查人数', v: '286人' },
+      { k: '结节检出', v: '46人' },
+      { k: '报告解读', v: '31份待处理' },
     ],
-    actions: ['确认转诊', '创建复查预约', '发送解读报告', '加入随访计划'],
+    actions: ['查看患者队列', '查看报告解读', '查看随访完成率', '导出质控表'],
     panels: [
-      { title: '批次处理进度', items: [{ label: '已解析报告', value: '286' }, { label: '待人工确认', value: '18' }, { label: '已发送解读', value: '142' }] },
-      { title: '转诊建议分布', items: [{ label: '呼吸科', value: '9' }, { label: '甲乳外科', value: '5' }, { label: '超声复查', value: '28' }] },
-      { title: '复查预约', items: [{ label: '今日预约', value: '42' }, { label: '7日内到期', value: '76' }, { label: '已确认', value: '31' }] },
+      { title: '批次处理进度', items: [{ label: '已解析报告', value: '286' }, { label: '待解读报告', value: '31' }, { label: '已发送解读', value: '142' }] },
+      { title: '筛查质量', items: [{ label: '结节检出率', value: '16.1%' }, { label: '高风险占比', value: '2.8%' }, { label: '报告结构化率', value: '92.4%' }] },
+      { title: '随访触达', items: [{ label: '待下发任务', value: '42' }, { label: '已触达患者', value: '118' }, { label: '完成打卡', value: '76' }] },
     ],
   },
   pharmacy: {
-    title: '药事服务',
-    subtitle: '用药咨询 · 慢病管理 · 复购提醒 · 药师干预 · 异常转诊',
-    primaryAction: '创建药师干预',
-    secondaryAction: '导入购药记录',
-    queueTitle: '药事服务队列',
-    queueSub: '围绕用药安全、慢病标签和健康咨询生成服务任务',
+    title: '药事服务分析',
+    subtitle: '到店咨询 · 慢病服务 · 用药提醒 · 随访触达 · 服务转化',
+    primaryAction: '查看转化明细',
+    secondaryAction: '导入服务记录',
+    queueTitle: '重点跟进队列',
+    queueSub: '按服务来源、药师任务和随访状态查看需要继续跟进的患者',
     filterA: '服务类型：全部',
     filterB: '慢病标签：全部',
-    detailTitle: '药师服务详情',
-    detailState: '待药师确认',
-    explainTitle: '药事建议依据',
-    explain: '系统结合近期购药记录、慢病标签、症状反馈和禁忌提醒，生成用药指导、复购提醒和就医建议。',
+    detailTitle: '服务质量详情',
+    detailState: '待跟进',
+    explainTitle: '统计口径',
+    explain: '系统结合患者来源、购药记录、健康咨询、随访任务和触达结果，统计药店健康服务的完成情况和后续跟进质量。',
     kpis: [
-      { icon: '药', label: '用药咨询', value: '34', sub: '待回复 9' },
-      { icon: '慢', label: '慢病服务', value: '128', sub: '重点随访 22' },
-      { icon: '购', label: '复购提醒', value: '56', sub: '今日到期 17' },
-      { icon: '转', label: '建议就医', value: '11', sub: '高优先级 3' },
+      { icon: '咨', label: '到店咨询', value: '214', sub: '转建档 36', action: 'queue' },
+      { icon: '药', label: '药师待跟进', value: '28', sub: '高优先级 6', action: 'follow' },
+      { icon: '访', label: '随访任务', value: '91', sub: '待下发 18', action: 'followup-plan' },
+      { icon: '成', label: '服务完成率', value: '81.2%', sub: '近30天', action: 'follow' },
     ],
     rows: [
-      { name: '赵*强', meta: '男 59岁 · 慢病服务', desc: '近期降压药不规律，伴胸闷反馈，建议药师电话干预', status: '待干预', tone: 'r' },
-      { name: '陈*霞', meta: '女 45岁 · 到店咨询', desc: '咨询结节报告与保健品使用，需药师给出禁忌提醒', status: '待回复', tone: 'o' },
-      { name: '刘*峰', meta: '男 71岁 · 购药记录', desc: '慢病药物即将用尽，可发送复购和复查提醒', status: '可触达', tone: 'b' },
+      { name: '赵*强', meta: '男 59岁 · 慢病服务', desc: '近期购药记录已同步，健康报告已生成，等待药师回访记录', status: '待跟进', tone: 'r', action: 'detail' },
+      { name: '陈*霞', meta: '女 45岁 · 到店咨询', desc: '咨询结节报告与保健品使用，已建档并等待报告解读提醒', status: '待回复', tone: 'o', action: 'review' },
+      { name: '刘*峰', meta: '男 71岁 · 购药记录', desc: '慢病药物即将用尽，可下发用药提醒和健康打卡任务', status: '可触达', tone: 'b', action: 'followup-plan' },
     ],
     detailItems: [
       { k: '服务类型', v: '慢病服务' },
       { k: '近期用药', v: '降压药、降糖药' },
-      { k: '风险提示', v: '胸闷反馈' },
-      { k: '建议动作', v: '药师电话干预' },
+      { k: '服务状态', v: '待跟进' },
+      { k: '建议动作', v: '药师回访' },
     ],
-    actions: ['电话干预', '发送用药提醒', '建议就医', '记录药师意见'],
+    actions: [
+      { label: '查看患者详情', action: 'detail' },
+      { label: '发送用药提醒', action: 'followup-plan' },
+      { label: '创建随访任务', action: 'followup-plan' },
+      { label: '记录药师意见', action: 'follow' }
+    ],
     panels: [
-      { title: '药师工作量', items: [{ label: '待回复咨询', value: '9' }, { label: '已完成干预', value: '46' }, { label: '转诊建议', value: '11' }] },
-      { title: '用药安全', items: [{ label: '禁忌提醒', value: '18' }, { label: '重复用药', value: '6' }, { label: '依从性差', value: '22' }] },
-      { title: '复购与随访', items: [{ label: '今日到期', value: '17' }, { label: '已触达', value: '39' }, { label: '待跟进', value: '12' }] },
+      { title: '服务来源分析', action: 'queue', items: [{ label: '到店咨询建档', value: '36' }, { label: '购药记录关联', value: '58' }, { label: '线上问诊转入', value: '22' }] },
+      { title: '药师工作量', action: 'follow', items: [{ label: '待回复咨询', value: '9' }, { label: '已完成回访', value: '46' }, { label: '待跟进任务', value: '18' }] },
+      { title: '健康服务转化', action: 'review', items: [{ label: '咨询转建档', value: '16.8%' }, { label: '建档转报告', value: '72.4%' }, { label: '报告转随访', value: '61.5%' }] },
+      { title: '用药与健康提醒', action: 'followup-plan', items: [{ label: '用药提醒', value: '34' }, { label: '复购提醒', value: '17' }, { label: '报告解读提醒', value: '28' }] },
+      { title: '重点患者跟进', action: 'follow', items: [{ label: '长期未响应', value: '12' }, { label: '报告未生成', value: '42', action: 'review' }, { label: '随访未完成', value: '18', action: 'follow' }] },
     ],
   },
   community: {
     title: '家医随访',
-    subtitle: '签约管理 · 慢病随访 · 入户记录 · 上转医院 · 复查回收',
+    subtitle: '签约管理 · 慢病随访 · 入户记录 · 复查提醒 · 结果回收',
     primaryAction: '创建随访任务',
     secondaryAction: '导入社区档案',
     queueTitle: '家庭医生随访队列',
-    queueSub: '按签约状态、慢病标签和网格归属安排随访',
+    queueSub: '按签约状态、慢病标签和网格归属查看家医随访质量',
     filterA: '签约状态：全部',
     filterB: '社区网格：全部',
     detailTitle: '家医随访详情',
     detailState: '待随访',
     explainTitle: '随访建议依据',
-    explain: '系统结合签约档案、慢病管理记录、上级医院转回信息和近期复查状态，生成随访任务与上转建议。',
+    explain: '系统结合签约档案、慢病管理记录、社区筛查来源和近期复查状态，统计家医随访任务、触达结果和复查资料回收情况。',
     kpis: [
       { icon: '签', label: '签约患者', value: '1,246', sub: '重点 186' },
       { icon: '访', label: '今日随访', value: '72', sub: '电话 48' },
       { icon: '慢', label: '慢病共管', value: '318', sub: '双病 64' },
-      { icon: '转', label: '上转建议', value: '15', sub: '待确认 5' },
+      { icon: '收', label: '资料回收', value: '37', sub: '待补充 8' },
     ],
     rows: [
       { name: '黄*芳', meta: '女 44岁 · 南城三网格', desc: '签约患者，乳腺结节随访到期，建议电话随访并提醒复查', status: '今日随访', tone: 'b' },
-      { name: '林*海', meta: '男 58岁 · 第一家医团队', desc: '肺部结节高风险，近期复查未回收，建议上转医院确认', status: '待上转', tone: 'r' },
+      { name: '林*海', meta: '男 58岁 · 第一家医团队', desc: '肺部结节高风险，近期复查资料未回收，需家医继续跟进', status: '待跟进', tone: 'r' },
       { name: '何*秀', meta: '女 51岁 · 老年人管理', desc: '甲状腺结节低风险，适合纳入季度随访', status: '随访中', tone: 'g' },
     ],
     detailItems: [
       { k: '签约状态', v: '已签约' },
       { k: '家医团队', v: '第一家庭医生团队' },
       { k: '社区网格', v: '南城三网格' },
-      { k: '建议动作', v: '电话随访 + 复查提醒' },
+      { k: '建议动作', v: '电话随访 + 资料回收' },
     ],
-    actions: ['创建电话随访', '安排入户', '建议上转', '回收复查结果'],
+    actions: ['查看患者详情', '创建电话随访', '安排入户', '回收复查结果'],
     panels: [
       { title: '签约服务', items: [{ label: '已签约', value: '1,246' }, { label: '重点人群', value: '186' }, { label: '待签约', value: '42' }] },
       { title: '慢病共管', items: [{ label: '高血压', value: '156' }, { label: '糖尿病', value: '98' }, { label: '双病共管', value: '64' }] },
-      { title: '上下转诊', items: [{ label: '建议上转', value: '15' }, { label: '上级转回', value: '23' }, { label: '结果回收', value: '37' }] },
+      { title: '资料回收', items: [{ label: '待回收', value: '15' }, { label: '已补充', value: '23' }, { label: '结果回收', value: '37' }] },
     ],
   },
 }
 
 const workspace = computed(() => workspaceMap[scenario.value.key] || workspaceMap.checkup)
+
+const pharmacyFunnel = [
+  { label: '到店/线上咨询', value: '214', rate: '100%', width: '100%', action: 'queue' },
+  { label: '完成建档', value: '36', rate: '16.8%', width: '74%', action: 'record' },
+  { label: '生成健康报告', value: '26', rate: '72.4%', width: '58%', action: 'review' },
+  { label: '下发随访任务', value: '16', rate: '61.5%', width: '42%', action: 'followup-plan' },
+  { label: '完成打卡/回访', value: '13', rate: '81.2%', width: '34%', action: 'follow' },
+]
+
+const pharmacySources = [
+  { label: '到店咨询', value: '36', width: '72%', action: 'queue' },
+  { label: '购药记录', value: '58', width: '88%', action: 'queue' },
+  { label: '慢病服务', value: '42', width: '64%', action: 'queue' },
+  { label: '线上问诊', value: '22', width: '38%', action: 'queue' },
+]
+
+function actionLabel(action) {
+  return typeof action === 'string' ? action : action?.label || ''
+}
+
+function actionKey(action) {
+  return typeof action === 'string' ? action : action?.action || ''
+}
+
+function goAction(action) {
+  const key = actionKey(action)
+  const routeMap = {
+    queue: { path: '/patient', query: { tab: 'queue' } },
+    detail: { path: '/patient', query: { tab: 'detail' } },
+    'patient-detail': { path: '/patient', query: { tab: 'detail' } },
+    record: { path: '/patient', query: { tab: 'record' } },
+    review: { path: '/patient', query: { tab: 'review' } },
+    'followup-plan': { path: '/patient', query: { tab: 'followup-plan' } },
+    follow: { path: '/patient', query: { tab: 'follow' } },
+  }
+  const target = routeMap[key]
+  if (target) router.push(target)
+}
 
 const checkupFlow = [
   { title: '导入批次', sub: '导入体检数据' },
@@ -440,6 +529,8 @@ const trendPoints = [
 .flow-step b{display:block;font-size:14px;color:#172033}.flow-step span{font-size:12px;color:#64748b;font-weight:750}
 .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .kpi{border:1px solid #e6edf7;border-radius:12px;background:#fff;padding:14px;display:flex;gap:12px;align-items:center}
+.kpi.clickable{cursor:pointer}
+.kpi.clickable:hover{border-color:var(--workspace-primary);background:var(--workspace-soft)}
 .kpi-icon{width:42px;height:42px;border-radius:12px;background:var(--workspace-soft);color:var(--workspace-primary);display:grid;place-items:center;font-weight:950}
 .checkup-kpis .kpi{min-height:104px}.checkup-kpis .kpi:first-child{border-left:4px solid var(--workspace-primary)}
 .kpi-icon[data-tone="blue"]{background:linear-gradient(135deg,#93c5fd,#3b82f6);color:#fff}
@@ -479,14 +570,27 @@ const trendPoints = [
 .explain-box{border:1px solid color-mix(in srgb,var(--workspace-primary) 24%,#e6edf7);background:var(--workspace-soft);border-radius:12px;padding:10px 12px}
 .explain-title{font-weight:950;color:#0f172a;margin-bottom:6px}.explain-box p{margin:0;color:#334155;font-size:12px;line-height:1.7}
 .action-grid{display:grid;grid-template-columns:1fr 1fr}
-.bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pharmacy-insights{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:12px}
+.funnel-body{padding:14px;display:grid;gap:10px}
+.funnel-step{width:100%;border:0;background:transparent;display:grid;grid-template-columns:minmax(0,1fr) 56px 56px;gap:10px;align-items:center;text-align:left;cursor:pointer;color:#334155}
+.funnel-step span{position:relative;min-height:34px;border-radius:10px;background:linear-gradient(90deg,var(--workspace-primary),color-mix(in srgb,var(--workspace-primary) 30%,#fff));color:#fff;font-weight:950;display:flex;align-items:center;padding:0 12px;width:var(--w)}
+.funnel-step b{font-size:18px;color:#0f172a;text-align:right}
+.funnel-step em{font-style:normal;color:#64748b;font-size:12px;text-align:right}
+.funnel-step:hover span{filter:brightness(.94)}
+.source-body{padding:14px;display:grid;gap:12px}
+.source-row{display:grid;grid-template-columns:72px minmax(0,1fr) 42px;gap:10px;align-items:center;border:0;background:transparent;padding:0;text-align:left;cursor:pointer;color:#334155;font-size:12px}
+.source-row i{height:8px;background:#eef2f7;border-radius:999px;overflow:hidden}
+.source-row em{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#fb923c,var(--workspace-primary))}
+.source-row b{text-align:right;color:#0f172a}
+.source-row:hover span{color:var(--workspace-primary);font-weight:950}
+.bottom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .checkup-bottom{display:grid;grid-template-columns:1.1fr 1fr 1.25fr 1fr;gap:12px}
 .panel-body{padding:12px;display:grid;gap:8px}
-.panel-line{display:flex;justify-content:space-between;border:1px solid #eef2f7;border-radius:10px;padding:10px;font-size:12px;color:#64748b}.panel-line b{color:#0f172a}
+.panel-line{display:flex;justify-content:space-between;border:1px solid #eef2f7;border-radius:10px;padding:10px;font-size:12px;color:#64748b;background:#fff;cursor:pointer;text-align:left}.panel-line b{color:#0f172a}.panel-line:hover{border-color:var(--workspace-primary);background:var(--workspace-soft)}
 .progress-body{padding:14px}.stack-bar{height:18px;border-radius:5px;overflow:hidden;display:flex;background:#eef2f7}.stack-bar span:nth-child(1){background:#3b82f6}.stack-bar span:nth-child(2){background:#61c6e6}.stack-bar span:nth-child(3){background:#f6b84a}.stack-bar span:nth-child(4){background:#39b98b}.progress-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}.progress-metrics div{display:grid;gap:3px;text-align:center;color:#64748b;font-size:12px}.progress-metrics i{width:7px;height:7px;border-radius:50%;background:#3b82f6;margin:auto}.progress-metrics div:nth-child(2) i{background:#61c6e6}.progress-metrics div:nth-child(3) i{background:#f6b84a}.progress-metrics div:nth-child(4) i{background:#39b98b}.progress-metrics b{font-size:18px;color:#0f172a}.progress-metrics em{font-style:normal;font-size:11px}
 .card-title span{font-size:11px;color:#64748b;font-weight:800}.dept-bars{padding:14px;display:grid;gap:11px}.dept-bars div{display:grid;grid-template-columns:62px minmax(0,1fr) 24px;gap:8px;align-items:center;font-size:12px;color:#334155}.dept-bars em{height:7px;background:#eef2f7;border-radius:999px;overflow:hidden}.dept-bars i{display:block;height:100%;background:linear-gradient(90deg,#93c5fd,#3b82f6);border-radius:999px}.dept-bars b{color:#334155}
 .trend-chart{height:150px;padding:12px}.trend-chart svg{width:100%;height:100%}.trend-chart text{font-size:11px;fill:#334155;font-weight:800}
 .donut-body{padding:14px;display:grid;grid-template-columns:116px minmax(0,1fr);gap:12px;align-items:center}.donut{width:96px;height:96px;border-radius:50%;background:conic-gradient(#3b82f6 0 41%,#14b8a6 41% 66%,#f59e0b 66% 82%,#94a3b8 82% 100%);position:relative;display:grid;place-items:center;margin:auto}.donut::after{content:"";position:absolute;width:56px;height:56px;border-radius:50%;background:#fff}.donut b,.donut span{position:relative;z-index:1}.donut b{font-size:22px;color:#0f172a}.donut span{font-size:11px;color:#64748b;margin-top:28px;margin-left:-28px}.legend{display:grid;gap:8px}.legend p{margin:0;font-size:12px;color:#334155;display:flex;align-items:center;justify-content:space-between;gap:8px}.legend i{width:9px;height:9px;border-radius:50%;background:#3b82f6;display:inline-block;margin-right:5px}.legend p:nth-child(2) i{background:#14b8a6}.legend p:nth-child(3) i{background:#f59e0b}.legend p:nth-child(4) i{background:#94a3b8}
 @media(max-width:1500px){.checkup-grid{grid-template-columns:minmax(0,1fr) 380px}.checkup-filters{grid-template-columns:repeat(5,86px) minmax(120px,1fr) auto auto auto}.decision-actions{grid-template-columns:1fr 1fr}.checkup-bottom{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:1400px){.workspace-grid,.checkup-grid{grid-template-columns:1fr}.detail-card{min-height:auto}.kpi-row,.bottom-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-card{order:2}.checkup-flow{grid-template-columns:repeat(3,minmax(0,1fr))}.flow-step::after{display:none}}
+@media(max-width:1400px){.workspace-grid,.checkup-grid,.pharmacy-insights{grid-template-columns:1fr}.detail-card{min-height:auto}.kpi-row,.bottom-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-card{order:2}.checkup-flow{grid-template-columns:repeat(3,minmax(0,1fr))}.flow-step::after{display:none}}
 </style>

@@ -10,7 +10,6 @@ const router = createRouter({
     { path: '/login', name: 'login', component: view('LoginView') },
     { path: '/followup-checkin/:taskCode', name: 'followup-checkin', component: view('FollowupCheckinView') },
     { path: '/analytics', name: 'analytics', component: view('AnalyticsView'), meta: auth },
-    { path: '/workbench', name: 'workbench', component: view('WorkbenchView'), meta: auth },
     { path: '/queue', name: 'queue', component: view('QueueView'), meta: auth },      // 兼容旧入口（不在主导航展示）
     { path: '/report', name: 'report', component: view('ReportView'), meta: auth },   // 兼容旧入口（不在主导航展示）
     { path: '/review', name: 'review', component: view('ReviewView'), meta: auth },   // 兼容旧入口（不在主导航展示）

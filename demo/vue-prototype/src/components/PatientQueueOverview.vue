@@ -127,14 +127,14 @@
         <table class="q-table">
           <thead>
             <tr>
-              <th style="width:90px">患者姓名</th>
-              <th style="width:130px">性别/年龄/手机号</th>
-              <th style="width:160px">结节类型</th>
+              <th style="width:82px">患者姓名</th>
+              <th style="width:118px">性别/年龄/手机号</th>
+              <th style="width:128px">结节类型</th>
               <th style="width:72px">风险等级</th>
-              <th style="width:100px">当前状态</th>
-              <th style="width:80px">企微</th>
-              <th style="width:72px">负责人</th>
-              <th>操作</th>
+              <th style="width:92px">当前状态</th>
+              <th style="width:64px">企微</th>
+              <th style="width:78px">负责人</th>
+              <th style="width:68px">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -321,11 +321,11 @@ defineEmits([
 </script>
 
 <style scoped>
-.pm-overview{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;padding:12px;background:#fff;overflow:hidden}
-.overview-left{min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.overview-right{min-height:0;height:100%;line-height:1.5;display:flex;flex-direction:column;gap:12px;overflow-y:auto;overflow-x:hidden;padding-right:12px;padding-bottom:12px;box-sizing:border-box}
+.pm-overview{flex:1;min-height:0;height:100%;width:100%;max-width:100%;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,340px);gap:12px;padding:12px;background:#fff;overflow:hidden}
+.overview-left{min-width:0;min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.overview-right{min-width:0;min-height:0;height:100%;line-height:1.5;display:flex;flex-direction:column;gap:12px;overflow-y:auto;overflow-x:hidden;padding-right:8px;padding-bottom:12px;box-sizing:border-box}
 
-.card{border:1px solid #e6edf7;border-radius:12px;background:#fff;overflow:hidden}
+.card{min-width:0;border:1px solid #e6edf7;border-radius:12px;background:#fff;overflow:hidden}
 .card-head{min-height:40px;height:auto;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;gap:10px;flex-wrap:wrap}
 .card-head.one-line{flex-wrap:nowrap}
 .primary,.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:5px 10px;font-weight:950;cursor:pointer;min-height:32px;line-height:1.3;white-space:nowrap;font-size:13px}
@@ -340,8 +340,8 @@ defineEmits([
 .pill.mini{padding:2px 8px;font-size:11px}
 .tag2{border:1px solid #cfe0ff;background:#eef5ff;color:#155eef;border-radius:999px;padding:3px 8px;font-weight:900;font-size:11px}
 
-.stat-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:12px 12px 0}
-.stat-card{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e6edf7;border-radius:10px;padding:12px 14px}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;padding:12px 12px 0}
+.stat-card{min-width:0;display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e6edf7;border-radius:10px;padding:12px 14px}
 .stat-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
 .stat-body{min-width:0}
 .stat-label{font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
@@ -360,16 +360,16 @@ defineEmits([
 .q-filter-actions{display:flex;gap:6px;align-items:flex-end;padding-bottom:0}
 
 .q-table-head-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 6px;font-size:13px}
-.q-table-wrap{border:1px solid #e6edf7;border-radius:12px;background:#fff;overflow:auto;flex:1}
-.q-table{width:100%;border-collapse:collapse;font-size:13px}
+.q-table-wrap{min-width:0;border:1px solid #e6edf7;border-radius:12px;background:#fff;overflow-y:auto;overflow-x:hidden;flex:1}
+.q-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px}
 .q-table thead tr{border-bottom:1px solid #eef2f7;background:#f8fafc}
-.q-table th{padding:10px 12px;text-align:left;color:#64748b;font-weight:900;white-space:nowrap}
-.q-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+.q-table th{padding:9px 8px;text-align:left;color:#64748b;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-table td{padding:9px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .q-row{cursor:pointer}
 .q-row:hover td{background:#f8fbff}
 .q-row.active td{background:#eef5ff}
 .q-row:last-child td{border-bottom:0}
-.nodule-tag{display:inline-flex;align-items:center;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;background:#eef5ff;color:#155eef}
+.nodule-tag{display:inline-flex;align-items:center;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:700;background:#eef5ff;color:#155eef;max-width:100%}
 .nodule-tag[data-type="lung"]{background:#ecfdf5;color:#15803d}
 .nodule-tag[data-type="thyroid"]{background:#fff7ed;color:#c2410c}
 .nodule-tag[data-type="breast"]{background:#fdf4ff;color:#a21caf}
@@ -387,7 +387,7 @@ defineEmits([
 .page-btn.active{background:#155eef;color:#fff;border-color:#155eef}
 
 .side-empty{display:flex;align-items:center;justify-content:center;height:120px;color:#94a3b8;font-size:13px}
-.side-panel{overflow:hidden}
+.side-panel{overflow:visible}
 .side-panel .side-name{font-size:16px}
 .side-panel .side-sub{font-size:12px}
 .side-panel .pill{font-size:11px}
@@ -432,8 +432,8 @@ defineEmits([
 .flow5h-node[data-state="current"] .dot{background:#155eef}
 .flow5h-node[data-state="current"] .lab{color:#155eef}
 .flow5h-node[data-state="current"] .seg{background:linear-gradient(90deg,#155eef 0%,#e5e7eb 70%)}
-.ops{display:grid;gap:8px}
-.tbl-act{border:0;background:transparent;color:#155eef;font-size:12px;font-weight:700;padding:0;cursor:pointer}
+.ops{display:grid;gap:8px;padding-bottom:4px}
+.tbl-act{border:0;background:transparent;color:#155eef;font-size:12px;font-weight:700;padding:0;cursor:pointer;white-space:nowrap}
 .tbl-act:hover{color:#0f4fd4;text-decoration:underline}
 .tbl-act.danger{color:#dc2626}
 .tbl-act.danger:hover{color:#b91c1c}

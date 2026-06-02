@@ -22,21 +22,16 @@ function assertIncludes(file, fragments) {
 
 assertIncludes('src/router/index.js', [
   "path: '/login'",
-  "path: '/workbench'",
   "path: '/analytics'",
-  "path: '/patient'"
+  "path: '/patient'",
+  "path: '/rws'",
+  "path: '/followup-workflow'"
 ])
 
 assertIncludes('src/views/LoginView.vue', [
   '机构工作台登录',
   '填入演示账号',
   "fetch('/api/auth/login'"
-])
-
-assertIncludes('src/views/WorkbenchView.vue', [
-  '医生工作台',
-  'loadWorkbenchData',
-  '/api/b/reports?page=1&per_page=50&include_unreported=1'
 ])
 
 const distDir = join(root, 'dist')

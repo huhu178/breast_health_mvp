@@ -256,7 +256,7 @@
         <div class="wecom-form-grid">
           <label class="profile-field wide">
             <span>external_userid</span>
-            <input v-model.trim="wecomForm.external_userid" placeholder="企业微信客户 external_userid">
+            <input v-model.trim="wecomForm.external_userid" placeholder="企业微信身份 external_userid">
           </label>
           <label class="profile-field wide">
             <span>userid</span>
@@ -1222,7 +1222,7 @@ watch(
 
 <style scoped>
 .pm{height:100%;display:flex;flex-direction:column;overflow:hidden;margin:0}
-.pm-shell{flex:1;min-height:0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.pm-shell{flex:1;min-height:0;height:100%;background:#fff;display:flex;flex-direction:column;overflow:hidden}
 .pm-record{flex:1;min-height:0;overflow:auto;background:#f3f6fb;padding:12px}
 
 

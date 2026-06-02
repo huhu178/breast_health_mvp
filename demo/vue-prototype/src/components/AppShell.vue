@@ -47,20 +47,6 @@
           <span class="nav-label">{{ scenario.workspaceLabel }}</span>
         </RouterLink>
 
-        <RouterLink class="nav-item" to="/workbench">
-          <span class="nav-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M8 6h13" />
-              <path d="M8 12h13" />
-              <path d="M8 18h13" />
-              <path d="M3 6h.01" />
-              <path d="M3 12h.01" />
-              <path d="M3 18h.01" />
-            </svg>
-          </span>
-          <span class="nav-label">医生工作台</span>
-        </RouterLink>
-
         <RouterLink class="nav-item" to="/followup-workflow">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -161,7 +147,7 @@ function logout() {
 .brand{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid #eef2f7}
 .brand-mark{width:34px;height:34px;border-radius:10px;background:var(--scenario-primary,#155eef);color:#fff;display:grid;place-items:center;font-weight:950}
 .brand-text{font-weight:950;color:#0f172a;font-size:13px;line-height:1.4}
-.nav{padding:10px 6px;display:grid;gap:4px}
+.nav{padding:10px 6px;display:grid;gap:4px;overflow-y:auto;min-height:0}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#526175;text-decoration:none;font-weight:850;border-left:3px solid transparent}
 .nav-ico{width:30px;height:30px;border-radius:10px;border:1px solid #e6edf7;background:#f1f5f9;display:grid;place-items:center;color:#64748b;flex-shrink:0}
 .nav-item.router-link-active{background:var(--scenario-soft,#eef5ff);color:var(--scenario-primary,#155eef);border-left-color:var(--scenario-primary,#155eef)}
@@ -171,7 +157,7 @@ function logout() {
 .subnav-item{padding:8px 10px;border-radius:10px;color:#64748b;text-decoration:none;font-weight:850}
 .subnav-item:hover{background:#f8fbff;color:var(--scenario-primary,#155eef)}
 .subnav-item.active{background:var(--scenario-soft,#eef5ff);color:var(--scenario-primary,#155eef)}
-.sidebar-foot{margin-top:auto;padding:12px}
+.sidebar-foot{margin-top:auto;padding:12px;flex-shrink:0}
 .ghost{width:100%;height:36px;border-radius:12px;border:1px solid #e6edf7;background:#fff;color:#64748b;font-weight:900;cursor:pointer}
 
 .main{display:flex;flex-direction:column;min-width:0;height:100%;overflow:hidden}

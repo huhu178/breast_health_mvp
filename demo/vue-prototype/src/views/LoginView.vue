@@ -102,7 +102,7 @@ function completeLogin(user = {}) {
   localStorage.setItem('proto_user', user.real_name || user.username || account.value)
   localStorage.setItem('proto_authed', 'true')
   localStorage.setItem('proto_user_id', user.id || '')
-  router.push(scenario.value.key === 'hospital' ? '/analytics' : scenario.value.workspacePath)
+  router.push('/analytics')
 }
 
 async function onLogin() {

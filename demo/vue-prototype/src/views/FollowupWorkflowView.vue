@@ -4,6 +4,7 @@
       <div>
         <p class="crumb">首页 / 随访知识库与模板</p>
         <h1>随访知识库与模板</h1>
+        <p class="page-sub">{{ workflowCopy.pageSub }}</p>
       </div>
       <div class="head-actions">
         <button class="btn" type="button" @click="loadAll">刷新</button>
@@ -25,7 +26,7 @@
         <div class="panel-head">
           <div>
             <h2>随访任务模板</h2>
-            <p>定义推送内容、打卡要求和执行周期</p>
+            <p>{{ workflowCopy.templateSub }}</p>
           </div>
         </div>
 
@@ -60,7 +61,7 @@
         <div class="panel-head">
           <div>
             <h2>知识库与模板编辑</h2>
-            <p>维护七大类知识库，并编排固定企业微信推送任务</p>
+            <p>{{ workflowCopy.editorSub }}</p>
           </div>
           <div class="editor-actions">
             <button class="primary" type="button" :disabled="!templateForm.name || saving" @click="saveTemplate">
@@ -155,7 +156,7 @@
             <div class="section-head compact-head">
               <div>
                 <h3>知识库</h3>
-                <p>维护可复用的话术、知识卡和任务素材</p>
+                <p>{{ workflowCopy.knowledgeSub }}</p>
               </div>
               <button class="btn" type="button" @click="newKnowledge">新增知识</button>
             </div>
@@ -192,7 +193,7 @@
             <div class="section-head compact-head">
               <div>
                 <h3>AI规则</h3>
-                <p>配置图片识别、饮食点评、未回复和重点关注规则</p>
+                <p>{{ workflowCopy.ruleSub }}</p>
               </div>
               <button class="btn" type="button" @click="newRule">新增AI规则</button>
             </div>
@@ -315,7 +316,7 @@
             </select>
           </label>
           <label>优先级<input v-model.number="knowledgeForm.priority" type="number"></label>
-          <label class="wide">触发关键词<input v-model.trim="knowledgeForm.trigger_keywords" placeholder="饮食,运动,心理,乳腺结节"></label>
+          <label class="wide">触发关键词<input v-model.trim="knowledgeForm.trigger_keywords" :placeholder="workflowCopy.keywordPlaceholder"></label>
           <label class="wide">内容<textarea v-model.trim="knowledgeForm.content" rows="5"></textarea></label>
         </div>
         <div class="modal-actions">
@@ -372,14 +373,36 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useFollowupAiRules } from '../composables/useFollowupAiRules'
 import { useFollowupKnowledge } from '../composables/useFollowupKnowledge'
 import { useFollowupTemplateNodes } from '../composables/useFollowupTemplateNodes'
 import { useFollowupTemplates } from '../composables/useFollowupTemplates'
 import { useFollowupWorkflowConfig } from '../composables/useFollowupWorkflowConfig'
+import { getStoredScenario } from '../config/scenarios'
 
 const excelInputRef = ref(null)
+const scenario = computed(() => getStoredScenario())
+const workflowCopy = computed(() => {
+  if (scenario.value.key === 'pharmacy') {
+    return {
+      pageSub: '维护药店健康服务随访模板、用药提醒、报告解读提醒和药师回访话术',
+      templateSub: '定义用药提醒、健康打卡、复购提醒和药师回访周期',
+      editorSub: '维护结节健康知识、药事提醒话术，并编排固定企业微信推送任务',
+      knowledgeSub: '维护可复用的报告解读、用药注意、饮食运动和药师回访素材',
+      ruleSub: '配置饮食点评、未回复提醒、资料上传提醒和药师重点跟进规则',
+      keywordPlaceholder: '用药,复购,报告解读,饮食,运动,结节'
+    }
+  }
+  return {
+    pageSub: '维护随访模板、知识库和 AI 规则',
+    templateSub: '定义推送内容、打卡要求和执行周期',
+    editorSub: '维护七大类知识库，并编排固定企业微信推送任务',
+    knowledgeSub: '维护可复用的话术、知识卡和任务素材',
+    ruleSub: '配置图片识别、饮食点评、未回复和重点关注规则',
+    keywordPlaceholder: '饮食,运动,心理,乳腺结节'
+  }
+})
 
 const taskTypeOptions = [
   { value: 'knowledge_push', label: '知识推送' },
@@ -543,6 +566,7 @@ onMounted(async () => {
 .workflow-page{height:100%;min-height:0;display:flex;flex-direction:column;gap:14px;color:#172033}
 .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .crumb{margin:0 0 4px;color:#667085;font-size:13px}
+.page-sub{margin:6px 0 0;color:#667085;font-size:13px;line-height:1.5}
 h1{margin:0;font-size:24px;line-height:1.2}
 h2{margin:0;font-size:16px}
 h3{margin:0;font-size:15px}
