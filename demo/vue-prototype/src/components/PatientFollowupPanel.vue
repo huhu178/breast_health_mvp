@@ -2,10 +2,15 @@
   <aside class="workspace-side">
     <section class="card side-flow-card">
       <div class="section-title">健康管理任务与后续管理</div>
+      <div class="doctor-advice-box">
+        <div class="doctor-advice-title">医生报告随访建议</div>
+        <p>{{ latestReportAdvice?.advice_content || '暂无已提交的医生报告随访建议' }}</p>
+        <span v-if="latestReportAdvice?.suggested_next_followup_at">建议下次随访：{{ latestReportAdvice.suggested_next_followup_at }}</span>
+      </div>
       <div class="follow-plan-box">
         <label class="profile-field">
           <span>复查周期</span>
-          <select :value="patient?.followPlan?.cycle" @change="updateFollowPlan('cycle', $event.target.value)">
+          <select :value="patient?.followPlan?.cycle" :disabled="!canOperate" @change="updateFollowPlan('cycle', $event.target.value)">
             <option>3个月</option>
             <option>6个月</option>
             <option>12个月</option>
@@ -13,7 +18,7 @@
         </label>
         <label class="profile-field">
           <span>触达方式</span>
-          <select :value="patient?.followPlan?.channel" @change="updateFollowPlan('channel', $event.target.value)">
+          <select :value="patient?.followPlan?.channel" :disabled="!canOperate" @change="updateFollowPlan('channel', $event.target.value)">
             <option>小程序</option>
             <option>电话</option>
             <option>企微</option>
@@ -22,9 +27,9 @@
         </label>
         <label class="profile-field wide">
           <span>任务重点</span>
-          <textarea :value="patient?.followPlan?.note" @input="updateFollowPlan('note', $event.target.value)" />
+          <textarea :value="patient?.followPlan?.note" :readonly="!canOperate" @input="updateFollowPlan('note', $event.target.value)" />
         </label>
-        <button class="primary full" type="button" @click="$emit('save-follow-plan')">保存任务配置</button>
+        <button v-if="canOperate" class="primary full" type="button" @click="$emit('save-follow-plan')">保存任务配置</button>
       </div>
     </section>
 
@@ -60,6 +65,7 @@
           <div>
             <b>{{ task.title || taskTypeLabel(task.task_payload?.node?.task_type) }}</b>
             <span>{{ trackingStatusLabel(task.status) }} · {{ channelLabel(task.channel) }} · {{ task.scheduled_send_at || task.due_at || '未排期' }}</span>
+            <span v-if="task.task_payload?.doctor_followup_advice_content" class="doctor-advice-inline">来自医生建议：{{ task.task_payload.doctor_followup_advice_content }}</span>
           </div>
           <div class="chain-actions-mini">
             <em>{{ task.abnormal_flag ? '异常' : task.priority || 'normal' }}</em>
@@ -82,7 +88,7 @@
           <div class="chain-actions-mini">
             <button class="btn-link-lite" type="button" @click="$emit('view-report', report.id)">查看</button>
             <button
-              v-if="canCreateReportFollowup(report)"
+              v-if="canOperate && canCreateReportFollowup(report)"
               class="btn-link-lite"
               type="button"
               @click="$emit('create-report-followup', report.id)"
@@ -102,6 +108,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
   patient: { type: Object, default: null },
   planStatusLabel: { type: Function, required: true },
@@ -113,6 +121,7 @@ const props = defineProps({
   canCreateReportFollowup: { type: Function, required: true },
   isCreatingReportFollowup: { type: Function, required: true },
   existingReportFollowupTask: { type: Function, required: true },
+  canOperate: { type: Boolean, default: true },
 })
 
 const emit = defineEmits([
@@ -127,6 +136,11 @@ const emit = defineEmits([
 function updateFollowPlan(field, value) {
   emit('update-follow-plan', { field, value })
 }
+
+const latestReportAdvice = computed(() => {
+  const list = props.patient?.workspaceReportFollowupAdvices || props.patient?.reportFollowupAdvices || []
+  return list.find((item) => item.status === 'submitted') || list[0] || null
+})
 </script>
 
 <style scoped>
@@ -135,6 +149,10 @@ function updateFollowPlan(field, value) {
 .side-flow-card{padding:12px}
 .section-title{font-size:14px;font-weight:950;color:#0f172a}
 .follow-plan-box{display:grid;gap:10px;margin-top:10px}
+.doctor-advice-box{margin-top:10px;border:1px solid #dbeafe;border-radius:10px;background:#eff6ff;padding:9px 10px;color:#1e3a8a}
+.doctor-advice-title{font-size:12px;font-weight:950;color:#1d4ed8}
+.doctor-advice-box p{margin:5px 0 0;font-size:12px;line-height:1.55;color:#1e3a8a}
+.doctor-advice-box span{display:block;margin-top:5px;font-size:11px;font-weight:850;color:#2563eb}
 .profile-field{display:grid;gap:5px;min-width:0}
 .profile-field span{font-size:12px;color:#667085;font-weight:850}
 .profile-field input,.profile-field select,.profile-field textarea{width:100%;border:1px solid #d0d5dd;border-radius:8px;padding:8px 10px;font-size:13px;color:#172033;background:#fff}
@@ -153,6 +171,7 @@ function updateFollowPlan(field, value) {
 .chain-row[data-alert="true"]{background:#fff1f2;border-color:#fecdd3}
 .chain-row b{display:block;font-size:12px;color:#0f172a;line-height:1.35}
 .chain-row span{display:block;font-size:11px;color:#64748b;margin-top:3px;line-height:1.4}
+.chain-row .doctor-advice-inline{color:#1d4ed8;background:#eff6ff;border-radius:6px;padding:4px 6px;margin-top:6px}
 .chain-row em{font-style:normal;font-size:11px;color:#94a3b8;white-space:nowrap}
 .chain-actions-mini{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex-shrink:0}
 .btn-link-lite{border:0;background:transparent;color:#475467;font-size:12px;font-weight:850;cursor:pointer;padding:0}

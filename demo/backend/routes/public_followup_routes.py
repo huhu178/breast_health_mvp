@@ -3,15 +3,51 @@
 """
 from flask import Blueprint, request
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from models import db, BFollowUpTask, BFollowUpCheckin, BFollowUpEvent, BFollowUpMessage
+from models import db, BFollowUpTask, BFollowUpCheckin, BFollowUpEvent, BFollowUpMessage, MiniprogramImagingUpload
 from services.followup_checkin_service import followup_checkin_service
 from services.followup_ai_service import followup_ai_service
 from utils.response import Response
 
 
 public_followup_bp = Blueprint('public_followup', __name__, url_prefix='/api/followup')
+
+
+def _task_safety_error(task):
+    if task.status in {'completed', 'done', 'closed', 'cancelled', 'failed'}:
+        return '该随访任务已结束，不能继续提交'
+    expire_days = 30
+    payload = task.task_payload if isinstance(task.task_payload, dict) else {}
+    try:
+        expire_days = int(payload.get('checkin_expire_days') or expire_days)
+    except (TypeError, ValueError):
+        expire_days = 30
+    if task.due_at and datetime.utcnow() > task.due_at + timedelta(days=expire_days):
+        return '该随访任务已过期'
+    allow_multiple = bool(payload.get('allow_multiple_checkins'))
+    if not allow_multiple:
+        exists = BFollowUpCheckin.query.filter_by(task_id=task.id).first()
+        if exists:
+            return '该随访任务已提交，请勿重复提交'
+    return None
+
+
+def _uploaded_files_error(task, uploaded_files):
+    files = uploaded_files or []
+    if not files:
+        return None
+    for item in files:
+        upload_id = item.get('upload_id') if isinstance(item, dict) else None
+        if not upload_id:
+            return '上传文件缺少 upload_id'
+        upload = MiniprogramImagingUpload.query.get(upload_id)
+        if not upload or upload.status == 'deleted':
+            return '上传文件不存在或已删除'
+        extracted = upload.extracted_data if isinstance(upload.extracted_data, dict) else {}
+        if str(extracted.get('followup_task_id') or '') != str(task.id):
+            return '上传文件不属于当前随访任务'
+    return None
 
 
 def _task_public_payload(task):
@@ -50,18 +86,23 @@ def get_checkin_task(task_code):
     return Response.success(_task_public_payload(task))
 
 
-@public_followup_bp.route('/checkin/<task_code>', methods=['POST'])
-def submit_checkin(task_code):
-    task = BFollowUpTask.query.filter_by(task_code=task_code).first()
-    if not task:
-        return Response.error('随访任务不存在或链接无效', 404)
+def submit_checkin_for_task(task, data, source='public_checkin'):
+    safety_error = _task_safety_error(task)
+    if safety_error:
+        return None, safety_error, 409
 
-    data = request.json or {}
     node = ((task.task_payload or {}).get('node') if isinstance(task.task_payload, dict) else {}) or {}
     checkin_type = data.get('checkin_type') or node.get('task_type') or 'general'
     image_urls = data.get('image_urls') or []
+    uploaded_files = data.get('uploaded_files') or []
+    upload_error = _uploaded_files_error(task, uploaded_files)
+    if upload_error:
+        return None, upload_error, 400
+
     content_text = data.get('content_text') or ''
     structured_data = data.get('structured_data') or {}
+    if uploaded_files and isinstance(structured_data, dict):
+        structured_data = {**structured_data, 'uploaded_files': uploaded_files}
 
     ai_result = {}
     abnormal_flag = False
@@ -98,7 +139,7 @@ def submit_checkin(task_code):
         patient_id=task.patient_id,
         direction='inbound',
         sender_type='patient',
-        channel='public_checkin',
+        channel=source,
         content_type='text',
         content=content_text or '患者已提交随访打卡',
         ai_intent=ai_result.get('intent') if isinstance(ai_result, dict) else None,
@@ -106,9 +147,10 @@ def submit_checkin(task_code):
         requires_manual_review=abnormal_flag,
         send_status='replied',
         provider_payload={
-            'source': 'public_checkin',
+            'source': source,
             'checkin_id': checkin.id,
             'image_urls': image_urls,
+            'uploaded_files': uploaded_files,
             'structured_data': structured_data,
         },
         received_at=datetime.now(),
@@ -124,18 +166,41 @@ def submit_checkin(task_code):
     task.ai_summary = ai_result.get('summary') or task.ai_summary
     event = BFollowUpEvent(
         task_id=task.id,
-        event_type='public_checkin_submitted',
+        event_type=f'{source}_submitted',
         from_status=old_status,
         to_status=task.status,
         actor_type='patient',
-        actor_id='public_checkin',
+        actor_id=source,
         summary=abnormal_reason or '患者已提交随访打卡',
-        payload={'checkin_type': checkin_type, 'ai_result': ai_result}
+        payload={
+            'source': source,
+            'checkin_type': checkin_type,
+            'image_urls': image_urls,
+            'uploaded_files': uploaded_files,
+            'ai_result': ai_result
+        }
     )
     db.session.add(event)
     db.session.commit()
-    return Response.success({
+    return {
         'checkin': checkin.to_dict(),
         'task': _task_public_payload(task),
         'ai_result': ai_result,
+    }, None, 200
+
+
+@public_followup_bp.route('/checkin/<task_code>', methods=['POST'])
+def submit_checkin(task_code):
+    task = BFollowUpTask.query.filter_by(task_code=task_code).first()
+    if not task:
+        return Response.error('随访任务不存在或链接无效', 404)
+
+    data = request.json or {}
+    result, error, code = submit_checkin_for_task(task, data, source='public_checkin')
+    if error:
+        return Response.error(error, code)
+    return Response.success({
+        'checkin': result['checkin'],
+        'task': result['task'],
+        'ai_result': result['ai_result'],
     }, '打卡提交成功')

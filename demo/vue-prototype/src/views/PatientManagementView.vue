@@ -14,6 +14,12 @@
         :nodule="qNodule"
         :risk="qRisk"
         :status="qStatus"
+        :department="qDepartment"
+        :doctor="qDoctor"
+        :manager="qManager"
+        :departments="hospitalDepartments"
+        :doctors="hospitalDoctors"
+        :managers="hospitalManagers"
         :nodule-tags="noduleTags"
         :status-key="statusKey"
         :status-label="statusLabel"
@@ -30,7 +36,11 @@
         @update-nodule="qNodule = $event"
         @update-risk="qRisk = $event"
         @update-status="qStatus = $event"
+        @update-department="qDepartment = $event"
+        @update-doctor="qDoctor = $event"
+        @update-manager="qManager = $event"
         @reset-filters="resetQueueFilters"
+        @refresh="loadPatients"
         @new-record="goRecord(null)"
         @select-patient="activePatientId = $event"
         @open-workspace="openPatientWorkspace"
@@ -48,6 +58,11 @@
         v-else-if="subTab === 'detail'"
         :patient="activePatient"
         :edit-mode="patientEditMode"
+        :can-operate-patient="canOperatePatient"
+        :can-edit-report-followup-advice="canEditReportFollowupAdvice"
+        :departments="hospitalDepartments"
+        :doctors="hospitalDoctors"
+        :managers="hospitalManagers"
         :flow-steps="patientFlowSteps"
         :latest-record-label="latestRecordLabel"
         :active-plan-label="activePlanLabel"
@@ -78,6 +93,9 @@
         :advice-status-label="adviceStatusLabel"
         @back="setSubTab('queue')"
         @edit-record="goRecord"
+        @start-patient-edit="startPatientEdit"
+        @cancel-patient-edit="cancelPatientEdit"
+        @save-patient="saveActivePatientHospitalFields"
         @update-patient="updateActivePatientField"
         @view-report="viewReport"
         @imaging-upload="handleImagingUpload"
@@ -86,6 +104,9 @@
         @start-tongue="startWorkspaceTongueDiagnosis"
         @sync-tongue="syncWorkspaceTongueReport"
         @update-advice-content="updateActiveAdviceContent"
+        @update-report-followup-advice="updateReportFollowupAdvice"
+        @save-report-followup-advice="saveReportFollowupAdviceDraft"
+        @submit-report-followup-advice="submitReportFollowupAdvice"
         @regenerate-advice="regenerateAdviceForActive"
         @save-advice="saveAdviceDraft"
         @submit-advice="submitAdviceReview"
@@ -309,6 +330,7 @@ import {
   normalizeAdvicePayload,
   usePatientWorkspace
 } from '../composables/usePatientWorkspace'
+import { useHospitalApi } from '../composables/useHospitalApi'
 import { useWecomBinding } from '../composables/useWecomBinding'
 import { apiJson, apiPostJson } from '../utils/apiClient'
 
@@ -317,6 +339,13 @@ const route = useRoute()
 const toast = { show: (msg) => window.alert(msg) }
 const scenario = computed(() => getStoredScenario())
 const isCheckupScenario = computed(() => scenario.value.key === 'checkup')
+const currentRole = computed(() => localStorage.getItem('proto_role') || '')
+const canOperatePatient = computed(() => !['doctor', 'department_director'].includes(currentRole.value))
+const canEditReportFollowupAdvice = computed(() => ['doctor', 'admin', 'system_admin'].includes(currentRole.value) || !currentRole.value)
+const hospitalDepartments = ref([])
+const hospitalDoctors = ref([])
+const hospitalManagers = ref([])
+const hospitalApi = useHospitalApi()
 const {
   channelLabel,
   noduleTypeLabel,
@@ -469,6 +498,9 @@ const {
   qSearch,
   qSource,
   qStatus,
+  qDepartment,
+  qDoctor,
+  qManager,
   queueFiltered,
   resetQueueFilters,
   sourceLabel,
@@ -566,9 +598,25 @@ function createTaskForPatient(p) {
 onMounted(() => {
   loadPlan()
   loadFollowupPlanningConfig()
+  loadHospitalOptions()
   loadPatients()
   loadReports()
 })
+
+async function loadHospitalOptions() {
+  try {
+    const [departments, doctors, managers] = await Promise.all([
+      hospitalApi.getDepartments(),
+      hospitalApi.getDoctors(),
+      hospitalApi.getManagers(),
+    ])
+    hospitalDepartments.value = departments.departments || []
+    hospitalDoctors.value = doctors.doctors || []
+    hospitalManagers.value = managers.managers || []
+  } catch (e) {
+    console.error('加载医院字段选项失败', e)
+  }
+}
 
 const kbUi = ref({
   editorOpen: false,
@@ -1073,7 +1121,10 @@ const {
   tongueSyncing,
   updateActiveAdviceContent,
   updateActiveFollowPlan,
-  updateActivePatientField,
+  updateActivePatientField: updateActivePatientFieldBase,
+  updateReportFollowupAdvice,
+  saveReportFollowupAdviceDraft,
+  submitReportFollowupAdvice,
   workspaceTongueActionLabel,
   workspaceTongueQrUrl,
   workspaceTongueStatusLabel,
@@ -1102,6 +1153,82 @@ const {
   toast,
   unmarkReportGenerating,
 })
+
+function updateActivePatientField(payload) {
+  updateActivePatientFieldBase(payload)
+  const p = activePatient.value
+  if (!p || !payload?.field) return
+  if (payload.field === 'noduleType') {
+    p.nodules = noduleTypeLabel(payload.value)
+  }
+  if (payload.field === 'department_id') {
+    const dept = hospitalDepartments.value.find((item) => String(item.id) === String(payload.value))
+    p.departmentName = dept?.name || ''
+  }
+  if (payload.field === 'primary_doctor_id') {
+    const doctor = hospitalDoctors.value.find((item) => String(item.id) === String(payload.value))
+    p.owner = doctor?.real_name || doctor?.username || ''
+    p.primaryDoctorName = p.owner
+  }
+  if (payload.field === 'manager_id') {
+    const manager = hospitalManagers.value.find((item) => String(item.id) === String(payload.value))
+    p.managerName = manager?.real_name || manager?.username || ''
+  }
+}
+
+function startPatientEdit() {
+  if (!canOperatePatient.value) return
+  patientEditMode.value = true
+}
+
+async function cancelPatientEdit() {
+  patientEditMode.value = false
+  if (activePatient.value?._apiId) await hydratePatientWorkspace(activePatient.value)
+}
+
+async function saveActivePatientHospitalFields() {
+  const p = activePatient.value
+  if (!canOperatePatient.value || !p?._apiId) return
+  const payload = {
+    name: p.name || '',
+    gender: p.gender || '',
+    age: p.age || '',
+    phone: p.phone || '',
+    source_channel: p.source || '',
+    nodule_type: p.noduleType || '',
+    department_id: p.department_id || null,
+    primary_doctor_id: p.primary_doctor_id || null,
+    manager_id: p.manager_id || null,
+    status: p.status || 'active',
+  }
+  try {
+    const result = await hospitalApi.updatePatient(p._apiId, payload)
+    const saved = result.patient
+    if (saved) {
+      p.name = saved.name || p.name
+      p.gender = saved.gender || p.gender
+      p.age = saved.age || p.age
+      p.phone = saved.phone || p.phone
+      p.phoneMasked = saved.phone ? saved.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : p.phoneMasked
+      p.source = saved.source_channel || p.source
+      p.noduleType = saved.nodule_type || p.noduleType
+      p.nodules = noduleTypeLabel(p.noduleType)
+      p.department_id = saved.department_id
+      p.departmentName = saved.department_name || ''
+      p.primary_doctor_id = saved.primary_doctor_id
+      p.owner = saved.primary_doctor_name || saved.manager_name || p.owner
+      p.primaryDoctorName = saved.primary_doctor_name || ''
+      p.manager_id = saved.manager_id
+      p.managerName = saved.manager_name || ''
+    }
+    patientEditMode.value = false
+    toast?.show('患者信息已保存')
+    await loadPatients()
+    activePatientId.value = saved?.id || p.id
+  } catch (e) {
+    toast?.show(e.message || '保存患者信息失败')
+  }
+}
 onAuditFollowupTaskCreated.value = async (task) => {
   const patient = queue.value.find(p => String(p._apiId || p.id) === String(task.patient_id))
   if (patient) await hydratePatientWorkspace(patient)
@@ -1215,6 +1342,25 @@ watch(
     if (typeof d === 'string' && d.startsWith('day')) planDay.value = d
   },
   { immediate: true }
+)
+
+watch(
+  [() => route.query.patient_id, () => queue.value.length],
+  async ([patientId]) => {
+    if (!patientId || !queue.value.length) return
+    const hit = queue.value.find((p) => String(p._apiId || p.id) === String(patientId))
+    if (!hit) return
+    activePatientId.value = hit.id
+    if (route.query.tab === 'detail') await hydratePatientWorkspace(hit)
+  },
+  { immediate: true }
+)
+
+watch(
+  [qSearch, qNodule, qDepartment, qDoctor, qManager],
+  () => {
+    loadPatients()
+  }
 )
 
 // countBy 已废弃：状态统计改为 statusKey 映射

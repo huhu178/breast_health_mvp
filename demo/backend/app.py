@@ -135,6 +135,7 @@ def create_app():
     from routes.b_tongue_diagnosis import b_tongue_bp
     from routes.b_followup_workflow import b_followup_bp, wecom_callback_bp
     from routes.public_followup_routes import public_followup_bp
+    from routes.hospital_routes import hospital_bp
     from routes.c_patient_service import c_patient_bp
     from routes.c_auth_routes import c_auth_bp
     from routes.miniprogram_routes import miniprogram_bp  # 微信小程序路由
@@ -148,6 +149,7 @@ def create_app():
     app.register_blueprint(b_followup_bp)
     app.register_blueprint(wecom_callback_bp)
     app.register_blueprint(public_followup_bp)
+    app.register_blueprint(hospital_bp)
     app.register_blueprint(c_patient_bp)
     app.register_blueprint(c_auth_bp)
     app.register_blueprint(miniprogram_bp)  # 微信小程序接口

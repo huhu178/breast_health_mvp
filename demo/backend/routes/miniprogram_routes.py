@@ -5,7 +5,7 @@
 from flask import Blueprint, request, jsonify
 from config import Config
 from sqlalchemy import Date, DateTime, Integer, Float, Boolean, Text
-from models import db, User, CPatient, CHealthRecord, CReport, MiniprogramImagingUpload
+from models import db, User, CPatient, CHealthRecord, CReport, MiniprogramImagingUpload, BFollowUpTask
 from utils.response import Response
 from utils.id_generator import generate_record_code, generate_report_code
 from services.llm_service import llm_generator
@@ -28,6 +28,7 @@ from utils.data_normalizer import (
     pick_first,
     parse_date
 )
+from routes.public_followup_routes import _task_public_payload, _task_safety_error, submit_checkin_for_task
 from datetime import datetime
 import re
 import uuid
@@ -77,6 +78,112 @@ def _save_miniprogram_upload(file_storage, subdir: str = 'uploads/miniprogram') 
     file_storage.save(file_path)
     file_size = os.path.getsize(file_path) if os.path.exists(file_path) else None
     return file_path, file_size
+
+
+@miniprogram_bp.route('/followup/tasks/<task_code>', methods=['GET'])
+def get_miniprogram_followup_task(task_code):
+    """
+    ISDoc
+    @description 小程序按任务码获取随访任务；只返回患者端必要字段
+    """
+    task = BFollowUpTask.query.filter_by(task_code=task_code).first()
+    if not task:
+        return Response.error('随访任务不存在或入口已失效', 404)
+    payload = _task_public_payload(task)
+    payload['entry'] = {
+        'source': 'mini_program',
+        'submit_api_path': f'/api/miniprogram/followup/tasks/{task.task_code}/submit',
+        'upload_api_path': f'/api/miniprogram/followup/tasks/{task.task_code}/files',
+    }
+    return Response.success(payload, '获取成功')
+
+
+@miniprogram_bp.route('/followup/tasks/<task_code>/submit', methods=['POST'])
+def submit_miniprogram_followup_task(task_code):
+    """
+    ISDoc
+    @description 小程序提交随访打卡，写入B端随访任务、消息和事件
+    @request json: content_text, image_urls, uploaded_files, structured_data, checkin_type, analyze
+    """
+    try:
+        task = BFollowUpTask.query.filter_by(task_code=task_code).first()
+        if not task:
+            return Response.error('随访任务不存在或入口已失效', 404)
+
+        data = request.json or {}
+        result, error, code = submit_checkin_for_task(task, data, source='mini_program')
+        if error:
+            return Response.error(error, code)
+        return Response.success(result, '打卡提交成功')
+    except Exception as e:
+        db.session.rollback()
+        return Response.error(f'打卡提交失败: {str(e)}', 500)
+
+
+@miniprogram_bp.route('/followup/tasks/<task_code>/files', methods=['POST'])
+def upload_miniprogram_followup_file(task_code):
+    """
+    ISDoc
+    @description 小程序上传随访复查资料；返回文件引用，提交打卡时放入 uploaded_files 或 image_urls
+    @request form-data: file, phone(optional), openid(optional)
+    """
+    try:
+        task = BFollowUpTask.query.filter_by(task_code=task_code).first()
+        if not task:
+            return Response.error('随访任务不存在或入口已失效', 404)
+        safety_error = _task_safety_error(task)
+        if safety_error:
+            return Response.error(safety_error, 409)
+
+        f = request.files.get('file')
+        if not f or not f.filename:
+            return Response.error('文件不能为空', 400)
+
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        f.seek(0)
+        if size > 20 * 1024 * 1024:
+            return Response.error('文件大小不能超过20MB', 400)
+
+        file_type = _detect_file_type(f.filename)
+        if file_type == 'unknown':
+            return Response.error('不支持的文件类型（仅支持PDF/JPG/PNG/WebP）', 400)
+
+        patient = task.patient
+        phone = (request.form.get('phone') or (patient.phone if patient else '') or '').strip()
+        openid = (request.form.get('openid') or '').strip()
+        file_path, file_size = _save_miniprogram_upload(f, subdir='uploads/miniprogram/followup')
+
+        upload = MiniprogramImagingUpload(
+            phone=phone or None,
+            openid=openid or None,
+            nodule_type=task.nodule_type or (patient.nodule_type if patient else None),
+            file_name=f.filename,
+            file_path=file_path,
+            file_size=file_size,
+            file_type=file_type,
+            extracted_data={
+                'source': 'mini_program_followup',
+                'followup_task_id': task.id,
+                'task_code': task.task_code,
+                'patient_id': task.patient_id,
+            },
+            status='uploaded'
+        )
+        db.session.add(upload)
+        db.session.commit()
+
+        return Response.success({
+            'upload_id': upload.id,
+            'file_name': upload.file_name,
+            'file_type': upload.file_type,
+            'file_size': upload.file_size,
+            'file_path': upload.file_path,
+            'task_code': task.task_code
+        }, '上传成功')
+    except Exception as e:
+        db.session.rollback()
+        return Response.error(f'上传失败: {str(e)}', 500)
 
 
 @miniprogram_bp.route('/imaging-reports/upload', methods=['POST'])

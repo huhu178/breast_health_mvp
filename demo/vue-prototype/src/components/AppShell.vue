@@ -7,13 +7,25 @@
       </div>
 
       <nav class="nav" aria-label="主导航">
-        <RouterLink class="nav-item" to="/analytics">
+        <RouterLink v-if="canSeeOperatorNav" class="nav-item" :to="scenario.workspacePath">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19V5" />
+              <path d="M8 12h12" />
+              <path d="M8 7h12" />
+              <path d="M8 17h12" />
+            </svg>
+          </span>
+          <span class="nav-label">{{ scenario.workspaceLabel }}</span>
+        </RouterLink>
+
+        <RouterLink v-if="canSeeOperatorNav" class="nav-item" to="/analytics">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 13h6v8H3zM10 3h6v18h-6zM17 8h4v13h-4z" />
             </svg>
           </span>
-          <span class="nav-label">运营看板</span>
+          <span class="nav-label">工作台</span>
         </RouterLink>
 
         <RouterLink class="nav-item" to="/patient">
@@ -27,38 +39,51 @@
           <span class="nav-label">{{ scenario.navPatient }}</span>
         </RouterLink>
 
+        <RouterLink v-if="canSeeDoctorWorkbench" class="nav-item" to="/doctor-workbench">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0" />
+              <path d="M6 21v-2a6 6 0 0 1 12 0v2" />
+              <path d="M12 11v6M9 14h6" />
+            </svg>
+          </span>
+          <span class="nav-label">医生工作台</span>
+        </RouterLink>
+
+        <RouterLink v-if="canSeeDepartmentDashboard" class="nav-item" to="/department-dashboard">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21h18" />
+              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
+              <path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1" />
+            </svg>
+          </span>
+          <span class="nav-label">科室看板</span>
+        </RouterLink>
+
         <div v-if="showPatientSubnav" class="subnav" :aria-label="`${scenario.navPatient}二级标题`">
           <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">{{ scenario.queueLabel }}</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">{{ scenario.recordLabel }}</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">{{ scenario.reportLabel }}</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访任务下发</RouterLink>
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">执行跟踪</RouterLink>
+          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">{{ scenario.recordLabel }}</RouterLink>
+          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">{{ scenario.reportLabel }}</RouterLink>
+          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访任务下发</RouterLink>
+          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">执行跟踪</RouterLink>
+          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'workflow' }" to="/followup-workflow">随访知识库与模板</RouterLink>
         </div>
 
-        <RouterLink class="nav-item" :to="scenario.workspacePath">
+        <RouterLink v-if="canSeeOperatorNav" class="nav-item" to="/ai-employee/overview">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19V5" />
-              <path d="M8 12h12" />
-              <path d="M8 7h12" />
-              <path d="M8 17h12" />
+              <rect x="4" y="6" width="16" height="12" rx="3" />
+              <path d="M8 6V4M16 6V4M9 12h.01M15 12h.01M10 16h4" />
             </svg>
           </span>
-          <span class="nav-label">{{ scenario.workspaceLabel }}</span>
+          <span class="nav-label">{{ aiEmployeeNavLabel }}</span>
         </RouterLink>
 
-        <RouterLink class="nav-item" to="/followup-workflow">
-          <span class="nav-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 6h16" />
-              <path d="M4 12h10" />
-              <path d="M4 18h7" />
-              <circle cx="18" cy="12" r="3" />
-              <path d="M18 9V7M18 17v-2M21 12h2M13 12h2" />
-            </svg>
-          </span>
-          <span class="nav-label">随访知识库与模板</span>
-        </RouterLink>
+        <div v-if="showAiEmployeeSubnav" class="subnav" :aria-label="`${aiEmployeeNavLabel}二级标题`">
+          <RouterLink v-for="item in aiEmployeeTabs" :key="item.key" class="subnav-item" :class="{ active: aiEmployeeTab === item.key }" :to="`/ai-employee/${item.key}`">{{ item.label }}</RouterLink>
+        </div>
+
       </nav>
 
       <div class="sidebar-foot">
@@ -110,14 +135,46 @@ const route = useRoute()
 const scenario = computed(() => getStoredScenario())
 const org = computed(() => localStorage.getItem('proto_org') || scenario.value.orgName)
 const user = computed(() => localStorage.getItem('proto_user') || '管理员')
+const role = computed(() => localStorage.getItem('proto_role') || '')
+const canSeeOperatorNav = computed(() => !['doctor', 'department_director'].includes(role.value))
+const canSeeDoctorWorkbench = computed(() => ['doctor', 'admin', 'system_admin'].includes(role.value) || !role.value)
+const canSeeDepartmentDashboard = computed(() => ['department_director', 'admin', 'system_admin'].includes(role.value) || !role.value)
 
 const now = new Date().toLocaleString('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', hour12: false
 }).replace(/\//g, '-')
 
-const showPatientSubnav = computed(() => route.path.startsWith('/patient') || route.path.startsWith('/record'))
-const activeTab = computed(() => (typeof route.query.tab === 'string' ? route.query.tab : 'queue'))
+const showPatientSubnav = computed(() => route.path.startsWith('/patient') || route.path.startsWith('/record') || route.path.startsWith('/followup-workflow'))
+const activeTab = computed(() => {
+  if (route.path.startsWith('/followup-workflow')) return 'workflow'
+  return typeof route.query.tab === 'string' ? route.query.tab : 'queue'
+})
+const aiEmployeeNavLabel = computed(() => scenario.value.key === 'hospital' ? '医生IP打造' : 'AI超级员工')
+const aiEmployeeTabs = computed(() => {
+  if (scenario.value.key === 'hospital') {
+    return [
+      { key: 'overview', label: '数据看板' },
+      { key: 'content', label: '内容科普' },
+      { key: 'assets', label: '知识资产库' },
+      { key: 'employees', label: '员工设备' },
+    ]
+  }
+  return [
+    { key: 'overview', label: '增长看板' },
+    { key: 'channels', label: '引流获客' },
+    { key: 'content', label: '内容营销' },
+    { key: 'leads', label: '线索转化' },
+    { key: 'assets', label: '知识资产库' },
+    { key: 'employees', label: '员工设备' },
+  ]
+})
+const showAiEmployeeSubnav = computed(() => route.path.startsWith('/ai-employee'))
+const aiEmployeeTab = computed(() => {
+  const raw = typeof route.params.section === 'string' ? route.params.section : 'overview'
+  if (scenario.value.key === 'hospital' && ['channels', 'leads'].includes(raw)) return 'overview'
+  return raw
+})
 const themeVars = computed(() => ({
   '--scenario-primary': scenario.value.theme?.primary || '#155eef',
   '--scenario-soft': scenario.value.theme?.soft || '#eef5ff',
@@ -137,6 +194,8 @@ function logout() {
   localStorage.removeItem('proto_org')
   localStorage.removeItem('proto_org_type')
   localStorage.removeItem('proto_user_id')
+  localStorage.removeItem('proto_role')
+  localStorage.removeItem('proto_department_id')
   router.push('/login')
 }
 </script>

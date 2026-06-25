@@ -28,12 +28,14 @@ from models import (
     BFollowUpAIRule,
     BFollowUpPatientPlan,
     BFollowUpCheckin,
+    BReportFollowupAdvice,
 )
 from services.followup_ai_service import followup_ai_service
 from services.followup_checkin_service import followup_checkin_service
 from services.followup_scheduler_service import followup_scheduler_service
 from services.wecom_service import wecom_service
 from utils.decorators import login_required
+from utils.hospital_permissions import can_operate_patient
 from utils.response import Response
 
 try:
@@ -44,6 +46,13 @@ except Exception:  # pragma: no cover - import error is handled at runtime
 
 b_followup_bp = Blueprint('b_followup', __name__, url_prefix='/api/b/followup')
 wecom_callback_bp = Blueprint('wecom_callback', __name__, url_prefix='/api/wecom')
+
+
+def _require_followup_operator():
+    current_user = getattr(g, 'current_user', None)
+    if not can_operate_patient(current_user):
+        return Response.error('仅健康管理师、医生助手或管理员可创建随访任务', 403)
+    return None
 
 
 @b_followup_bp.route('/scheduler/run-once', methods=['POST'])
@@ -1414,6 +1423,10 @@ def list_task_checkins(task_id):
 @login_required
 def create_task():
     """创建随访任务"""
+    permission_error = _require_followup_operator()
+    if permission_error:
+        return permission_error
+
     data = request.json or {}
     patient_id = data.get('patient_id')
     if not patient_id:
@@ -1465,6 +1478,10 @@ def create_task():
 @login_required
 def create_task_from_report(report_id):
     """手动从已审核报告生成首次随访任务。"""
+    permission_error = _require_followup_operator()
+    if permission_error:
+        return permission_error
+
     report = BReport.query.get(report_id)
     if not report:
         return Response.error('报告不存在', 404)
@@ -1483,15 +1500,31 @@ def create_task_from_report(report_id):
     days = _first_followup_days(risk)
     due_at = datetime.now() + timedelta(days=days)
     risk_key = _normalize_risk_for_match(risk)
+    doctor_advice = (
+        BReportFollowupAdvice.query
+        .filter_by(report_id=report.id, status='submitted')
+        .order_by(BReportFollowupAdvice.updated_at.desc(), BReportFollowupAdvice.id.desc())
+        .first()
+    )
+    doctor_advice_payload = doctor_advice.to_dict() if doctor_advice else None
+    doctor_advice_text = (doctor_advice.advice_content or '').strip() if doctor_advice else ''
+    message_template = '您好，您的健康管理报告已完成审核。请完成本次报告后随访打卡，健康管理师会根据您的反馈继续跟进。'
+    if doctor_advice_text:
+        message_template = (
+            '您好，您的健康管理报告已完成审核。'
+            f'医生建议：{doctor_advice_text}'
+            '请按建议完成复查，并提交本次随访打卡。'
+        )
     node = {
         'name': '报告后首次随访',
         'task_type': 'daily_checkin',
         'patient_action': 'reply_text',
         'ai_action': 'reply',
-        'message_template': '您好，您的健康管理报告已完成审核。请完成本次报告后随访打卡，健康管理师会根据您的反馈继续跟进。',
+        'message_template': message_template,
         'checkin_schema': {
             'fields': ['睡眠', '饮食', '运动', '情绪', '症状变化', '备注'],
-            'source': 'report_first_followup'
+            'source': 'report_first_followup',
+            'doctor_advice': doctor_advice_text,
         }
     }
     task = BFollowUpTask(
@@ -1518,6 +1551,8 @@ def create_task_from_report(report_id):
             'report_code': report.report_code,
             'report_summary': report.report_summary,
             'risk_level': report.risk_level,
+            'doctor_followup_advice': doctor_advice_payload,
+            'doctor_followup_advice_content': doctor_advice_text,
             'first_followup_days': days,
             'rule': 'manual_report_first_followup',
             'node': node,

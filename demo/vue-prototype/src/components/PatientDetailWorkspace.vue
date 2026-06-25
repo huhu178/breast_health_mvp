@@ -30,15 +30,55 @@
               <div class="section-title">一、患者档案与资料管理</div>
               <div class="section-sub">基础信息、病史、检查资料、影像报告和手机舌诊入口统一维护。</div>
             </div>
-            <button class="btn" type="button" @click="$emit('edit-record', patient)">编辑档案</button>
+            <div class="section-actions" v-if="canOperatePatient">
+              <button v-if="!editMode" class="btn" type="button" @click="$emit('start-patient-edit')">编辑患者信息</button>
+              <button v-if="editMode" class="btn" type="button" @click="$emit('cancel-patient-edit')">取消</button>
+              <button v-if="editMode" class="primary" type="button" @click="$emit('save-patient')">保存患者信息</button>
+              <button class="btn" type="button" @click="$emit('edit-record', patient)">编辑档案</button>
+            </div>
           </div>
           <div class="profile-grid">
             <label class="profile-field"><span>姓名</span><input :value="patient.name" :readonly="!editMode" @input="updatePatient('name', $event.target.value)"></label>
             <label class="profile-field"><span>性别</span><input :value="patient.gender" :readonly="!editMode" @input="updatePatient('gender', $event.target.value)"></label>
             <label class="profile-field"><span>年龄</span><input :value="patient.age" :readonly="!editMode" @input="updatePatient('age', $event.target.value)"></label>
             <label class="profile-field"><span>来源</span><input :value="patient.source" :readonly="!editMode" @input="updatePatient('source', $event.target.value)"></label>
-            <label class="profile-field"><span>负责人</span><input :value="patient.owner" :readonly="!editMode" @input="updatePatient('owner', $event.target.value)"></label>
-            <label class="profile-field"><span>结节类型</span><input :value="patient.nodules" :readonly="!editMode" @input="updatePatient('nodules', $event.target.value)"></label>
+            <label class="profile-field">
+              <span>所属科室</span>
+              <select v-if="editMode" :value="patient.department_id || ''" @change="updatePatient('department_id', $event.target.value)">
+                <option value="">未分配</option>
+                <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+              </select>
+              <input v-else :value="patient.departmentName || '未分配'" readonly>
+            </label>
+            <label class="profile-field">
+              <span>主要负责医生</span>
+              <select v-if="editMode" :value="patient.primary_doctor_id || ''" @change="updatePatient('primary_doctor_id', $event.target.value)">
+                <option value="">未分配</option>
+                <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">{{ doctor.real_name || doctor.username }}</option>
+              </select>
+              <input v-else :value="patient.owner || patient.primaryDoctorName || '未分配'" readonly>
+            </label>
+            <label class="profile-field">
+              <span>健康管理师/医生助手</span>
+              <select v-if="editMode" :value="patient.manager_id || ''" @change="updatePatient('manager_id', $event.target.value)">
+                <option value="">未分配</option>
+                <option v-for="manager in managers" :key="manager.id" :value="manager.id">{{ manager.real_name || manager.username }}</option>
+              </select>
+              <input v-else :value="patient.managerName || '未分配'" readonly>
+            </label>
+            <label class="profile-field">
+              <span>结节类型</span>
+              <select v-if="editMode" :value="patient.noduleType || ''" @change="updatePatient('noduleType', $event.target.value)">
+                <option value="breast">乳腺结节</option>
+                <option value="thyroid">甲状腺结节</option>
+                <option value="lung">肺结节</option>
+                <option value="breast_thyroid">乳腺+甲状腺结节</option>
+                <option value="breast_lung">乳腺+肺结节</option>
+                <option value="lung_thyroid">肺+甲状腺结节</option>
+                <option value="triple">三合并结节</option>
+              </select>
+              <input v-else :value="patient.nodules" readonly>
+            </label>
             <label class="profile-field"><span>企微 external_userid</span><input :value="patient.wecomExternalUserid || '未绑定'" readonly></label>
           </div>
           <div class="profile-note">
@@ -83,11 +123,11 @@
               <div class="upload-title">影像报告</div>
               <div class="upload-sub">支持 PDF、图片等文件；后续可接入结构化解析。</div>
               <input ref="imagingInputRef" type="file" multiple accept=".pdf,image/*" class="hidden-input" @change="$emit('imaging-upload', $event)">
-              <button class="primary" type="button" @click="imagingInputRef?.click()">上传影像报告</button>
+              <button v-if="canOperatePatient" class="primary" type="button" @click="imagingInputRef?.click()">上传影像报告</button>
               <div class="file-list">
                 <div v-for="file in patient.assets?.imagingReports || []" :key="file.id" class="file-row">
                   <div><b>{{ file.name }}</b><span>{{ file.uploadedAt }} · {{ file.uploader }}</span></div>
-                  <button class="btn-link-lite" type="button" @click="$emit('remove-asset', 'imagingReports', file.id)">删除</button>
+                  <button v-if="canOperatePatient" class="btn-link-lite" type="button" @click="$emit('remove-asset', 'imagingReports', file.id)">删除</button>
                 </div>
                 <div v-if="!(patient.assets?.imagingReports || []).length" class="empty-line">暂无影像报告</div>
               </div>
@@ -113,7 +153,7 @@
                   </div>
                 </div>
               </div>
-              <div class="tongue-diagnosis-bar">
+              <div v-if="canOperatePatient" class="tongue-diagnosis-bar">
                 <button class="primary" type="button" @click="$emit('start-tongue')" :disabled="tongueSubmitting || !patient.workspaceRecordId">
                   {{ tongueSubmitting ? '提交中...' : tongueActionLabel }}
                 </button>
@@ -151,7 +191,7 @@
               <div class="section-title">三、健康报告意见</div>
               <div class="section-sub">{{ adviceLocked ? '最终报告已归档，建议内容已锁定。' : 'AI意见作为可迭代草稿，支持再次生成、人工编辑、提交审核和历史版本留痕。' }}</div>
             </div>
-            <div class="section-actions">
+            <div v-if="canOperatePatient" class="section-actions">
               <button class="btn" type="button" @click="$emit('regenerate-advice')" :disabled="adviceGenerating || adviceLocked">{{ adviceGenerating ? '生成中...' : '再次生成建议' }}</button>
               <button class="primary" type="button" @click="$emit('save-advice')" :disabled="adviceLocked">保存草稿</button>
               <button class="primary" type="button" @click="$emit('submit-advice')" :disabled="adviceLocked || advice.status === 'reviewing'">提交审核</button>
@@ -177,7 +217,7 @@
               <div class="section-title">四、最终健康报告</div>
               <div class="section-sub">只有审核通过的建议才能写入最终报告，与草稿意见明确区分。</div>
             </div>
-            <div class="section-actions">
+            <div v-if="canOperatePatient" class="section-actions">
               <button class="primary" type="button" @click="$emit('approve-advice')" :disabled="advice.status !== 'reviewing' || adviceLocked">审核通过并写入最终报告</button>
               <button
                 v-if="patient.workspaceReportId && canCreateReportFollowup(patient.latestReport)"
@@ -196,6 +236,47 @@
           </div>
           <div v-else class="empty-line">暂无最终报告。请先生成/编辑建议并完成审核。</div>
         </section>
+
+        <section class="flow-section card">
+          <div class="section-head">
+            <div>
+              <div class="section-title">五、报告随访建议</div>
+              <div class="section-sub">医生查看报告后填写一段随访建议，健康管理师和医生助手可据此调整随访计划。</div>
+            </div>
+            <div class="section-actions">
+              <button v-if="canEditReportFollowupAdvice" class="btn" type="button" @click="$emit('save-report-followup-advice')" :disabled="!patient.workspaceReportId">保存草稿</button>
+              <button v-if="canEditReportFollowupAdvice" class="primary" type="button" @click="$emit('submit-report-followup-advice')" :disabled="!patient.workspaceReportId || !patient.reportFollowupAdviceDraft">提交建议</button>
+            </div>
+          </div>
+          <div class="report-advice-grid">
+            <label class="profile-field wide">
+              <span>报告随访建议内容</span>
+              <textarea
+                :value="patient.reportFollowupAdviceDraft || latestReportFollowupAdvice(patient)?.advice_content || ''"
+                placeholder="例如：建议6个月后复查乳腺超声，期间按计划随访。"
+                :readonly="!canEditReportFollowupAdvice"
+                @input="$emit('update-report-followup-advice', { field: 'advice_content', value: $event.target.value })"
+              ></textarea>
+            </label>
+            <label class="profile-field">
+              <span>建议下次随访时间</span>
+              <input
+                type="date"
+                :value="patient.reportFollowupAdviceNextAt || latestReportFollowupAdvice(patient)?.suggested_next_followup_at || ''"
+                :readonly="!canEditReportFollowupAdvice"
+                @input="$emit('update-report-followup-advice', { field: 'suggested_next_followup_at', value: $event.target.value })"
+              >
+            </label>
+          </div>
+          <div class="version-list">
+            <div v-for="item in reportFollowupAdvices(patient)" :key="item.id" class="version-row report-advice-row">
+              <span>{{ item.status === 'submitted' ? '已提交' : '草稿' }}</span>
+              <b>{{ item.doctor_name || '医生' }}</b>
+              <span>{{ item.updated_at || item.created_at || '-' }}</span>
+            </div>
+            <div v-if="!reportFollowupAdvices(patient).length" class="empty-line">暂无报告随访建议</div>
+          </div>
+        </section>
       </section>
 
       <PatientFollowupPanel
@@ -209,6 +290,7 @@
         :can-create-report-followup="canCreateReportFollowup"
         :is-creating-report-followup="isCreatingReportFollowup"
         :existing-report-followup-task="existingReportFollowupTask"
+        :can-operate="canOperatePatient"
         @update-follow-plan="$emit('update-follow-plan', $event)"
         @save-follow-plan="$emit('save-follow-plan')"
         @open-follow="$emit('open-follow')"
@@ -227,6 +309,11 @@ import PatientFollowupPanel from './PatientFollowupPanel.vue'
 defineProps({
   patient: { type: Object, default: () => ({}) },
   editMode: { type: Boolean, default: false },
+  canOperatePatient: { type: Boolean, default: true },
+  canEditReportFollowupAdvice: { type: Boolean, default: true },
+  departments: { type: Array, default: () => [] },
+  doctors: { type: Array, default: () => [] },
+  managers: { type: Array, default: () => [] },
   flowSteps: { type: Array, default: () => [] },
   latestRecordLabel: { type: String, default: '' },
   activePlanLabel: { type: String, default: '' },
@@ -260,6 +347,9 @@ defineProps({
 const emit = defineEmits([
   'back',
   'edit-record',
+  'start-patient-edit',
+  'cancel-patient-edit',
+  'save-patient',
   'update-patient',
   'view-report',
   'imaging-upload',
@@ -272,6 +362,9 @@ const emit = defineEmits([
   'save-advice',
   'submit-advice',
   'approve-advice',
+  'update-report-followup-advice',
+  'save-report-followup-advice',
+  'submit-report-followup-advice',
   'create-report-followup',
   'update-follow-plan',
   'save-follow-plan',
@@ -283,6 +376,14 @@ const imagingInputRef = ref(null)
 
 function updatePatient(field, value) {
   emit('update-patient', { field, value })
+}
+
+function reportFollowupAdvices(patient) {
+  return patient?.reportFollowupAdvices || patient?.workspaceReportFollowupAdvices || patient?.followupAdvices || []
+}
+
+function latestReportFollowupAdvice(patient) {
+  return reportFollowupAdvices(patient)[0] || null
 }
 </script>
 
@@ -325,8 +426,8 @@ function updatePatient(field, value) {
 .profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .profile-note{margin-top:10px}
 .profile-field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#64748b;font-weight:850;min-width:0}
-.profile-field input,.profile-field textarea{width:100%;box-sizing:border-box;border:1px solid #dbe5f2;border-radius:9px;background:#fff;padding:8px 10px;color:#0f172a;font-size:13px;font-weight:650}
-.profile-field input[readonly],.profile-field textarea[readonly]{background:#f8fafc;color:#334155}
+.profile-field input,.profile-field select,.profile-field textarea{width:100%;box-sizing:border-box;border:1px solid #dbe5f2;border-radius:9px;background:#fff;padding:8px 10px;color:#0f172a;font-size:13px;font-weight:650}
+.profile-field input[readonly],.profile-field textarea[readonly],.profile-field select:disabled{background:#f8fafc;color:#334155}
 .profile-field textarea{min-height:76px;resize:vertical;line-height:1.6}
 .profile-field.wide{grid-column:1/-1}
 .record-report-card{margin-top:10px;border:1px solid #dbeafe;background:#eff6ff;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}

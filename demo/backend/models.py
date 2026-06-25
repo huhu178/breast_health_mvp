@@ -23,9 +23,12 @@ class User(db.Model):
     phone = db.Column(db.String(20))
     wechat_id = db.Column(db.String(50))  # 健康管理师微信号（用于C端展示与联系）
     role = db.Column(db.String(20), default='health_manager')
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+
+    department = db.relationship('Department', foreign_keys=[department_id])
     
     def to_dict(self):
         return {
@@ -35,7 +38,33 @@ class User(db.Model):
             'email': self.email,
             'phone': self.phone,
             'wechat_id': self.wechat_id,
-            'role': self.role
+            'role': self.role,
+            'department_id': self.department_id,
+            'department_name': self.department.name if self.department else None
+        }
+
+
+class Department(db.Model):
+    """医院科室表"""
+    __tablename__ = 'departments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    code = db.Column(db.String(50), unique=True)
+    hospital_name = db.Column(db.String(150))
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'code': self.code,
+            'hospital_name': self.hospital_name,
+            'is_active': self.is_active,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
         }
 
 
@@ -198,6 +227,8 @@ class BPatient(db.Model):
     # B端特有字段
     nodule_type = db.Column(db.String(50))  # 结节类型：breast/lung/thyroid/breast_lung/breast_thyroid/lung_thyroid/triple
     manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), index=True)
+    primary_doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
     source_channel = db.Column(db.String(50), default='b_end')
     status = db.Column(db.String(20), default='active')
     is_new = db.Column(db.Boolean, default=True)  # 新患者提醒
@@ -208,6 +239,8 @@ class BPatient(db.Model):
     
     # 关联关系
     manager = db.relationship('User', foreign_keys=[manager_id])  # 管理师关系
+    department = db.relationship('Department', foreign_keys=[department_id])
+    primary_doctor = db.relationship('User', foreign_keys=[primary_doctor_id])
     records = db.relationship('BHealthRecord', backref='patient', lazy='dynamic')
     reports = db.relationship('BReport', backref='patient', lazy='dynamic')
     follow_ups = db.relationship('BFollowUpRecord', backref='patient', lazy='dynamic')
@@ -232,6 +265,11 @@ class BPatient(db.Model):
             'status': self.status,
             'is_new': self.is_new,
             'manager_id': self.manager_id,
+            'manager_name': self.manager.real_name if self.manager else None,
+            'department_id': self.department_id,
+            'department_name': self.department.name if self.department else None,
+            'primary_doctor_id': self.primary_doctor_id,
+            'primary_doctor_name': self.primary_doctor.real_name if self.primary_doctor else None,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
             'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
         }
@@ -802,6 +840,39 @@ class BReport(db.Model):
             'report_type': self.report_type,
             'access_level': self.access_level,
             'generated_by': self.generated_by,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
+        }
+
+
+class BReportFollowupAdvice(db.Model):
+    """医生报告随访建议"""
+    __tablename__ = 'b_report_followup_advices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('b_patients.id'), nullable=False, index=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('b_reports.id'), nullable=False, index=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    advice_content = db.Column(db.Text)
+    suggested_next_followup_at = db.Column(db.Date)
+    status = db.Column(db.String(20), default='draft', index=True)  # draft/submitted
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    patient = db.relationship('BPatient', foreign_keys=[patient_id])
+    report = db.relationship('BReport', foreign_keys=[report_id], backref=db.backref('followup_advices', lazy='dynamic'))
+    doctor = db.relationship('User', foreign_keys=[doctor_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'patient_id': self.patient_id,
+            'report_id': self.report_id,
+            'doctor_id': self.doctor_id,
+            'doctor_name': self.doctor.real_name if self.doctor else None,
+            'advice_content': self.advice_content,
+            'suggested_next_followup_at': self.suggested_next_followup_at.strftime('%Y-%m-%d') if self.suggested_next_followup_at else None,
+            'status': self.status,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
             'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
         }

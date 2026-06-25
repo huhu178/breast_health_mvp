@@ -16,9 +16,17 @@ const router = createRouter({
     { path: '/push', name: 'push', component: view('PushView'), meta: auth },         // 兼容旧入口（不在主导航展示）
     { path: '/followup', name: 'followup', component: view('FollowupView'), meta: auth }, // 兼容旧入口（不在主导航展示）
     { path: '/followup-workflow', name: 'followup-workflow', component: view('FollowupWorkflowView'), meta: auth },
-    { path: '/stats', redirect: '/analytics' },      // 已合并到运营看板
+    { path: '/stats', redirect: '/analytics' },      // 已合并到工作台
     { path: '/patient', name: 'patient', component: view('PatientManagementView'), meta: auth },
+    { path: '/doctor-workbench', name: 'doctor-workbench', component: view('DoctorWorkbenchView'), meta: auth },
+    { path: '/department-dashboard', name: 'department-dashboard', component: view('DepartmentDashboardView'), meta: auth },
     { path: '/record', name: 'record', component: view('RecordView'), meta: auth },
+    { path: '/ai-employee', redirect: '/ai-employee/overview' },
+    { path: '/ai-employee/dashboard', redirect: '/ai-employee/overview' },
+    { path: '/ai-employee/consultation', redirect: '/ai-employee/leads' },
+    { path: '/ai-employee/conversation', redirect: '/ai-employee/leads' },
+    { path: '/ai-employee/handoff', redirect: '/ai-employee/leads' },
+    { path: '/ai-employee/:section', name: 'ai-employee', component: view('AiEmployeeView'), meta: auth },
     { path: '/rws', name: 'rws', component: view('RwsView'), meta: auth },
     { path: '/scenario-workspace', name: 'scenario-workspace', component: view('ScenarioWorkspaceView'), meta: auth }
   ]

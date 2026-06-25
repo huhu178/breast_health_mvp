@@ -35,6 +35,9 @@ export function usePatientQueue({
   const qNodule = ref('')
   const qRisk = ref('')
   const qStatus = ref('')
+  const qDepartment = ref('')
+  const qDoctor = ref('')
+  const qManager = ref('')
 
   function sourceLabel(src) {
     const s = String(src || '').trim()
@@ -61,10 +64,25 @@ export function usePatientQueue({
 
   async function loadPatients() {
     try {
-      const res = await fetch('/api/b/patients?per_page=50', { credentials: 'include' })
+      const query = new URLSearchParams({ page_size: '100' })
+      if (qSearch.value) query.set('keyword', qSearch.value)
+      if (qDepartment.value) query.set('department_id', qDepartment.value)
+      if (qDoctor.value) query.set('doctor_id', qDoctor.value)
+      if (qManager.value) query.set('manager_id', qManager.value)
+      const noduleMap = {
+        '乳腺结节': 'breast',
+        '肺部结节': 'lung',
+        '甲状腺结节': 'thyroid',
+        '乳腺+肺部结节': 'breast_lung',
+        '乳腺+甲状腺结节': 'breast_thyroid',
+        '肺部+甲状腺结节': 'lung_thyroid',
+        '三合并结节': 'triple',
+      }
+      if (qNodule.value) query.set('nodule_type', noduleMap[qNodule.value] || qNodule.value)
+      const res = await fetch(`/api/hospital/patients?${query}`, { credentials: 'include' })
       const data = await res.json()
       if (data.success) {
-        const items = (data.data?.items || data.data || [])
+        const items = (data.data?.patients || data.data?.items || data.data || [])
         queue.value = items.map(p => ({
           id: p.id,
           _apiId: p.id,
@@ -78,11 +96,16 @@ export function usePatientQueue({
           wecomBindStatus: p.wecom_bind_status || ((p.wecom_external_userid || p.wecom_userid) ? 'bound' : 'unbound'),
           wecomBoundAt: p.wecom_bound_at || '',
           source: p.source_channel === 'manual' ? scenario.value.sourceOptions[0] : (p.source_channel || scenario.value.sourceOptions[0]),
-          owner: p.manager_name || scenario.value.defaultOwner,
+          owner: p.primary_doctor_name || p.manager_name || scenario.value.defaultOwner,
+          managerName: p.manager_name || '',
+          departmentName: p.department_name || '',
+          department_id: p.department_id,
+          primary_doctor_id: p.primary_doctor_id,
+          manager_id: p.manager_id,
           nodules: noduleTypeLabel(p.nodule_type),
           noduleType: p.nodule_type || 'breast',
-          risk: riskLevelLabel(p.risk_level || (p.reports?.[0]?.risk_level) || '—'),
-          riskTone: riskToneFromLevel(p.risk_level || p.reports?.[0]?.risk_level),
+          risk: riskLevelLabel(p.latest_report_risk_level || p.risk_level || (p.reports?.[0]?.risk_level) || '—'),
+          riskTone: riskToneFromLevel(p.latest_report_risk_level || p.risk_level || p.reports?.[0]?.risk_level),
           stage: p.risk_level ? 'plan' : (p.reports?.length ? 'review' : 'gen'),
           stageLabel: p.risk_level ? statusLabel({ stage: 'plan' }) : (p.reports?.length ? statusLabel({ stage: 'review' }) : statusLabel({ stage: 'aiGen' })),
           nextStep: '',
@@ -151,6 +174,9 @@ export function usePatientQueue({
     qNodule.value = ''
     qRisk.value = ''
     qStatus.value = ''
+    qDepartment.value = ''
+    qDoctor.value = ''
+    qManager.value = ''
   }
 
   const filteredQueue = computed(() => {
@@ -183,6 +209,9 @@ export function usePatientQueue({
     qSearch,
     qSource,
     qStatus,
+    qDepartment,
+    qDoctor,
+    qManager,
     queueFiltered,
     resetQueueFilters,
     sourceLabel,

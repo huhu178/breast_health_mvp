@@ -102,7 +102,11 @@ function completeLogin(user = {}) {
   localStorage.setItem('proto_user', user.real_name || user.username || account.value)
   localStorage.setItem('proto_authed', 'true')
   localStorage.setItem('proto_user_id', user.id || '')
-  router.push('/analytics')
+  localStorage.setItem('proto_role', user.role || '')
+  localStorage.setItem('proto_department_id', user.department_id || '')
+  if (user.role === 'doctor') router.push('/doctor-workbench')
+  else if (user.role === 'department_director') router.push('/department-dashboard')
+  else router.push('/analytics')
 }
 
 async function onLogin() {

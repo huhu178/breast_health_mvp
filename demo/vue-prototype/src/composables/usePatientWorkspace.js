@@ -158,6 +158,13 @@ export function usePatientWorkspace({
         p.nodules = noduleTypeLabel(detail.nodule_type || p.noduleType)
         p.noduleType = detail.nodule_type || p.noduleType
         p.source = detail.source_channel || p.source
+        p.department_id = detail.department_id ?? p.department_id
+        p.departmentName = detail.department_name || p.departmentName || ''
+        p.primary_doctor_id = detail.primary_doctor_id ?? p.primary_doctor_id
+        p.primaryDoctorName = detail.primary_doctor_name || p.primaryDoctorName || ''
+        p.owner = detail.primary_doctor_name || detail.manager_name || p.owner
+        p.manager_id = detail.manager_id ?? p.manager_id
+        p.managerName = detail.manager_name || p.managerName || ''
         p.wecomExternalUserid = detail.wecom_external_userid || p.wecomExternalUserid
         p.wecomUserid = detail.wecom_userid || p.wecomUserid
         p.wecomBindStatus = detail.wecom_bind_status || p.wecomBindStatus
@@ -205,6 +212,15 @@ export function usePatientWorkspace({
         }
         p.risk = riskLevelLabel(latestReport.risk_level || p.risk)
         p.riskTone = riskToneFromLevel(latestReport.risk_level || p.risk)
+        try {
+          const followupAdvice = await apiJson(`/api/hospital/health-reports/${latestReport.id}/followup-advice`)
+          p.workspaceReportFollowupAdvices = followupAdvice.advices || []
+          const latestFollowupAdvice = p.workspaceReportFollowupAdvices[0]
+          p.reportFollowupAdviceDraft = latestFollowupAdvice?.advice_content || p.reportFollowupAdviceDraft || ''
+          p.reportFollowupAdviceNextAt = latestFollowupAdvice?.suggested_next_followup_at || p.reportFollowupAdviceNextAt || ''
+        } catch (e) {
+          p.workspaceReportFollowupAdvices = p.workspaceReportFollowupAdvices || []
+        }
         const advice = await apiJson(`/api/b/reports/${latestReport.id}/advice`)
         p.adviceDraft = normalizeAdvicePayload(advice.advice, p.adviceDraft)
         if (latestReport.status === 'finalized' || latestReport.status === 'published' || p.adviceDraft.status === 'archived') {
@@ -279,6 +295,53 @@ export function usePatientWorkspace({
     if (!p) return
     p.adviceDraft = p.adviceDraft || makeDefaultAdvice(p)
     p.adviceDraft.content = value
+  }
+
+  function updateReportFollowupAdvice({ field, value }) {
+    const p = ensurePatientWorkflow(activePatient.value)
+    if (!p) return
+    if (field === 'suggested_next_followup_at') p.reportFollowupAdviceNextAt = value
+    else p.reportFollowupAdviceDraft = value
+  }
+
+  async function saveReportFollowupAdviceDraft() {
+    return saveReportFollowupAdvice('draft')
+  }
+
+  async function submitReportFollowupAdvice() {
+    return saveReportFollowupAdvice('submitted')
+  }
+
+  async function saveReportFollowupAdvice(status = 'draft') {
+    const p = ensurePatientWorkflow(activePatient.value)
+    if (!p?.workspaceReportId) {
+      toast?.show('请先生成健康报告')
+      return null
+    }
+    const payload = {
+      advice_content: p.reportFollowupAdviceDraft || '',
+      suggested_next_followup_at: p.reportFollowupAdviceNextAt || ''
+    }
+    const url = `/api/hospital/health-reports/${p.workspaceReportId}/followup-advice/${status === 'submitted' ? 'submit' : 'draft'}`
+    try {
+      const data = await apiJson(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const advice = data.advice
+      if (advice) {
+        p.workspaceReportFollowupAdvices = [
+          advice,
+          ...(p.workspaceReportFollowupAdvices || []).filter((item) => item.id !== advice.id)
+        ]
+      }
+      toast?.show(status === 'submitted' ? '报告随访建议已提交' : '报告随访建议草稿已保存')
+      return advice
+    } catch (e) {
+      toast?.show(e.message || '保存报告随访建议失败')
+      return null
+    }
   }
 
   const adviceLocked = computed(() => {
@@ -699,6 +762,9 @@ export function usePatientWorkspace({
     updateActiveAdviceContent,
     updateActiveFollowPlan,
     updateActivePatientField,
+    updateReportFollowupAdvice,
+    saveReportFollowupAdviceDraft,
+    submitReportFollowupAdvice,
     workspaceTongueActionLabel,
     workspaceTongueQrUrl,
     workspaceTongueStatusLabel,

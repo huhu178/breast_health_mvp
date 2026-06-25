@@ -112,9 +112,30 @@
               <option value="abnormal">异常待处理</option>
             </select>
           </div>
+          <div class="q-filter-item">
+            <label>所属科室</label>
+            <select class="q-filter-select" :value="department" @change="$emit('update-department', $event.target.value)">
+              <option value="">全部</option>
+              <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+            </select>
+          </div>
+          <div class="q-filter-item">
+            <label>主要医生</label>
+            <select class="q-filter-select" :value="doctor" @change="$emit('update-doctor', $event.target.value)">
+              <option value="">全部</option>
+              <option v-for="item in doctors" :key="item.id" :value="item.id">{{ item.real_name || item.username }}</option>
+            </select>
+          </div>
+          <div class="q-filter-item">
+            <label>健康管理师/助手</label>
+            <select class="q-filter-select" :value="manager" @change="$emit('update-manager', $event.target.value)">
+              <option value="">全部</option>
+              <option v-for="item in managers" :key="item.id" :value="item.id">{{ item.real_name || item.username }}</option>
+            </select>
+          </div>
           <div class="q-filter-actions">
             <button class="btn" type="button" @click="$emit('reset-filters')">重置</button>
-            <button class="primary" type="button">查询</button>
+            <button class="primary" type="button" @click="$emit('refresh')">查询</button>
             <button class="primary" type="button" @click="$emit('new-record')">+ 新建档案</button>
           </div>
         </div>
@@ -197,7 +218,9 @@
             <div class="kv2"><div class="k">年龄</div><div class="v">{{ activePatient.age }}岁</div></div>
             <div class="kv2"><div class="k">手机号</div><div class="v">{{ activePatient.phoneMasked }}</div></div>
             <div class="kv2"><div class="k">来源</div><div class="v">{{ sourceLabel(activePatient.source) }}</div></div>
+            <div class="kv2"><div class="k">所属科室</div><div class="v">{{ activePatient.departmentName || '未分配' }}</div></div>
             <div class="kv2"><div class="k">负责人</div><div class="v">{{ ownerLabel(activePatient.owner) }}</div></div>
+            <div class="kv2"><div class="k">健康管理师</div><div class="v">{{ activePatient.managerName || '未分配' }}</div></div>
             <div class="kv2"><div class="k">企微</div><div class="v"><span class="wecom-badge" :data-on="isWecomBound(activePatient)">{{ wecomStatusText(activePatient) }}</span></div></div>
           </div>
           <div class="wecom-bind-row">
@@ -291,6 +314,12 @@ defineProps({
   nodule: { type: String, default: '' },
   risk: { type: String, default: '' },
   status: { type: String, default: '' },
+  department: { type: [String, Number], default: '' },
+  doctor: { type: [String, Number], default: '' },
+  manager: { type: [String, Number], default: '' },
+  departments: { type: Array, default: () => [] },
+  doctors: { type: Array, default: () => [] },
+  managers: { type: Array, default: () => [] },
   noduleTags: { type: Function, required: true },
   statusKey: { type: Function, required: true },
   statusLabel: { type: Function, required: true },
@@ -310,7 +339,11 @@ defineEmits([
   'update-nodule',
   'update-risk',
   'update-status',
+  'update-department',
+  'update-doctor',
+  'update-manager',
   'reset-filters',
+  'refresh',
   'new-record',
   'select-patient',
   'open-workspace',

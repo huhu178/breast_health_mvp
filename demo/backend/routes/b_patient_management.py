@@ -206,7 +206,9 @@ def create_patient():
             phone=data.get('phone'),
             wechat_id=data.get('wechat_id'),
             nodule_type=data.get('nodule_type'),  # 结节类型
-            manager_id=g.user_id,  # 分配给当前登录的管理师
+            manager_id=data.get('manager_id') or g.user_id,  # 分配给当前登录的管理师，医院场景可显式指定
+            department_id=data.get('department_id'),
+            primary_doctor_id=data.get('primary_doctor_id'),
             source_channel=data.get('source_channel', 'manual'),
             status='active',
             is_new=True

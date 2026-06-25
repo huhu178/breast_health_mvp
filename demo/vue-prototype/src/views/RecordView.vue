@@ -96,9 +96,24 @@
               </select>
             </div>
             <div class="field col-2 required">
-              <div class="label">负责人</div>
-              <select v-model="form.doctor">
-                <option v-for="owner in ownerOptions" :key="owner">{{ owner }}</option>
+              <div class="label">所属科室</div>
+              <select v-model="form.departmentId">
+                <option value="">请选择科室</option>
+                <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+              </select>
+            </div>
+            <div class="field col-2 required">
+              <div class="label">主要负责医生</div>
+              <select v-model="form.primaryDoctorId">
+                <option value="">请选择医生</option>
+                <option v-for="doctor in filteredDoctors" :key="doctor.id" :value="doctor.id">{{ doctor.real_name || doctor.username }}</option>
+              </select>
+            </div>
+            <div class="field col-2 required">
+              <div class="label">管理人员</div>
+              <select v-model="form.managerId">
+                <option value="">请选择管理人员</option>
+                <option v-for="manager in managers" :key="manager.id" :value="manager.id">{{ manager.real_name || manager.username }}</option>
               </select>
             </div>
             <div class="field col-3 required">
@@ -545,7 +560,9 @@
             <div class="pv-row"><span class="k">年龄</span><span class="v">{{ form.age || '—' }}</span></div>
             <div class="pv-row"><span class="k">来源</span><span class="v">{{ previewSource }}</span></div>
             <div class="pv-row"><span class="k">结节类型</span><span class="v">{{ visibleNodules.join('、') || '—' }}</span></div>
-            <div class="pv-row"><span class="k">负责人</span><span class="v">{{ form.doctor || '—' }}</span></div>
+            <div class="pv-row"><span class="k">科室</span><span class="v">{{ selectedDepartmentName || '—' }}</span></div>
+            <div class="pv-row"><span class="k">负责医生</span><span class="v">{{ selectedDoctorName || '—' }}</span></div>
+            <div class="pv-row"><span class="k">管理人员</span><span class="v">{{ selectedManagerName || '—' }}</span></div>
           </div>
         </section>
 
@@ -609,10 +626,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ToastMsg from '../components/ToastMsg.vue'
 import { getStoredScenario } from '../config/scenarios'
+import { useHospitalApi } from '../composables/useHospitalApi'
 
 const props = defineProps({
   embedded: { type: Boolean, default: false },
@@ -624,6 +642,10 @@ const router = useRouter()
 const toastRef = ref(null)
 const user = computed(() => localStorage.getItem('proto_user') || '管理员')
 const scenario = computed(() => getStoredScenario())
+const hospitalApi = useHospitalApi()
+const departments = ref([])
+const doctors = ref([])
+const managers = ref([])
 
 const moreOpen = ref(false)
 const saving = ref(false)
@@ -734,6 +756,15 @@ const ownerOptions = computed(() => {
   return map[scenario.value.key] || map.hospital
 })
 
+const filteredDoctors = computed(() => {
+  if (!form.value.departmentId) return doctors.value
+  return doctors.value.filter((doctor) => String(doctor.department_id || '') === String(form.value.departmentId))
+})
+
+const selectedDepartmentName = computed(() => departments.value.find((item) => String(item.id) === String(form.value.departmentId))?.name || '')
+const selectedDoctorName = computed(() => doctors.value.find((item) => String(item.id) === String(form.value.primaryDoctorId))?.real_name || '')
+const selectedManagerName = computed(() => managers.value.find((item) => String(item.id) === String(form.value.managerId))?.real_name || '')
+
 const form = ref({
   // 基础信息
   age: '',
@@ -745,6 +776,9 @@ const form = ref({
   emergency: '配偶', emergencyName: '', emergencyPhone: '',
   note: '',
   source: '门诊', dept: '', doctor: '李医生',
+  departmentId: '',
+  primaryDoctorId: '',
+  managerId: '',
   examDate: '',
   batchNo: '',
   visitNo: '', chiefComplaint: '', examType: '超声',
@@ -810,6 +844,41 @@ watch(
 )
 
 watch(
+  () => form.value.departmentId,
+  () => {
+    if (form.value.primaryDoctorId && !filteredDoctors.value.some((doctor) => String(doctor.id) === String(form.value.primaryDoctorId))) {
+      form.value.primaryDoctorId = filteredDoctors.value[0]?.id || ''
+    }
+  }
+)
+
+onMounted(loadHospitalOptions)
+
+async function loadHospitalOptions() {
+  try {
+    const [deptData, doctorData, managerData] = await Promise.all([
+      hospitalApi.getDepartments(),
+      hospitalApi.getDoctors(),
+      hospitalApi.getManagers(),
+    ])
+    departments.value = deptData.departments || []
+    doctors.value = doctorData.doctors || []
+    managers.value = managerData.managers || []
+    if (!form.value.departmentId) {
+      form.value.departmentId = departments.value.find((item) => item.name === '乳腺科')?.id || departments.value[0]?.id || ''
+    }
+    if (!form.value.primaryDoctorId) {
+      form.value.primaryDoctorId = filteredDoctors.value[0]?.id || doctors.value[0]?.id || ''
+    }
+    if (!form.value.managerId) {
+      form.value.managerId = managers.value[0]?.id || ''
+    }
+  } catch (e) {
+    toast('加载科室和医生失败，请确认后端服务已启动')
+  }
+}
+
+watch(
   () => form.value.birthDate,
   (birthDate) => {
     form.value.age = calculateAge(birthDate) || ''
@@ -837,6 +906,9 @@ watch(
     form.value.phone = patient.phone || ''
     form.value.source = patient.source || scenario.value.sourceOptions[0] || ''
     form.value.doctor = patient.owner || ownerOptions.value[0] || ''
+    form.value.departmentId = patient.department_id || patient.departmentId || form.value.departmentId
+    form.value.primaryDoctorId = patient.primary_doctor_id || patient.primaryDoctorId || form.value.primaryDoctorId
+    form.value.managerId = patient.manager_id || patient.managerId || form.value.managerId
     savedPatientId.value = patient._apiId || patient.rawPatientId || patient.id || ''
     savedRecordId.value = patient.workspaceRecordId || patient.rawRecordId || ''
     savedSnapshot.value = ''
@@ -1107,7 +1179,10 @@ function buildPatientPayload() {
     phone: f.phone,
     nodule_type: tagToNoduleType[selectedTag.value] || 'breast',
     source_channel: f.source || 'manual',
-    manager_name: f.doctor || scenario.value.defaultOwner,
+    department_id: f.departmentId || null,
+    primary_doctor_id: f.primaryDoctorId || null,
+    manager_id: f.managerId || null,
+    manager_name: selectedManagerName.value || f.doctor || scenario.value.defaultOwner,
   }
 }
 
@@ -1245,6 +1320,10 @@ async function save() {
     toast('请填写姓名和手机号')
     return
   }
+  if (!form.value.departmentId || !form.value.primaryDoctorId || !form.value.managerId) {
+    toast('请选择所属科室、主要负责医生和管理人员')
+    return
+  }
   saving.value = true
   try {
     const result = await saveRecordIfNeeded()
@@ -1259,6 +1338,10 @@ async function save() {
 async function generateReport() {
   if (!form.value.name || !form.value.phone) {
     toast('请先填写姓名和手机号')
+    return
+  }
+  if (!form.value.departmentId || !form.value.primaryDoctorId || !form.value.managerId) {
+    toast('请选择所属科室、主要负责医生和管理人员')
     return
   }
   generating.value = true
