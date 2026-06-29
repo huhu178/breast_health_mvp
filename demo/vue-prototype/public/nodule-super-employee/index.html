@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>结节营销智脑超级员工</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">＋</div>
+          <div>
+            <strong>多结节营销随访系统</strong>
+            <span>获客 · 建档 · 复核 · 随访</span>
+          </div>
+        </div>
+        <nav class="nav" aria-label="系统导航">
+          <button class="nav-item active" data-view="command">增长指挥</button>
+          <button class="nav-item" data-view="ip">IP打造</button>
+          <button class="nav-item" data-view="creative">创意选题</button>
+          <button class="nav-item" data-view="production">内容生产</button>
+          <button class="nav-item" data-view="avatar">数字人视频</button>
+          <button class="nav-item" data-view="matrix">矩阵发布</button>
+          <button class="nav-item" data-view="prospecting">平台拓客</button>
+          <button class="nav-item" data-view="leads">线索池</button>
+          <button class="nav-item" data-view="deal">私域成交</button>
+          <button class="nav-item" data-view="service">健康管理</button>
+          <button class="nav-item" data-view="assets">素材资产</button>
+          <button class="nav-item" data-view="analytics">数据罗盘</button>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">当前机构：结节健康管理中心 · AI营销随访一体化</p>
+            <h1 id="page-title">增长指挥</h1>
+          </div>
+          <div class="top-actions">
+            <div class="top-chip">2026-05-09 15:30</div>
+            <div class="top-chip danger">待处理 23</div>
+            <div class="admin-pill"><span></span>管理员</div>
+            <button class="primary" data-jump="production">一键生产内容</button>
+          </div>
+        </header>
+
+        <section class="view active dashboard-view" id="command">
+          <div class="metric-grid">
+            <article class="metric accent-blue"><span>全域线索总数</span><strong>12,486</strong><small>较昨日 <b class="up">+128</b></small><i class="spark"></i></article>
+            <article class="metric accent-orange"><span>高意向线索</span><strong>1,268</strong><small>较昨日 <b class="up">+23</b></small><i class="spark warm"></i></article>
+            <article class="metric accent-blue"><span>待处理报告</span><strong>146</strong><small>较昨日 <b class="down">-12</b></small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>待问卷建档</span><strong>82</strong><small>较昨日 <b class="down">-5</b></small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待推送患者</span><strong>95</strong><small>较昨日 <b class="up">+7</b></small><i class="spark purple"></i></article>
+            <article class="metric accent-cyan"><span>随访完成率</span><strong>78.6%</strong><small>较昨日 <b class="up">+1.8%</b></small><i class="spark cyan"></i></article>
+          </div>
+
+          <div class="dashboard-main">
+            <section class="panel span-wide">
+              <div class="panel-head">
+                <h2>七大结节类型营销运营看板</h2>
+                <button class="ghost" data-jump="leads">进入线索队列</button>
+              </div>
+              <div class="table-wrap compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>结节类型</th><th>线索数</th><th>今日新增</th><th>高意向</th><th>已问卷</th><th>已发报告</th><th>待随访</th><th>体验营</th><th>成交机会</th><th>转化率</th><th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="nodule-board"></tbody>
+                </table>
+              </div>
+            </section>
+            <aside class="panel side-panel">
+              <div class="panel-head">
+                <h2>今日待办</h2>
+                <button class="ghost">刷新</button>
+              </div>
+              <div class="todo-list" id="today-todos"></div>
+              <h2 class="section-title">重要提醒</h2>
+              <div class="notice-list" id="notice-list"></div>
+            </aside>
+          </div>
+
+          <div class="dashboard-charts">
+            <section class="panel">
+              <h2>结节类型占比</h2>
+              <div class="donut-row">
+                <div class="donut"><strong>12,486</strong><span>总线索数</span></div>
+                <div class="legend-list" id="type-legend"></div>
+              </div>
+            </section>
+            <section class="panel">
+              <h2>风险与意向分布</h2>
+              <div class="hbar-list" id="risk-bars"></div>
+              <div class="risk-note">高意向占比 <b>10.8%</b></div>
+            </section>
+            <section class="panel">
+              <h2>平台状态分布</h2>
+              <div class="hbar-list" id="status-bars"></div>
+            </section>
+          </div>
+
+          <div class="mini-grid">
+            <article class="mini-card"><span>内容生成率</span><strong>92.4%</strong><small>较昨日 <b class="up">+2.1%</b></small><i class="spark large"></i></article>
+            <article class="mini-card"><span>问卷转化率</span><strong>88.7%</strong><small>较昨日 <b class="down">-1.3%</b></small><i class="spark large green"></i></article>
+            <article class="mini-card"><span>私域触达率</span><strong>93.6%</strong><small>较昨日 <b class="up">+1.7%</b></small><i class="spark large purple"></i></article>
+          </div>
+        </section>
+
+        <section class="view module-view" id="ip">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>IP账号数</span><strong>6</strong><small>主IP1个 / 辅IP5个</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>本周内容栏目</span><strong>18</strong><small>较上周 <b class="up">+5</b></small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>数字人形象</span><strong>4</strong><small>报告/食材/复查/体验营</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>合规拦截词</span><strong>126</strong><small>治疗承诺类重点拦截</small><i class="spark warm"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>IP定位筛选</h2>
+            <div class="filter-grid">
+              <label class="field"><span>IP类型</span><select><option>全部IP</option><option>结节健康管理师</option><option>食材分析师</option></select></label>
+              <label class="field"><span>适用平台</span><select><option>全部平台</option><option>抖音/快手</option><option>小红书/朋友圈</option></select></label>
+              <label class="field"><span>内容目的</span><select><option>引流获客</option><option>问卷转化</option><option>体验营成交</option></select></label>
+              <div class="filter-actions"><button class="ghost">重置</button><button class="primary" id="ip-random">生成IP内容方向</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <div class="panel-head"><h2>IP矩阵运营表</h2><button class="ghost">导出策略</button></div>
+              <div class="ip-grid dense-grid" id="ip-grid"></div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>IP详情</h2>
+              <div class="profile-box">
+                <strong>结节健康管理师</strong>
+                <p>主打“报告整理 + 饮食记录 + 复查提醒 + 情绪陪跑”，承接抖音、快手、小红书和视频号来的泛流量。</p>
+                <div class="chips"><span>不诊断</span><span>不承诺疗效</span><span>问卷承接</span><span>7天体验</span></div>
+              </div>
+              <div class="flow-steps">
+                <article class="done">IP定位</article><article class="done">栏目设定</article><article class="active">内容生成</article><article>数字人发布</article><article>私域承接</article>
+              </div>
+              <div class="action-row"><button class="primary">保存IP配置</button><button class="ghost" data-jump="production">生成内容</button></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view module-view" id="creative">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>对标账号</span><strong>42</strong><small>抖音12 / 小红书18 / 快手7</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>客户问题池</span><strong>386</strong><small>评论区自动归类</small><i class="spark green"></i></article>
+            <article class="metric accent-orange"><span>待生成选题</span><strong>74</strong><small>报告/食材/复查/体验</small><i class="spark warm"></i></article>
+            <article class="metric accent-purple"><span>爆款命中率</span><strong>31.6%</strong><small>较上周 <b class="up">+4.8%</b></small><i class="spark purple"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>选题筛选</h2>
+            <div class="filter-grid">
+              <label class="field"><span>平台</span><select><option>全部</option><option>抖音</option><option>快手</option><option>小红书</option><option>视频号</option></select></label>
+              <label class="field"><span>结节类型</span><select><option>全部结节</option><option>乳腺结节</option><option>甲状腺结节</option><option>肺结节</option></select></label>
+              <label class="field"><span>选题来源</span><select><option>同行对标</option><option>评论区问题</option><option>问卷反馈</option><option>服务案例</option></select></label>
+              <div class="filter-actions"><button class="ghost">重置</button><button class="primary" id="next-topic">换一组爆款选题</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <div class="panel-head"><h2>结节爆款选题库</h2><button class="ghost" data-jump="production">生成内容</button></div>
+              <div class="topic-board dense-grid" id="topic-board"></div>
+              <h2 class="section-title">创意部门分工</h2>
+              <div class="role-grid dense-grid" id="creative-roles"></div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>对标拆解</h2>
+              <div class="task-list" id="benchmark-list"></div>
+              <div class="summary-box">
+                <b>今日结论</b>
+                <span>小红书“食材避坑清单”收藏率最高，抖音“报告字段解释”私信率最高，快手“真实陪跑案例”评论率最高。</span>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view module-view" id="production">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>今日生成稿件</span><strong>36</strong><small>多平台版本自动生成</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>合规通过率</span><strong>96.8%</strong><small>拦截夸大表达11条</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待数字人</span><strong>12</strong><small>口播视频待生成</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>待发布</span><strong>18</strong><small>进入矩阵排期</small><i class="spark warm"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>内容生成条件</h2>
+            <div class="form-grid pro-form">
+              <label class="field"><span>平台</span><select id="platform-select"><option>抖音</option><option>快手</option><option>小红书</option><option>视频号</option><option>朋友圈</option><option>社群</option></select></label>
+              <label class="field"><span>IP人设</span><select id="persona-select"><option>结节健康管理师</option><option>报告解读陪跑官</option><option>食材分析师</option><option>复查提醒规划师</option></select></label>
+              <label class="field"><span>结节类型</span><select id="nodule-select"><option>甲状腺结节</option><option>乳腺结节</option><option>肺结节</option><option>双结节</option><option>三结节</option></select></label>
+              <label class="field"><span>内容目标</span><select id="goal-select"><option>引流获客</option><option>评论互动</option><option>私信加微</option><option>问卷邀约</option><option>体验营转化</option></select></label>
+              <label class="field wide"><span>客户问题</span><input id="content-topic" value="甲状腺结节能不能吃海带" /></label>
+              <div class="filter-actions"><button class="ghost">清空</button><button class="primary" id="generate-content">生成标题、脚本、私信话术</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>生成结果</h2>
+                <button class="ghost" id="send-avatar">进入数字人</button>
+              </div>
+              <div class="output-grid" id="content-output"></div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>生产流程</h2>
+              <div class="flow-steps vertical"><article class="done">对标输入</article><article class="done">AI改写</article><article class="active">合规审核</article><article>数字人</article><article>矩阵发布</article></div>
+              <div class="summary-box"><b>合规提醒</b><span>涉及诊断、用药、治疗、手术、复查间隔时，必须提示以医生建议为准。</span></div>
+            </aside>
+          </div>
+          <section class="panel mt">
+            <h2>平台内容模板</h2>
+            <div class="template-grid" id="template-grid"></div>
+          </section>
+          <section class="panel mt">
+            <div class="panel-head">
+              <h2>内容生产流水线</h2>
+              <button class="ghost" data-jump="avatar">生成数字人</button>
+            </div>
+            <div class="config-grid">
+              <article><b>对标输入</b><span>同行爆款、评论区问题、客户问卷、报告咨询、服务案例</span></article>
+              <article><b>AI改写</b><span>同一主题自动改成抖音、快手、小红书、视频号、朋友圈版本</span></article>
+              <article><b>视觉生产</b><span>封面、海报、食材清单、报告字段图、体验营招募图</span></article>
+              <article><b>合规审核</b><span>拦截治愈、消除、保证缩小、替代医生诊断等表达</span></article>
+              <article><b>转化组件</b><span>评论关键词、私信预设、问卷链接、体验营邀约话术</span></article>
+              <article><b>资产沉淀</b><span>生成稿件进入内容库，互动问题反哺选题库</span></article>
+            </div>
+          </section>
+        </section>
+
+        <section class="view module-view" id="avatar">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>数字人作品</span><strong>284</strong><small>本月新增46条</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>生成完成</span><strong>216</strong><small>较昨日 <b class="up">+18</b></small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待审核</span><strong>38</strong><small>合规审核中</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>异常任务</span><strong>7</strong><small>声音/字幕需处理</small><i class="spark warm"></i></article>
+          </div>
+          <div class="detail-layout mt">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>数字人分身</h2>
+                <button class="primary" id="make-video">生成口播视频</button>
+              </div>
+              <div class="avatar-stage">
+                <div class="avatar-face">管</div>
+                <div>
+                  <strong id="avatar-title">结节健康管理师数字人</strong>
+                  <p>用于抖音、快手、小红书、视频号的结节科普口播和体验营说明。</p>
+                  <div class="chips"><span>声音克隆</span><span>形象克隆</span><span>字幕生成</span><span>封面生成</span></div>
+                </div>
+              </div>
+              <div class="form-grid mt">
+                <label class="field"><span>视频比例</span><select><option>9:16 竖屏</option><option>1:1 方图</option><option>16:9 横屏</option></select></label>
+                <label class="field"><span>平台风格</span><select><option>抖音高钩子</option><option>快手生活化</option><option>小红书清单感</option><option>视频号专业感</option></select></label>
+              </div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>数字人作品库</h2>
+              <div class="video-grid" id="video-grid"></div>
+            </aside>
+          </div>
+          <section class="panel mt">
+            <div class="panel-head">
+              <h2>视频生成参数</h2>
+              <button class="ghost" data-jump="matrix">加入矩阵发布</button>
+            </div>
+            <div class="config-grid">
+              <article><b>声音克隆</b><span>管理师温和女声 / 专业男声 / 直播答疑声线</span></article>
+              <article><b>形象克隆</b><span>真人管理师形象、虚拟健康顾问、食材分析师</span></article>
+              <article><b>字幕风格</b><span>重点词高亮、报告字段标注、食材清单标注</span></article>
+              <article><b>成片比例</b><span>9:16 抖快视频、1:1 小红书封面、16:9 课程讲解</span></article>
+              <article><b>口播语速</b><span>慢速安抚 / 标准科普 / 快节奏爆款</span></article>
+              <article><b>作品去向</b><span>数字人作品库、矩阵视频库、朋友圈素材库</span></article>
+            </div>
+          </section>
+        </section>
+
+        <section class="view module-view" id="matrix">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>矩阵账号</span><strong>18</strong><small>抖快红视频号朋友圈</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>今日排期</span><strong>42</strong><small>已发布18条</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待审核素材</span><strong>26</strong><small>数字人/切片/Sora</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>账号预警</span><strong>3</strong><small>登录或频率异常</small><i class="spark warm"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>发布任务筛选</h2>
+            <div class="filter-grid">
+              <label class="field"><span>平台</span><select><option>全部</option><option>抖音</option><option>快手</option><option>小红书</option><option>视频号</option></select></label>
+              <label class="field"><span>发布状态</span><select><option>全部</option><option>待发布</option><option>已发布</option><option>发布失败</option></select></label>
+              <label class="field"><span>素材来源</span><select><option>数字人视频</option><option>Sora/Veo素材</option><option>直播切片</option></select></label>
+              <div class="filter-actions"><button class="ghost">重置</button><button class="primary" id="add-schedule">添加明日任务</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>矩阵发布任务</h2>
+                <button class="ghost">导出排期</button>
+              </div>
+              <div class="task-list" id="schedule-list"></div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>账号矩阵</h2>
+              <div class="account-grid" id="account-grid"></div>
+            </aside>
+          </div>
+          <section class="panel mt">
+            <h2>短视频素材库</h2>
+            <div class="asset-strip" id="video-assets"></div>
+          </section>
+          <section class="panel mt">
+            <h2>矩阵任务创建规则</h2>
+            <div class="config-grid">
+              <article><b>矩阵账号</b><span>抖音号、快手号、小红书号、视频号、企微朋友圈号</span></article>
+              <article><b>发布时间</b><span>只能从次日开始排期，可添加多个发布时间点</span></article>
+              <article><b>视频来源</b><span>数字人视频、Sora/Veo素材、个人上传视频、直播切片</span></article>
+              <article><b>话题标签</b><span>#乳腺结节 #甲状腺结节 #肺结节 #食材管理 #复查提醒</span></article>
+              <article><b>审核流程</b><span>合规检查 → 人工确认 → 加入发布队列 → 回填数据</span></article>
+              <article><b>终端授权</b><span>按设备和员工账号控制发布权限与任务状态</span></article>
+            </div>
+          </section>
+        </section>
+
+        <section class="view module-view" id="prospecting">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>今日采集评论</span><strong>1,426</strong><small>抖音/快手/小红书</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>有效线索</span><strong>328</strong><small>AI评分≥60</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待私信确认</span><strong>86</strong><small>人工确认后发送</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>风控预警</span><strong>5</strong><small>账号频率接近上限</small><i class="spark warm"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>拓客筛选</h2>
+            <div class="filter-grid">
+              <label class="field"><span>平台</span><select><option>全部</option><option>抖音</option><option>快手</option><option>小红书</option><option>视频号</option></select></label>
+              <label class="field"><span>拓客方式</span><select><option>对标拓客</option><option>关键词拓客</option><option>视频拓客</option><option>地图获客</option></select></label>
+              <label class="field"><span>关键词</span><input value="乳腺结节 / 甲状腺结节 / 肺结节 / 食材" /></label>
+              <div class="filter-actions"><button class="ghost">重置</button><button class="primary" id="run-prospect">开始采集线索</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>全平台引流获客</h2>
+                <button class="ghost">查看记录</button>
+              </div>
+              <div class="platform-grid" id="prospect-platforms"></div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>风控规则</h2>
+              <div class="rule-list">
+                <article><b>人工确认</b><span>评论、关注、私信动作默认需人工确认。</span></article>
+                <article><b>频率限制</b><span>同账号每日私信、关注、评论均设置上限。</span></article>
+                <article><b>敏感词</b><span>自动拦截诊断、疗效承诺、医疗夸大表达。</span></article>
+              </div>
+            </aside>
+          </div>
+          <section class="panel mt">
+            <div class="panel-head">
+              <h2>AI拓客任务</h2>
+              <button class="ghost" data-jump="leads">查看进入线索池</button>
+            </div>
+            <div class="task-list" id="prospect-tasks"></div>
+          </section>
+          <section class="panel mt">
+            <div class="panel-head">
+              <h2>对标拓客参数配置</h2>
+              <button class="primary" id="fill-prospect">生成结节拓客任务</button>
+            </div>
+            <div class="config-grid">
+              <article><b>博主主页链接</b><span>抖音/小红书/快手结节科普账号主页</span></article>
+              <article><b>采集视频数量</b><span>最多采集 20 条热门视频</span></article>
+              <article><b>评论采集范围</b><span>每条视频最多 200 条，近 7 天评论优先</span></article>
+              <article><b>互动动作</b><span>评论点赞、评论回复、关注、私信均可独立开启</span></article>
+              <article><b>私信预设</b><span>报告整理、食材问卷、复查提醒、7天体验营</span></article>
+              <article><b>风控上限</b><span>每日私信≤40，关注≤30，评论≤60，人工确认优先</span></article>
+            </div>
+          </section>
+        </section>
+
+        <section class="view module-view" id="leads">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>线索总数</span><strong>12,486</strong><small>较昨日 <b class="up">+128</b></small><i class="spark"></i></article>
+            <article class="metric accent-orange"><span>S级线索</span><strong>268</strong><small>已发报告/已问卷</small><i class="spark warm"></i></article>
+            <article class="metric accent-green"><span>今日加微</span><strong>92</strong><small>抖音37 / 小红书31</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待跟进</span><strong>146</strong><small>超过4小时未处理</small><i class="spark purple"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>筛选条件</h2>
+            <div class="filter-grid">
+              <label class="field"><span>客户姓名/手机号</span><input placeholder="请输入姓名或手机号" /></label>
+              <label class="field"><span>线索来源</span><select><option>全部</option><option>抖音</option><option>快手</option><option>小红书</option><option>视频号</option></select></label>
+              <label class="field"><span>结节类型</span><select><option>全部</option><option>乳腺结节</option><option>甲状腺结节</option><option>肺结节</option></select></label>
+              <div class="filter-actions"><button class="ghost">重置</button><button class="primary" id="score-leads">重新评分</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>全平台线索池</h2>
+                <button class="ghost">批量分配</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>客户</th><th>来源</th><th>问题</th><th>阶段</th><th>评分</th><th>下一步</th></tr></thead>
+                  <tbody id="lead-table"></tbody>
+                </table>
+              </div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>客户画像</h2>
+              <div class="profile-box">
+                <strong>高意向画像</strong>
+                <p>已私信、愿意加微、愿意填问卷、已经发送报告或咨询服务价格。</p>
+                <div class="chips"><span>报告咨询</span><span>食材焦虑</span><span>复查提醒</span><span>体验营</span></div>
+              </div>
+              <div class="score-list" id="score-list"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view module-view" id="deal">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>待回复会话</span><strong>146</strong><small>平台私信/企微会话</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>已发问卷</span><strong>284</strong><small>今日新增38份</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>体验营邀约</span><strong>95</strong><small>待推送客户</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>异常话术</span><strong>17</strong><small>合规需复核</small><i class="spark warm"></i></article>
+          </div>
+          <div class="deal-layout">
+            <aside class="panel">
+              <h2>会话列表</h2>
+              <div class="task-list" id="conversation-list"></div>
+            </aside>
+            <section class="panel chat-panel">
+              <div class="panel-head">
+                <div><h2 id="chat-name">张女士</h2><small id="chat-stage">抖音私信 · 已发报告</small></div>
+                <select id="ai-mode"><option>AI辅助</option><option>AI接管</option><option>人工接管</option></select>
+              </div>
+              <div class="messages" id="messages"></div>
+              <div class="quick-replies">
+                <button data-reply="comfort">安抚</button>
+                <button data-reply="questionnaire">问卷</button>
+                <button data-reply="report">收报告</button>
+                <button data-reply="camp">体验营</button>
+                <button data-reply="doctor">合规提醒</button>
+              </div>
+              <div class="composer">
+                <textarea id="reply-box" placeholder="选择话术或输入回复"></textarea>
+                <button class="primary" id="send-reply">发送</button>
+              </div>
+            </section>
+            <aside class="panel">
+              <h2>AI销冠建议</h2>
+              <div class="result-box" id="sales-advice"></div>
+              <h2 class="mt">下一步动作</h2>
+              <div class="rule-list">
+                <article><b>低压力问卷</b><span>先整理基础情况，不急着成交。</span></article>
+                <article><b>7天体验</b><span>用打卡和复盘建立服务信任。</span></article>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view module-view" id="service">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>服务中客户</span><strong>326</strong><small>7天体验/长期管理</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>今日已打卡</span><strong>218</strong><small>完成率66.8%</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>待周总结</span><strong>46</strong><small>管理师待处理</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>复查提醒</span><strong>57</strong><small>7天内到期</small><i class="spark warm"></i></article>
+          </div>
+          <section class="panel mt filter-panel">
+            <h2>健康服务筛选</h2>
+            <div class="filter-grid">
+              <label class="field"><span>客户姓名</span><input placeholder="请输入客户姓名" /></label>
+              <label class="field"><span>服务阶段</span><select><option>全部</option><option>问卷建档</option><option>7天体验</option><option>长期管理</option></select></label>
+              <label class="field"><span>结节类型</span><select><option>乳腺/甲状腺/肺结节等7类</option></select></label>
+              <div class="filter-actions"><button class="ghost">重置</button><button class="primary">查询</button></div>
+            </div>
+          </section>
+          <div class="detail-layout">
+            <section class="panel">
+              <h2>健康管理服务队列</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>客户</th><th>结节类型</th><th>阶段</th><th>负责人</th><th>今日服务</th></tr></thead>
+                  <tbody id="patient-table"></tbody>
+                </table>
+              </div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>食材分析</h2>
+              <label class="field"><span>食材</span><input id="food-input" value="豆浆" /></label>
+              <button class="primary full" id="food-btn">生成可发话术</button>
+              <div class="result-box" id="food-output"></div>
+            </aside>
+          </div>
+          <section class="panel mt">
+            <h2>服务SOP</h2>
+            <div class="pipeline service-pipeline" id="service-pipeline"></div>
+          </section>
+        </section>
+
+        <section class="view module-view" id="assets">
+          <div class="module-stats">
+            <article class="metric accent-blue"><span>素材总数</span><strong>3,612</strong><small>文案/图片/音频/视频</small><i class="spark"></i></article>
+            <article class="metric accent-green"><span>可复用案例</span><strong>426</strong><small>已脱敏素材</small><i class="spark green"></i></article>
+            <article class="metric accent-purple"><span>数字人作品</span><strong>284</strong><small>可进入矩阵发布</small><i class="spark purple"></i></article>
+            <article class="metric accent-orange"><span>待标注素材</span><strong>73</strong><small>需补平台/人群标签</small><i class="spark warm"></i></article>
+          </div>
+          <div class="detail-layout mt">
+            <section class="panel">
+              <h2>素材资产库</h2>
+              <div class="asset-filter"><button class="active">全部</button><button>文案</button><button>图片</button><button>音频</button><button>视频</button><button>案例</button></div>
+              <div class="asset-grid" id="asset-grid"></div>
+            </section>
+            <aside class="panel detail-card">
+              <h2>智能知识库</h2>
+              <div class="rule-list">
+                <article><b>结节QA</b><span>乳腺、甲状腺、肺结节常见问答。</span></article>
+                <article><b>食材库</b><span>食材判断、成分逻辑、客户可发话术。</span></article>
+                <article><b>报告库</b><span>BI-RADS、TI-RADS、肺结节字段解释。</span></article>
+                <article><b>合规库</b><span>敏感词、禁用表达、医生建议边界。</span></article>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view module-view" id="analytics">
+          <div class="metric-grid">
+            <article class="metric accent-blue"><span>曝光到咨询</span><strong>3.1%</strong><small>抖音贡献最高</small></article>
+            <article class="metric accent-green"><span>咨询到问卷</span><strong>42%</strong><small>小红书食材内容最高</small></article>
+            <article class="metric accent-pink"><span>问卷到体验</span><strong>36%</strong><small>视频号信任内容最高</small></article>
+            <article class="metric accent-orange"><span>体验到长期</span><strong>28%</strong><small>周总结影响最大</small></article>
+          </div>
+          <section class="panel mt">
+            <h2>平台转化数据</h2>
+            <div class="bar-list" id="analytics-bars"></div>
+          </section>
+          <section class="panel mt">
+            <h2>内容反哺排行榜</h2>
+            <div class="task-list" id="content-rank"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
