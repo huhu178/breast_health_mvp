@@ -63,6 +63,14 @@ DEFAULT_USERS = [
         'phone': '13800001003',
         'department_code': 'HEALTH_MGMT',
     },
+    {
+        'username': 'platform_admin',
+        'password': 'Platform@123456',
+        'real_name': '平台管理员',
+        'role': 'system_admin',
+        'phone': '13800001004',
+        'department_code': 'HEALTH_MGMT',
+    },
 ]
 
 

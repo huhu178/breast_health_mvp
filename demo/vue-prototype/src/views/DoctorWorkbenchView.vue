@@ -125,7 +125,12 @@ async function loadData() {
     pendingReports.value = reportsData.reports || []
     if (!activeReport.value && pendingReports.value.length) selectReport(pendingReports.value[0])
   } catch (e) {
-    error.value = e.message || '加载医生工作台失败'
+    if (e.status === 403) {
+      error.value = ''
+      router.replace(roleHome())
+    } else {
+      error.value = e.message || '加载医生工作台失败'
+    }
   } finally {
     loading.value = false
   }
@@ -174,6 +179,13 @@ async function save(status) {
 
 function openPatient(patient) {
   router.push({ path: '/patient', query: { tab: 'detail', patient_id: patient.id } })
+}
+
+function roleHome() {
+  const role = localStorage.getItem('proto_role') || ''
+  if (role === 'department_director') return '/department-dashboard'
+  if (['admin', 'system_admin'].includes(role)) return '/system'
+  return '/analytics'
 }
 
 function riskLabel(value) {

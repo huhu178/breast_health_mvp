@@ -49,10 +49,21 @@ def _login_as(app, user):
     return client
 
 
-def _cleanup(patient_id):
-    if not patient_id:
-        return
+def _cleanup(patient_id, extra_patient_id=None, extra_user_ids=None, extra_department_id=None):
+    extra_user_ids = extra_user_ids or []
 
+    for cleanup_patient_id in [patient_id, extra_patient_id]:
+        if cleanup_patient_id:
+            _cleanup_patient(cleanup_patient_id)
+
+    if extra_user_ids:
+        User.query.filter(User.id.in_(extra_user_ids)).delete(synchronize_session=False)
+    if extra_department_id:
+        Department.query.filter(Department.id == extra_department_id).delete(synchronize_session=False)
+    db.session.commit()
+
+
+def _cleanup_patient(patient_id):
     task_ids = [
         row[0]
         for row in BFollowUpTask.query
@@ -110,12 +121,14 @@ def _cleanup(patient_id):
         db.session.delete(upload)
 
     BPatient.query.filter(BPatient.id == patient_id).delete(synchronize_session=False)
-    db.session.commit()
 
 
 def run():
     app = create_app()
     patient_id = None
+    extra_patient_id = None
+    extra_department_id = None
+    extra_user_ids = []
 
     with app.app_context():
         dept = Department.query.filter_by(code='BREAST').first() or Department.query.order_by(Department.id.asc()).first()
@@ -183,6 +196,45 @@ def run():
             db.session.add(report)
             db.session.commit()
 
+            other_dept = Department(
+                name=f'端到端权限测试科室{code}',
+                code=f'E2E_SCOPE_{code}',
+                hospital_name='示例医院',
+                is_active=True,
+            )
+            db.session.add(other_dept)
+            db.session.flush()
+            extra_department_id = other_dept.id
+
+            other_doctor = User(
+                username=f'e2e_scope_doctor_{code}',
+                password_hash='hospital-e2e-smoke',
+                real_name='权限测试医生',
+                role='doctor',
+                department_id=other_dept.id,
+                is_active=True,
+            )
+            db.session.add(other_doctor)
+            db.session.flush()
+            extra_user_ids.append(other_doctor.id)
+
+            other_patient = BPatient(
+                patient_code=f'SCOPE{code}',
+                name='越权测试患者',
+                age=48,
+                gender='女',
+                phone='13900000001',
+                nodule_type='lung',
+                department_id=other_dept.id,
+                primary_doctor_id=other_doctor.id,
+                manager_id=manager.id,
+                source_channel='hospital_e2e_scope_smoke',
+                status='active',
+            )
+            db.session.add(other_patient)
+            db.session.commit()
+            extra_patient_id = other_patient.id
+
             _assert_ok(
                 manager_client.put(
                     f'/api/hospital/patients/{patient.id}',
@@ -207,6 +259,20 @@ def run():
             if forbidden.status_code != 403:
                 raise AssertionError(f'医生修改患者信息应被拒绝: {forbidden.status_code} {forbidden.get_json(silent=True)}')
             print('[OK] 医生修改患者信息被拒绝: 403')
+            _assert_ok(doctor_client.get(f'/api/hospital/patients/{patient.id}'), '医生查看本人患者详情')
+            forbidden = doctor_client.get(f'/api/hospital/patients/{other_patient.id}')
+            if forbidden.status_code != 403:
+                raise AssertionError(f'医生查看其他医生患者应被拒绝: {forbidden.status_code} {forbidden.get_json(silent=True)}')
+            print('[OK] 医生查看其他医生患者被拒绝: 403')
+            scoped = _assert_ok(doctor_client.get('/api/hospital/patients?page_size=200'), '医生患者列表数据范围')
+            scoped_ids = [item['id'] for item in scoped['data']['patients']]
+            if patient.id not in scoped_ids or other_patient.id in scoped_ids:
+                raise AssertionError('医生患者列表数据范围错误')
+            print('[OK] 医生患者列表仅包含本人患者')
+            doctor_overview = _assert_ok(doctor_client.get('/api/hospital/analytics/nodule-overview'), '医生结节看板聚合数据')
+            if doctor_overview['data']['patient_count'] != scoped['data']['total']:
+                raise AssertionError('医生结节看板数据范围错误')
+            print('[OK] 医生结节看板仅汇总本人患者')
             _assert_ok(doctor_client.get('/api/hospital/doctor-workbench/summary'), '医生工作台概览')
             pending = _assert_ok(doctor_client.get('/api/hospital/doctor-workbench/pending-advice'), '医生待填写建议')
             pending_ids = [item['id'] for item in pending['data']['reports']]
@@ -228,6 +294,20 @@ def run():
             if forbidden.status_code != 403:
                 raise AssertionError(f'科室主任修改患者信息应被拒绝: {forbidden.status_code} {forbidden.get_json(silent=True)}')
             print('[OK] 科室主任修改患者信息被拒绝: 403')
+            _assert_ok(director_client.get(f'/api/hospital/patients/{patient.id}'), '科室主任查看本科室患者详情')
+            forbidden = director_client.get(f'/api/hospital/patients/{other_patient.id}')
+            if forbidden.status_code != 403:
+                raise AssertionError(f'科室主任查看其他科室患者应被拒绝: {forbidden.status_code} {forbidden.get_json(silent=True)}')
+            print('[OK] 科室主任查看其他科室患者被拒绝: 403')
+            scoped = _assert_ok(director_client.get('/api/hospital/patients?page_size=200'), '科室主任患者列表数据范围')
+            scoped_ids = [item['id'] for item in scoped['data']['patients']]
+            if patient.id not in scoped_ids or other_patient.id in scoped_ids:
+                raise AssertionError('科室主任患者列表数据范围错误')
+            print('[OK] 科室主任患者列表仅包含本科室患者')
+            director_overview = _assert_ok(director_client.get('/api/hospital/analytics/nodule-overview'), '科室主任结节看板聚合数据')
+            if director_overview['data']['patient_count'] != scoped['data']['total']:
+                raise AssertionError('科室主任结节看板数据范围错误')
+            print('[OK] 科室主任结节看板仅汇总本科室患者')
             _assert_ok(director_client.get('/api/hospital/department-dashboard/summary'), '科室主任看板概览')
             _assert_ok(director_client.get('/api/hospital/department-dashboard/abnormal-patients'), '科室主任异常患者')
 
@@ -311,7 +391,7 @@ def run():
 
             print('[OK] 医院场景端到端冒烟测试通过')
         finally:
-            _cleanup(patient_id)
+            _cleanup(patient_id, extra_patient_id, extra_user_ids, extra_department_id)
             print('[OK] 临时测试数据已清理')
 
 

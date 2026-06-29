@@ -11,25 +11,7 @@
     <div class="login-panel-wrap">
       <div class="login-panel">
         <div class="login-title">机构工作台登录</div>
-        <div class="login-sub">选择机构场景后进入对应工作台</div>
-
-        <div class="login-field">
-          <label>业务场景</label>
-          <div class="scene-grid">
-            <button
-              v-for="s in SCENARIO_OPTIONS"
-              :key="s.key"
-              type="button"
-              class="scene-card"
-              :class="{ active: scenarioKey === s.key }"
-              :style="{ '--scene-primary': s.theme.primary, '--scene-soft': s.theme.soft }"
-              @click="scenarioKey = s.key"
-            >
-              <b>{{ s.loginLabel }}</b>
-              <span>{{ s.orgName }}</span>
-            </button>
-          </div>
-        </div>
+        <div class="login-sub">医院多结节患者随访管理系统</div>
 
         <div class="login-org">
           <span>{{ scenario.orgType }}</span>
@@ -37,7 +19,25 @@
         </div>
 
         <div class="login-field">
-          <label for="loginAccount">管理员账户</label>
+          <label>登录角色</label>
+          <div class="role-grid">
+            <button
+              v-for="role in demoRoles"
+              :key="role.key"
+              type="button"
+              class="role-card"
+              :class="{ active: selectedRoleKey === role.key }"
+              @click="selectRole(role)"
+            >
+              <b>{{ role.label }}</b>
+              <span>{{ role.desc }}</span>
+              <em>{{ role.username }}</em>
+            </button>
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label for="loginAccount">登录账户</label>
           <input id="loginAccount" v-model="account" autocomplete="username" placeholder="请输入账号" @keyup.enter="onLogin" />
         </div>
 
@@ -63,7 +63,7 @@
         </button>
 
         <div class="login-hint">
-          <button type="button" @click="fillDemo">填入演示账号</button>
+          <button type="button" @click="fillDemo">填入当前角色账号</button>
           <button type="button" @click="onReset">重置</button>
         </div>
       </div>
@@ -74,14 +74,47 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getScenario, SCENARIO_OPTIONS } from '../config/scenarios'
+import { getScenario } from '../config/scenarios'
 
 const router = useRouter()
 
 const scenarioKey = ref(localStorage.getItem('proto_scenario') || 'hospital')
 const scenario = computed(() => getScenario(scenarioKey.value))
-const account = ref('admin')
-const password = ref('123456')
+const demoRoles = [
+  {
+    key: 'manager',
+    label: '健康管理员',
+    desc: '建档、报告处理、随访任务、异常处理',
+    username: 'assistant_chen',
+    password: 'Assistant@123456',
+  },
+  {
+    key: 'doctor',
+    label: '医生',
+    desc: '查看本人患者，填写报告随访建议',
+    username: 'doctor_li',
+    password: 'Doctor@123456',
+  },
+  {
+    key: 'director',
+    label: '科室主任',
+    desc: '查看本科室看板、医生统计和患者详情',
+    username: 'director_breast',
+    password: 'Director@123456',
+  },
+  {
+    key: 'admin',
+    label: '平台管理员',
+    desc: '查看全局运营入口和系统配置能力',
+    username: 'platform_admin',
+    password: 'Platform@123456',
+  },
+]
+
+const selectedRoleKey = ref(localStorage.getItem('proto_login_role') || 'manager')
+const selectedRole = computed(() => demoRoles.find((role) => role.key === selectedRoleKey.value) || demoRoles[0])
+const account = ref(selectedRole.value.username)
+const password = ref(selectedRole.value.password)
 const errMsg = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
@@ -96,16 +129,19 @@ watch(scenarioKey, () => {
 })
 
 function completeLogin(user = {}) {
+  const roleLabel = roleName(user.role)
   localStorage.setItem('proto_scenario', scenario.value.key)
   localStorage.setItem('proto_org_type', scenario.value.orgType)
   localStorage.setItem('proto_org', scenario.value.orgName)
   localStorage.setItem('proto_user', user.real_name || user.username || account.value)
+  localStorage.setItem('proto_role_label', roleLabel)
   localStorage.setItem('proto_authed', 'true')
   localStorage.setItem('proto_user_id', user.id || '')
   localStorage.setItem('proto_role', user.role || '')
   localStorage.setItem('proto_department_id', user.department_id || '')
   if (user.role === 'doctor') router.push('/doctor-workbench')
   else if (user.role === 'department_director') router.push('/department-dashboard')
+  else if (['admin', 'system_admin'].includes(user.role)) router.push('/system')
   else router.push('/analytics')
 }
 
@@ -131,12 +167,10 @@ async function onLogin() {
     if (data.success) {
       completeLogin(data.data?.user || {})
     } else {
-      if (account.value.trim() === 'admin') completeLogin({ username: account.value.trim() })
-      else errMsg.value = data.message || '登录失败，请检查账户和密码'
+      errMsg.value = data.message || '登录失败，请检查账户和密码'
     }
   } catch (e) {
-    if (account.value.trim() === 'admin') completeLogin({ username: account.value.trim() })
-    else errMsg.value = '网络错误，请确认后端服务已启动'
+    errMsg.value = '网络错误，请确认后端服务已启动'
   } finally {
     loading.value = false
   }
@@ -144,16 +178,34 @@ async function onLogin() {
 
 function onReset() {
   scenarioKey.value = 'hospital'
-  account.value = 'admin'
-  password.value = '123456'
+  selectRole(demoRoles[0])
   errMsg.value = ''
   showPassword.value = false
 }
 
-function fillDemo() {
-  account.value = 'admin'
-  password.value = '123456'
+function selectRole(role) {
+  selectedRoleKey.value = role.key
+  localStorage.setItem('proto_login_role', role.key)
+  account.value = role.username
+  password.value = role.password
   errMsg.value = ''
+}
+
+function fillDemo() {
+  selectRole(selectedRole.value)
+  errMsg.value = ''
+}
+
+function roleName(role) {
+  const map = {
+    health_manager: '健康管理员',
+    doctor_assistant: '健康管理员',
+    doctor: '医生',
+    department_director: '科室主任',
+    admin: '平台管理员',
+    system_admin: '平台管理员',
+  }
+  return map[role] || selectedRole.value.label || '未配置角色'
 }
 </script>
 
@@ -187,14 +239,15 @@ function fillDemo() {
 .login-field label{font-weight:750;color:#334155}
 .login-field input,.login-field select{height:40px;border:1px solid #d9e2ef;border-radius:6px;padding:0 12px;outline:none;background:#fff;color:#111827;width:100%}
 .login-field input:focus,.login-field select:focus{border-color:var(--login-primary,#155eef);box-shadow:0 0 0 3px color-mix(in srgb,var(--login-primary,#155eef) 12%,transparent)}
-.scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.scene-card{border:1px solid #d9e2ef;border-radius:8px;background:#fff;padding:10px;text-align:left;cursor:pointer;display:grid;gap:3px;min-height:64px}
-.scene-card b{font-size:13px;color:#0f172a}
-.scene-card span{font-size:11px;color:#64748b;line-height:1.35}
-.scene-card.active{border-color:var(--scene-primary,#155eef);background:var(--scene-soft,#eef5ff);box-shadow:0 0 0 2px color-mix(in srgb,var(--scene-primary,#155eef) 18%,transparent)}
-.scene-card.active b{color:var(--scene-primary,#155eef)}
 .login-org{display:flex;justify-content:space-between;gap:10px;margin:-2px 0 14px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--login-primary,#155eef) 22%,#d9e2ef);border-radius:8px;background:var(--login-soft,#eef5ff);color:#334155;font-size:13px}
 .login-org b{color:var(--login-primary,#155eef)}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.role-card{border:1px solid #d9e2ef;border-radius:8px;background:#fff;padding:10px;text-align:left;cursor:pointer;display:grid;gap:3px;min-height:82px}
+.role-card b{font-size:13px;color:#0f172a}
+.role-card span{font-size:11px;color:#64748b;line-height:1.35}
+.role-card em{font-style:normal;font-size:11px;color:#94a3b8;font-weight:850}
+.role-card.active{border-color:var(--login-primary,#155eef);background:var(--login-soft,#eef5ff);box-shadow:0 0 0 2px color-mix(in srgb,var(--login-primary,#155eef) 18%,transparent)}
+.role-card.active b{color:var(--login-primary,#155eef)}
 .password-box{display:flex;align-items:center;position:relative}
 .password-box input{padding-right:54px}
 .password-box button{position:absolute;right:6px;height:28px;border:0;border-radius:5px;background:#f1f5f9;color:#475569;font-weight:700;cursor:pointer;padding:0 8px}
@@ -210,7 +263,7 @@ function fillDemo() {
 }
 @media(max-width:520px){
   .login-panel{width:min(100%,420px);padding:24px 20px}
-  .scene-grid{grid-template-columns:1fr}
+  .role-grid{grid-template-columns:1fr}
   .login-brand-name{font-size:15px}
 }
 </style>

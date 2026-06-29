@@ -7,28 +7,25 @@
       </div>
 
       <nav class="nav" aria-label="主导航">
-        <RouterLink v-if="canSeeOperatorNav" class="nav-item" :to="scenario.workspacePath">
-          <span class="nav-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19V5" />
-              <path d="M8 12h12" />
-              <path d="M8 7h12" />
-              <path d="M8 17h12" />
-            </svg>
-          </span>
-          <span class="nav-label">{{ scenario.workspaceLabel }}</span>
-        </RouterLink>
-
-        <RouterLink v-if="canSeeOperatorNav" class="nav-item" to="/analytics">
+        <RouterLink v-if="isOperator" class="nav-item" to="/analytics">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 13h6v8H3zM10 3h6v18h-6zM17 8h4v13h-4z" />
             </svg>
           </span>
-          <span class="nav-label">工作台</span>
+          <span class="nav-label">健康管理工作台</span>
         </RouterLink>
 
-        <RouterLink class="nav-item" to="/patient">
+        <RouterLink v-if="isAdmin" class="nav-item" to="/analytics">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 13h6v8H3zM10 3h6v18h-6zM17 8h4v13h-4z" />
+            </svg>
+          </span>
+          <span class="nav-label">全院数据</span>
+        </RouterLink>
+
+        <RouterLink v-if="isOperator" class="nav-item" to="/patient">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -36,10 +33,21 @@
               <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </span>
-          <span class="nav-label">{{ scenario.navPatient }}</span>
+          <span class="nav-label">患者管理</span>
         </RouterLink>
 
-        <RouterLink v-if="canSeeDoctorWorkbench" class="nav-item" to="/doctor-workbench">
+        <RouterLink v-if="isAdmin" class="nav-item" to="/patient">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          <span class="nav-label">患者管理</span>
+        </RouterLink>
+
+        <RouterLink v-if="isDoctor" class="nav-item" to="/doctor-workbench">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0" />
@@ -50,7 +58,17 @@
           <span class="nav-label">医生工作台</span>
         </RouterLink>
 
-        <RouterLink v-if="canSeeDepartmentDashboard" class="nav-item" to="/department-dashboard">
+        <RouterLink v-if="isDoctor" class="nav-item" to="/patient">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+            </svg>
+          </span>
+          <span class="nav-label">我的患者</span>
+        </RouterLink>
+
+        <RouterLink v-if="isDirector" class="nav-item" to="/department-dashboard">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 21h18" />
@@ -61,27 +79,59 @@
           <span class="nav-label">科室看板</span>
         </RouterLink>
 
-        <div v-if="showPatientSubnav" class="subnav" :aria-label="`${scenario.navPatient}二级标题`">
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">{{ scenario.queueLabel }}</RouterLink>
-          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">{{ scenario.recordLabel }}</RouterLink>
-          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">{{ scenario.reportLabel }}</RouterLink>
-          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访任务下发</RouterLink>
-          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">执行跟踪</RouterLink>
-          <RouterLink v-if="canSeeOperatorNav" class="subnav-item" :class="{ active: activeTab === 'workflow' }" to="/followup-workflow">随访知识库与模板</RouterLink>
-        </div>
+        <RouterLink v-if="isDirector" class="nav-item" to="/patient">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+            </svg>
+          </span>
+          <span class="nav-label">科室患者</span>
+        </RouterLink>
 
-        <RouterLink v-if="canSeeOperatorNav" class="nav-item" to="/ai-employee/overview">
+        <RouterLink v-if="isAdmin" class="nav-item" to="/system">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z" />
+              <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2 2 0 1 1-2.82 2.82l-.04-.04A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.06a1.8 1.8 0 0 0-1-.54 1.8 1.8 0 0 0-1.98.36l-.04.04a2 2 0 1 1-2.82-2.82l.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-.6-1H4a2 2 0 1 1 0-4h.06a1.8 1.8 0 0 0 .54-1 1.8 1.8 0 0 0-.36-1.98l-.04-.04a2 2 0 0 1 2.82-2.82l.04.04A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1-.6V4a2 2 0 1 1 4 0v.06a1.8 1.8 0 0 0 1 .54 1.8 1.8 0 0 0 1.98-.36l.04-.04a2 2 0 0 1 2.82 2.82l-.04.04A1.8 1.8 0 0 0 19.4 9c.2.35.4.68.6 1H20a2 2 0 1 1 0 4h-.06a1.8 1.8 0 0 0-.54 1z" />
+            </svg>
+          </span>
+          <span class="nav-label">系统管理</span>
+        </RouterLink>
+
+        <RouterLink v-if="isAdmin" class="nav-item" to="/rws">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19V5" />
+              <path d="M8 12h12" />
+              <path d="M8 7h12" />
+              <path d="M8 17h12" />
+            </svg>
+          </span>
+          <span class="nav-label">真实世界研究</span>
+        </RouterLink>
+
+        <RouterLink v-if="isAdmin" class="nav-item" to="/ai-employee/overview">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="4" y="6" width="16" height="12" rx="3" />
               <path d="M8 6V4M16 6V4M9 12h.01M15 12h.01M10 16h4" />
             </svg>
           </span>
-          <span class="nav-label">{{ aiEmployeeNavLabel }}</span>
+          <span class="nav-label">AI营销</span>
         </RouterLink>
 
-        <div v-if="showAiEmployeeSubnav" class="subnav" :aria-label="`${aiEmployeeNavLabel}二级标题`">
-          <RouterLink v-for="item in aiEmployeeTabs" :key="item.key" class="subnav-item" :class="{ active: aiEmployeeTab === item.key }" :to="`/ai-employee/${item.key}`">{{ item.label }}</RouterLink>
+        <div v-if="isAdmin && showAiMarketingSubnav" class="subnav" aria-label="AI营销二级标题">
+          <RouterLink v-for="item in aiMarketingTabs" :key="item.key" class="subnav-item" :class="{ active: aiMarketingTab === item.key }" :to="`/ai-employee/${item.key}`">{{ item.label }}</RouterLink>
+        </div>
+
+        <div v-if="showPatientSubnav" class="subnav" :aria-label="`患者管理二级标题`">
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">{{ isDirector ? '科室患者' : isDoctor ? '我的患者' : isAdmin ? '全院患者' : '患者队列' }}</RouterLink>
+          <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">患者建档</RouterLink>
+          <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">报告审核</RouterLink>
+          <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访任务</RouterLink>
+          <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'follow' }" :to="{ path: '/patient', query: { tab: 'follow' } }">执行跟踪</RouterLink>
+          <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'workflow' }" to="/followup-workflow">随访知识库</RouterLink>
         </div>
 
       </nav>
@@ -113,7 +163,9 @@
           </button>
           <div class="user-pill">
             <span class="avatar" aria-hidden="true"></span>
-            {{ user }} <span class="chev">▾</span>
+            <span>{{ user }}</span>
+            <b>{{ roleLabel }}</b>
+            <span class="chev">▾</span>
           </div>
         </div>
       </header>
@@ -136,9 +188,11 @@ const scenario = computed(() => getStoredScenario())
 const org = computed(() => localStorage.getItem('proto_org') || scenario.value.orgName)
 const user = computed(() => localStorage.getItem('proto_user') || '管理员')
 const role = computed(() => localStorage.getItem('proto_role') || '')
-const canSeeOperatorNav = computed(() => !['doctor', 'department_director'].includes(role.value))
-const canSeeDoctorWorkbench = computed(() => ['doctor', 'admin', 'system_admin'].includes(role.value) || !role.value)
-const canSeeDepartmentDashboard = computed(() => ['department_director', 'admin', 'system_admin'].includes(role.value) || !role.value)
+const roleLabel = computed(() => localStorage.getItem('proto_role_label') || roleName(role.value))
+const isOperator = computed(() => ['health_manager', 'doctor_assistant'].includes(role.value) || !role.value)
+const isDoctor = computed(() => role.value === 'doctor')
+const isDirector = computed(() => role.value === 'department_director')
+const isAdmin = computed(() => ['admin', 'system_admin'].includes(role.value))
 
 const now = new Date().toLocaleString('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit',
@@ -150,30 +204,17 @@ const activeTab = computed(() => {
   if (route.path.startsWith('/followup-workflow')) return 'workflow'
   return typeof route.query.tab === 'string' ? route.query.tab : 'queue'
 })
-const aiEmployeeNavLabel = computed(() => scenario.value.key === 'hospital' ? '医生IP打造' : 'AI超级员工')
-const aiEmployeeTabs = computed(() => {
-  if (scenario.value.key === 'hospital') {
-    return [
-      { key: 'overview', label: '数据看板' },
-      { key: 'content', label: '内容科普' },
-      { key: 'assets', label: '知识资产库' },
-      { key: 'employees', label: '员工设备' },
-    ]
-  }
-  return [
-    { key: 'overview', label: '增长看板' },
-    { key: 'channels', label: '引流获客' },
-    { key: 'content', label: '内容营销' },
-    { key: 'leads', label: '线索转化' },
-    { key: 'assets', label: '知识资产库' },
-    { key: 'employees', label: '员工设备' },
-  ]
-})
-const showAiEmployeeSubnav = computed(() => route.path.startsWith('/ai-employee'))
-const aiEmployeeTab = computed(() => {
+const aiMarketingTabs = [
+  { key: 'overview', label: 'AI营销看板' },
+  { key: 'super-employee', label: '营销智脑' },
+  { key: 'content', label: '内容科普' },
+  { key: 'assets', label: '知识资产库' },
+  { key: 'employees', label: '员工设备' },
+]
+const showAiMarketingSubnav = computed(() => route.path.startsWith('/ai-employee'))
+const aiMarketingTab = computed(() => {
   const raw = typeof route.params.section === 'string' ? route.params.section : 'overview'
-  if (scenario.value.key === 'hospital' && ['channels', 'leads'].includes(raw)) return 'overview'
-  return raw
+  return aiMarketingTabs.some((item) => item.key === raw) ? raw : 'overview'
 })
 const themeVars = computed(() => ({
   '--scenario-primary': scenario.value.theme?.primary || '#155eef',
@@ -195,8 +236,21 @@ function logout() {
   localStorage.removeItem('proto_org_type')
   localStorage.removeItem('proto_user_id')
   localStorage.removeItem('proto_role')
+  localStorage.removeItem('proto_role_label')
   localStorage.removeItem('proto_department_id')
   router.push('/login')
+}
+
+function roleName(value) {
+  const map = {
+    health_manager: '健康管理员',
+    doctor_assistant: '健康管理员',
+    doctor: '医生',
+    department_director: '科室主任',
+    admin: '平台管理员',
+    system_admin: '平台管理员',
+  }
+  return map[value] || '未配置角色'
 }
 </script>
 
@@ -207,6 +261,7 @@ function logout() {
 .brand-mark{width:34px;height:34px;border-radius:10px;background:var(--scenario-primary,#155eef);color:#fff;display:grid;place-items:center;font-weight:950}
 .brand-text{font-weight:950;color:#0f172a;font-size:13px;line-height:1.4}
 .nav{padding:10px 6px;display:grid;gap:4px;overflow-y:auto;min-height:0}
+.nav-section-label{margin:8px 12px 2px;color:#94a3b8;font-size:11px;font-weight:950;letter-spacing:0}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#526175;text-decoration:none;font-weight:850;border-left:3px solid transparent}
 .nav-ico{width:30px;height:30px;border-radius:10px;border:1px solid #e6edf7;background:#f1f5f9;display:grid;place-items:center;color:#64748b;flex-shrink:0}
 .nav-item.router-link-active{background:var(--scenario-soft,#eef5ff);color:var(--scenario-primary,#155eef);border-left-color:var(--scenario-primary,#155eef)}
@@ -228,6 +283,7 @@ function logout() {
 .icon-btn{position:relative;width:34px;height:34px;border-radius:12px;border:1px solid #e6edf7;background:#fff;display:grid;place-items:center;color:#64748b;cursor:pointer}
 .icon-btn .dot{position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:50%;background:#ef4444;border:2px solid #fff}
 .user-pill{height:34px;border:1px solid #d9e2ef;border-radius:12px;padding:0 12px;display:flex;align-items:center;gap:8px;color:#334155;background:#fff;font-weight:850;white-space:nowrap}
+.user-pill b{font-size:11px;color:var(--scenario-primary,#155eef);background:var(--scenario-soft,#eef5ff);border-radius:999px;padding:2px 7px}
 .avatar{width:18px;height:18px;border-radius:50%;background:var(--scenario-primary,#155eef)}
 .chev{color:#94a3b8}
 .content{flex:1;min-height:0;padding:16px 20px;background:linear-gradient(180deg,var(--scenario-bg,#fff) 0,#fff 180px);overflow-y:auto;overflow-x:hidden}

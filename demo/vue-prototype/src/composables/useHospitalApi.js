@@ -32,6 +32,7 @@ export function useHospitalApi() {
   const getDepartmentSummary = () => apiJson('/api/hospital/department-dashboard/summary')
   const getDepartmentDoctors = () => apiJson('/api/hospital/department-dashboard/doctors')
   const getDepartmentAbnormalPatients = () => apiJson('/api/hospital/department-dashboard/abnormal-patients')
+  const getNoduleOverview = () => apiJson('/api/hospital/analytics/nodule-overview')
 
   return {
     getDepartments,
@@ -49,5 +50,6 @@ export function useHospitalApi() {
     getDepartmentSummary,
     getDepartmentDoctors,
     getDepartmentAbnormalPatients,
+    getNoduleOverview,
   }
 }

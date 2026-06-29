@@ -20,6 +20,7 @@ const router = createRouter({
     { path: '/patient', name: 'patient', component: view('PatientManagementView'), meta: auth },
     { path: '/doctor-workbench', name: 'doctor-workbench', component: view('DoctorWorkbenchView'), meta: auth },
     { path: '/department-dashboard', name: 'department-dashboard', component: view('DepartmentDashboardView'), meta: auth },
+    { path: '/system', name: 'system', component: view('SystemManagementView'), meta: auth },
     { path: '/record', name: 'record', component: view('RecordView'), meta: auth },
     { path: '/ai-employee', redirect: '/ai-employee/overview' },
     { path: '/ai-employee/dashboard', redirect: '/ai-employee/overview' },
@@ -37,8 +38,21 @@ router.beforeEach((to) => {
   if (to.meta?.requiresAuth) {
     const authed = localStorage.getItem('proto_authed') === 'true'
     if (!authed) return { name: 'login' }
+    const role = localStorage.getItem('proto_role') || ''
+    if (to.name === 'analytics' && ['doctor', 'department_director'].includes(role)) return roleHome(role)
+    if (to.name === 'doctor-workbench' && role !== 'doctor') return roleHome(role)
+    if (to.name === 'department-dashboard' && role !== 'department_director') return roleHome(role)
+    if (to.name === 'system' && !['system_admin', 'admin'].includes(role)) return roleHome(role)
+    if (['rws', 'ai-employee', 'scenario-workspace'].includes(to.name) && !['system_admin', 'admin'].includes(role)) return roleHome(role)
   }
   return true
 })
+
+function roleHome(role) {
+  if (role === 'doctor') return { name: 'doctor-workbench' }
+  if (role === 'department_director') return { name: 'department-dashboard' }
+  if (['system_admin', 'admin'].includes(role)) return { name: 'system' }
+  return { name: 'analytics' }
+}
 
 export default router

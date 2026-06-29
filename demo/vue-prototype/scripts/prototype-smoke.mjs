@@ -30,7 +30,8 @@ assertIncludes('src/router/index.js', [
 
 assertIncludes('src/views/LoginView.vue', [
   '机构工作台登录',
-  '填入演示账号',
+  '登录角色',
+  '填入当前角色账号',
   "fetch('/api/auth/login'"
 ])
 

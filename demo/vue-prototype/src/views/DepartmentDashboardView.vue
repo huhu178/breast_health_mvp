@@ -124,13 +124,25 @@ async function loadData() {
     doctors.value = doctorsData.doctors || []
     abnormalPatients.value = abnormalData.patients || []
   } catch (e) {
-    error.value = e.message || '加载科室看板失败'
+    if (e.status === 403) {
+      error.value = ''
+      router.replace(roleHome())
+    } else {
+      error.value = e.message || '加载科室看板失败'
+    }
   }
 }
 
 function openPatient(patient) {
   if (!patient?.id) return
   router.push({ path: '/patient', query: { tab: 'detail', patient_id: patient.id } })
+}
+
+function roleHome() {
+  const role = localStorage.getItem('proto_role') || ''
+  if (role === 'doctor') return '/doctor-workbench'
+  if (['admin', 'system_admin'].includes(role)) return '/system'
+  return '/analytics'
 }
 </script>
 

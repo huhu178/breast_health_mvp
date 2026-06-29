@@ -1,8 +1,16 @@
 <template>
   <div class="page">
+    <header class="workbench-head">
+      <div>
+        <div class="eyebrow">健康管理员工作台</div>
+        <h1>患者随访闭环</h1>
+        <p>面向健康管理员和医生助手，集中处理建档、报告、医生建议、随访任务和异常反馈。</p>
+      </div>
+    </header>
 
+    <div class="board-stack">
     <!-- KPI 概览 -->
-    <div class="kpi-row" aria-label="运营关键指标">
+    <div class="kpi-row" aria-label="科室关键指标">
       <article v-for="m in metrics" :key="m.label" class="kpi" :data-tone="m.tone">
         <div class="kpi-ico" aria-hidden="true">
           <svg v-if="iconPath(m.icon)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -19,11 +27,36 @@
       </article>
     </div>
 
+    <section class="dept-grid">
+      <article class="card">
+        <div class="card-head"><div class="card-title">科室内容使用</div><span class="unit">科普、宣教、模板和话术</span></div>
+        <div class="content-list">
+          <div v-for="item in departmentContentRows" :key="item.name" class="content-row">
+            <div><b>{{ item.name }}</b><span>{{ item.scene }}</span></div>
+            <em>{{ item.owner }}</em>
+            <strong>{{ item.value }}</strong>
+          </div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card-head"><div class="card-title">检后管理</div><span class="unit">报告后任务闭环</span></div>
+        <div class="ops-grid">
+          <div v-for="item in departmentPostExamRows" :key="item.label"><span>{{ item.label }}</span><b>{{ item.value }}</b><em>{{ item.note }}</em></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card-head"><div class="card-title">病中管理</div><span class="unit">长期随访与症状反馈</span></div>
+        <div class="ops-grid">
+          <div v-for="item in departmentDiseaseRows" :key="item.label"><span>{{ item.label }}</span><b>{{ item.value }}</b><em>{{ item.note }}</em></div>
+        </div>
+      </article>
+    </section>
+
     <!-- 七类结节总览表（核心区，优先展示） -->
     <section class="card">
       <div class="card-head">
         <div class="head-left">
-          <div class="card-title">七类结节运营总览 · {{ scenario.loginLabel }}</div>
+          <div class="card-title">七类结节患者管理总览</div>
         </div>
         <div class="head-actions">
           <button class="btn">导出统计</button>
@@ -44,8 +77,8 @@
             <tr v-for="(row, i) in rows" :key="row.type">
               <td><div class="type-cell"><span class="type-ico">{{ i + 1 }}</span>{{ row.type }}</div></td>
               <td><b>{{ row.total }}</b></td>
-              <td>{{ Math.round(parseInt(String(row.total).replace(',','')) * .63).toLocaleString() }}</td>
-              <td>{{ Math.round(parseInt(String(row.total).replace(',','')) * .37).toLocaleString() }}</td>
+              <td>{{ row.sourceOne ?? sourceCount(row.total, 'one') }}</td>
+              <td>{{ row.sourceTwo ?? sourceCount(row.total, 'two') }}</td>
               <td class="inc">+{{ row.inc }}</td>
               <td class="r">{{ row.high }}</td>
               <td class="o">{{ row.mid }}</td>
@@ -103,18 +136,20 @@
         <div class="combined-body">
           <div class="combined-col">
             <div class="col-sub">风险分布</div>
-            <div class="bar-row"><span>高风险</span><div class="bar"><span style="width:28%;background:#ef4444"></span></div><b>1,348</b></div>
-            <div class="bar-row"><span>中风险</span><div class="bar"><span style="width:54%;background:#f97316"></span></div><b>3,244</b></div>
-            <div class="bar-row"><span>低风险</span><div class="bar"><span style="width:86%;background:#65a30d"></span></div><b>7,894</b></div>
+            <div v-for="item in riskStatusRows" :key="item.label" class="bar-row">
+              <span>{{ item.label }}</span>
+              <div class="bar"><span :style="{ width: item.width, background: item.color }"></span></div>
+              <b>{{ item.value }}</b>
+            </div>
           </div>
           <div class="combined-divider"></div>
           <div class="combined-col">
             <div class="col-sub">随访状态</div>
-            <div class="bar-row"><span>{{ analyticsCopy.statusBars.report }}</span><div class="bar"><span style="width:18%;background:#5b8ff9"></span></div><b>{{ analyticsCopy.statusBars.reportValue }}</b></div>
-            <div class="bar-row"><span>{{ analyticsCopy.statusBars.review }}</span><div class="bar"><span style="width:12%;background:#5ad8a6"></span></div><b>{{ analyticsCopy.statusBars.reviewValue }}</b></div>
-            <div class="bar-row"><span>{{ analyticsCopy.statusBars.push }}</span><div class="bar"><span style="width:14%;background:#6dc8ec"></span></div><b>{{ analyticsCopy.statusBars.pushValue }}</b></div>
-            <div class="bar-row"><span>{{ analyticsCopy.statusBars.following }}</span><div class="bar"><span style="width:86%;background:#4f83f1"></span></div><b>{{ analyticsCopy.statusBars.followingValue }}</b></div>
-            <div class="bar-row"><span>{{ analyticsCopy.statusBars.done }}</span><div class="bar"><span style="width:92%;background:#65a30d"></span></div><b>{{ analyticsCopy.statusBars.doneValue }}</b></div>
+            <div v-for="item in followupStatusRows" :key="item.label" class="bar-row">
+              <span>{{ item.label }}</span>
+              <div class="bar"><span :style="{ width: item.width, background: item.color }"></span></div>
+              <b>{{ item.value }}</b>
+            </div>
           </div>
         </div>
         <div class="insight-bar">
@@ -136,6 +171,7 @@
         </div>
       </section>
     </div>
+    </div>
 
   </div>
 </template>
@@ -145,11 +181,24 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { kpis } from '../mocks/workbenchMock'
 import { getStoredScenario } from '../config/scenarios'
+import { useHospitalApi } from '../composables/useHospitalApi'
 
 const router = useRouter()
+const api = useHospitalApi()
 const scenario = computed(() => getStoredScenario())
 const liveReports = ref([])
 const loading = ref(false)
+const departmentSummary = ref(null)
+const departmentDoctors = ref([])
+const departmentAbnormalPatients = ref([])
+const noduleOverview = ref(null)
+
+const departmentContentRows = [
+  { name: '肺结节复查宣教包', scene: '门诊/检后推送，共 18 条素材', owner: '呼吸科', value: '使用 326 次' },
+  { name: '甲状腺结节报告解释模板', scene: '报告后解释、随访提醒', owner: '超声科', value: '使用 218 次' },
+  { name: '乳腺结节复查注意事项', scene: '检后管理与复查预约', owner: '乳腺外科', value: '使用 176 次' },
+  { name: '三结节病中管理话术', scene: '长期随访、异常反馈承接', owner: '健康管理科', value: '使用 142 次' },
+]
 
 const analyticsCopy = computed(() => {
   if (scenario.value.key === 'pharmacy') {
@@ -232,6 +281,19 @@ const analyticsCopy = computed(() => {
 })
 
 const metrics = computed(() => {
+  if (departmentSummary.value && scenario.value.key === 'hospital') {
+    const summary = departmentSummary.value
+    const risks = normalizeRiskDistribution(summary.risk_distribution || {})
+    const pendingAdvice = departmentDoctors.value.reduce((sum, row) => sum + Number(row.pending_advice_count || 0), 0)
+    return [
+      { label: '科室患者数', value: formatNum(summary.patient_count), delta: '科室接口汇总', tone: 'blue', icon: 'users' },
+      { label: '高风险患者', value: formatNum(risks.high), delta: `风险占比 ${pct(risks.high, summary.patient_count)}`, tone: 'orange', icon: 'shield' },
+      { label: '待处理报告', value: formatNum(summary.pending_report_count), delta: '报告待处理', tone: 'blue', icon: 'file' },
+      { label: '待医生建议', value: formatNum(pendingAdvice), delta: '医生工作台', tone: 'green', icon: 'check' },
+      { label: '异常/超期', value: formatNum(summary.overdue_task_count), delta: '随访需跟进', tone: 'purple', icon: 'send' },
+      { label: '随访完成率', value: `${summary.followup_completion_rate ?? 0}%`, delta: '科室任务', tone: 'cyan', icon: 'clock' }
+    ]
+  }
   if (!liveReports.value.length) return analyticsCopy.value.fallbackMetrics
   const reports = liveReports.value
   const total = reports.length
@@ -247,6 +309,41 @@ const metrics = computed(() => {
     { label: labels.review, value: formatNum(review), delta: '报告待确认', tone: 'green', icon: 'check' },
     { label: labels.push, value: formatNum(push), delta: '已生成报告', tone: 'purple', icon: 'send' },
     { label: labels.done, value: '78.6%', delta: '保留历史口径', tone: 'cyan', icon: 'clock' }
+  ]
+})
+
+const departmentPostExamRows = computed(() => {
+  if (!departmentSummary.value) {
+    return [
+      { label: '报告待复核', value: '82', note: '医生确认' },
+      { label: '待推送解释', value: '95', note: '小程序/企微' },
+      { label: '复查提醒待下发', value: '146', note: '按风险分层' },
+      { label: '异常待处理', value: '102', note: '优先人工' },
+    ]
+  }
+  const pendingAdvice = departmentDoctors.value.reduce((sum, row) => sum + Number(row.pending_advice_count || 0), 0)
+  return [
+    { label: '报告待复核', value: formatNum(departmentSummary.value.pending_report_count), note: '接口实时' },
+    { label: '待填写建议', value: formatNum(pendingAdvice), note: '医生确认' },
+    { label: '本月新增', value: formatNum(departmentSummary.value.new_this_month), note: '自然月' },
+    { label: '异常待处理', value: formatNum(departmentAbnormalPatients.value.length), note: '优先人工' },
+  ]
+})
+
+const departmentDiseaseRows = computed(() => {
+  if (!departmentSummary.value) {
+    return [
+      { label: '随访中', value: '7,361', note: '执行跟踪' },
+      { label: '今日打卡', value: '486', note: '饮食/症状' },
+      { label: '异常反馈', value: '38', note: '需确认' },
+      { label: '完成率', value: '78.6%', note: '近30天' },
+    ]
+  }
+  return [
+    { label: '患者总数', value: formatNum(departmentSummary.value.patient_count), note: '科室范围' },
+    { label: '本月新增', value: formatNum(departmentSummary.value.new_this_month), note: '自然月' },
+    { label: '异常反馈', value: formatNum(departmentAbnormalPatients.value.length), note: '需确认' },
+    { label: '完成率', value: `${departmentSummary.value.followup_completion_rate ?? 0}%`, note: '全部任务' },
   ]
 })
 
@@ -267,16 +364,6 @@ function sparkPath(delta) {
     : 'M2 20 C10 18 12 16 18 17 C25 18 28 10 34 12 C40 14 42 6 48 7 C55 8 57 17 68 12'
 }
 
-const donutLegend = [
-  { name: '三合并结节', pct: '28%', color: '#5ad8a6' },
-  { name: '肺部合并乳腺结节', pct: '18%', color: '#5b8ff9' },
-  { name: '肺部合并甲状腺结节', pct: '16%', color: '#6dc8ec' },
-  { name: '甲状腺合并乳腺结节', pct: '14%', color: '#c4b5fd' },
-  { name: '肺部结节', pct: '9%', color: '#f6bd16' },
-  { name: '甲状腺结节', pct: '8%', color: '#fda4af' },
-  { name: '乳腺结节', pct: '7%', color: '#cbd5e1' }
-]
-
 const mockRows = [
   { type: '三合并结节', total: '3,496', inc: 36, high: 468, mid: '1,120', low: '1,908', todoReport: 62, todoReview: 38, todoPush: 44, following: '2,482', abnormal: 41, doneRate: '80.4%' },
   { type: '肺部合并乳腺结节', total: '2,247', inc: 21, high: 286, mid: 708, low: '1,253', todoReport: 34, todoReview: 22, todoPush: 26, following: '1,612', abnormal: 25, doneRate: '78.2%' },
@@ -288,6 +375,24 @@ const mockRows = [
 ]
 
 const rows = computed(() => {
+  if (noduleOverview.value?.nodule_rows?.length) {
+    return noduleOverview.value.nodule_rows.map((row) => ({
+      type: row.type,
+      total: formatNum(row.total),
+      sourceOne: formatNum(Math.round(Number(row.total || 0) * .63)),
+      sourceTwo: formatNum(Math.max(0, Number(row.total || 0) - Math.round(Number(row.total || 0) * .63))),
+      inc: row.new_today || 0,
+      high: formatNum(row.high),
+      mid: formatNum(row.mid),
+      low: formatNum(row.low),
+      todoReport: formatNum(row.pending_report),
+      todoReview: formatNum(row.pending_review),
+      todoPush: formatNum(row.finalized_report),
+      following: formatNum(row.active_followup),
+      abnormal: formatNum(row.abnormal),
+      doneRate: `${row.followup_completion_rate ?? 0}%`,
+    }))
+  }
   if (!liveReports.value.length) return mockRows
   const buckets = new Map()
   for (const item of liveReports.value) {
@@ -328,9 +433,20 @@ const rows = computed(() => {
   }))
 })
 
-const totalPersons = computed(() => liveReports.value.length ? formatNum(liveReports.value.length) : '12,486')
+const totalPersons = computed(() => {
+  if (noduleOverview.value) return formatNum(noduleOverview.value.patient_count)
+  return liveReports.value.length ? formatNum(liveReports.value.length) : '12,486'
+})
 
 const todoStats = computed(() => {
+  if (departmentSummary.value) {
+    return [
+      { label: '待处理报告', value: departmentSummary.value.pending_report_count || 0, tone: 'r', sub: '报告待处理' },
+      { label: '超期任务', value: departmentSummary.value.overdue_task_count || 0, tone: 'o', sub: '需跟进' },
+      { label: '异常患者', value: departmentAbnormalPatients.value.length, tone: 'r', sub: '异常反馈' },
+      { label: '本月新增', value: departmentSummary.value.new_this_month || 0, tone: 'b', sub: '科室患者' }
+    ]
+  }
   const reports = liveReports.value
   if (!reports.length) {
     return analyticsCopy.value.fallbackTodos
@@ -344,6 +460,67 @@ const todoStats = computed(() => {
   ]
 })
 
+const fallbackDonutLegend = [
+  { name: '三合并结节', pct: '28%', color: '#5ad8a6' },
+  { name: '肺部合并乳腺结节', pct: '18%', color: '#5b8ff9' },
+  { name: '肺部合并甲状腺结节', pct: '16%', color: '#6dc8ec' },
+  { name: '甲状腺合并乳腺结节', pct: '14%', color: '#c4b5fd' },
+  { name: '肺部结节', pct: '9%', color: '#f6bd16' },
+  { name: '甲状腺结节', pct: '8%', color: '#fda4af' },
+  { name: '乳腺结节', pct: '7%', color: '#cbd5e1' }
+]
+
+const donutColors = ['#5ad8a6', '#5b8ff9', '#6dc8ec', '#c4b5fd', '#f6bd16', '#fda4af', '#cbd5e1', '#94a3b8']
+
+const donutLegend = computed(() => {
+  const distribution = noduleOverview.value?.nodule_distribution || []
+  if (!distribution.length) return fallbackDonutLegend
+  return distribution.map((item, index) => ({
+    name: item.type,
+    pct: `${item.pct ?? 0}%`,
+    color: donutColors[index % donutColors.length],
+  }))
+})
+
+const riskStatusRows = computed(() => {
+  const dist = noduleOverview.value?.risk_distribution
+  const rows = dist
+    ? [
+        { label: '高风险', raw: dist.high || 0, color: '#ef4444' },
+        { label: '中风险', raw: dist.mid || 0, color: '#f97316' },
+        { label: '低风险', raw: dist.low || 0, color: '#65a30d' },
+        { label: '未评估', raw: dist.unknown || 0, color: '#94a3b8' },
+      ]
+    : [
+        { label: '高风险', raw: 1348, color: '#ef4444' },
+        { label: '中风险', raw: 3244, color: '#f97316' },
+        { label: '低风险', raw: 7894, color: '#65a30d' },
+      ]
+  return withBarWidths(rows)
+})
+
+const followupStatusRows = computed(() => {
+  const report = noduleOverview.value?.report_status
+  const follow = noduleOverview.value?.followup_status
+  const rows = report && follow
+    ? [
+        { label: '待生成报告', raw: report.not_generated || 0, color: '#5b8ff9' },
+        { label: '待医生建议', raw: report.pending_advice || 0, color: '#5ad8a6' },
+        { label: '已归档报告', raw: report.finalized || 0, color: '#6dc8ec' },
+        { label: '随访中', raw: follow.active || 0, color: '#4f83f1' },
+        { label: '随访已完成', raw: follow.completed || 0, color: '#65a30d' },
+        { label: '异常/超期', raw: (follow.abnormal || 0) + (follow.overdue || 0), color: '#ef4444' },
+      ]
+    : [
+        { label: analyticsCopy.value.statusBars.report, raw: Number(analyticsCopy.value.statusBars.reportValue.replace(/,/g, '')), color: '#5b8ff9' },
+        { label: analyticsCopy.value.statusBars.review, raw: Number(analyticsCopy.value.statusBars.reviewValue.replace(/,/g, '')), color: '#5ad8a6' },
+        { label: analyticsCopy.value.statusBars.push, raw: Number(analyticsCopy.value.statusBars.pushValue.replace(/,/g, '')), color: '#6dc8ec' },
+        { label: analyticsCopy.value.statusBars.following, raw: Number(analyticsCopy.value.statusBars.followingValue.replace(/,/g, '')), color: '#4f83f1' },
+        { label: analyticsCopy.value.statusBars.done, raw: Number(analyticsCopy.value.statusBars.doneValue.replace(/,/g, '')), color: '#65a30d' },
+      ]
+  return withBarWidths(rows)
+})
+
 const donutCircumference = 2 * Math.PI * 46
 
 function parsePct(p) {
@@ -353,7 +530,7 @@ function parsePct(p) {
 
 const donutSegments = computed(() => {
   let acc = 0
-  return donutLegend.map((it) => {
+  return donutLegend.value.map((it) => {
     const pct = parsePct(it.pct)
     const len = (pct / 100) * donutCircumference
     const seg = {
@@ -374,24 +551,73 @@ onMounted(loadAnalytics)
 async function loadAnalytics() {
   loading.value = true
   try {
-    const res = await fetch('/api/b/reports?page=1&per_page=500&include_unreported=1', { credentials: 'include' })
-    const payload = await res.json()
-    if (!res.ok || payload.success === false) throw new Error(payload.message || '加载失败')
-    liveReports.value = payload.data?.reports || payload.reports || []
-  } catch (e) {
-    liveReports.value = []
+    const [
+      reportsResult,
+      departmentSummaryResult,
+      departmentDoctorsResult,
+      departmentAbnormalResult,
+      noduleOverviewResult,
+    ] = await Promise.allSettled([
+      fetchReportAnalytics(),
+      api.getDepartmentSummary(),
+      api.getDepartmentDoctors(),
+      api.getDepartmentAbnormalPatients(),
+      api.getNoduleOverview(),
+    ])
+
+    liveReports.value = reportsResult.status === 'fulfilled' ? reportsResult.value : []
+    departmentSummary.value = departmentSummaryResult.status === 'fulfilled' ? departmentSummaryResult.value : null
+    departmentDoctors.value = departmentDoctorsResult.status === 'fulfilled' ? departmentDoctorsResult.value.doctors || [] : []
+    departmentAbnormalPatients.value = departmentAbnormalResult.status === 'fulfilled' ? departmentAbnormalResult.value.patients || [] : []
+    noduleOverview.value = noduleOverviewResult.status === 'fulfilled' ? noduleOverviewResult.value : null
   } finally {
     loading.value = false
   }
+}
+
+async function fetchReportAnalytics() {
+  const res = await fetch('/api/b/reports?page=1&per_page=500&include_unreported=1', { credentials: 'include' })
+  const payload = await res.json()
+  if (!res.ok || payload.success === false) throw new Error(payload.message || '加载失败')
+  return payload.data?.reports || payload.reports || []
 }
 
 function formatNum(value) {
   return Number(value || 0).toLocaleString()
 }
 
+function numericValue(value) {
+  const n = Number(String(value ?? 0).replace(/,/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+function sourceCount(total, part) {
+  const n = numericValue(total)
+  const first = Math.round(n * .63)
+  return formatNum(part === 'one' ? first : Math.max(0, n - first))
+}
+
 function pct(value, total) {
   if (!total) return '0%'
   return `${Math.round((value / total) * 100)}%`
+}
+
+function normalizeRiskDistribution(dist) {
+  const sumKeys = (keys) => keys.reduce((sum, key) => sum + Number(dist[key] || 0), 0)
+  return {
+    high: sumKeys(['高风险', '高危', 'high']),
+    mid: sumKeys(['中风险', '中危', 'medium', 'mid']),
+    low: sumKeys(['低风险', '低危', 'low']),
+  }
+}
+
+function withBarWidths(rows) {
+  const max = Math.max(...rows.map((row) => Number(row.raw || 0)), 1)
+  return rows.map((row) => ({
+    ...row,
+    value: formatNum(row.raw),
+    width: `${Math.max(Number(row.raw || 0) ? 8 : 0, Math.round((Number(row.raw || 0) / max) * 100))}%`,
+  }))
 }
 
 function riskLabel(risk) {
@@ -415,7 +641,23 @@ function noduleLabel(type) {
 
 <style scoped>
 .page{display:flex;flex-direction:column;gap:12px;padding-bottom:24px}
-
+.workbench-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#fff;border:1px solid #e6edf7;border-radius:10px;padding:12px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+.eyebrow{font-size:12px;color:#64748b;font-weight:750;margin-bottom:4px}
+h1{margin:0;color:#0f172a;font-size:22px;line-height:1.2}
+.workbench-head p{margin:4px 0 0;color:#64748b;font-size:13px;font-weight:750}
+.board-stack{display:flex;flex-direction:column;gap:12px}
+.dept-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:10px}
+.content-list{padding:10px 12px;display:grid;gap:8px}
+.content-row{display:grid;grid-template-columns:minmax(0,1fr) 78px 90px;align-items:center;gap:10px;border:1px solid #eef2f7;background:#f8fafc;border-radius:8px;padding:8px}
+.content-row b{display:block;color:#0f172a;font-size:13px}
+.content-row span{display:block;color:#64748b;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.content-row em{font-style:normal;color:#64748b;font-size:12px;font-weight:850;white-space:nowrap}
+.content-row strong{color:#155eef;font-size:12px;text-align:right}
+.ops-grid{padding:10px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ops-grid div{border:1px solid #eef2f7;background:#f8fafc;border-radius:8px;padding:9px}
+.ops-grid span{display:block;color:#64748b;font-size:12px;font-weight:750}
+.ops-grid b{display:block;color:#0f172a;font-size:22px;line-height:1.2;margin-top:2px}
+.ops-grid em{display:block;color:#94a3b8;font-size:11px;font-style:normal;margin-top:2px}
 /* KPI */
 .kpi-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
 .kpi{position:relative;background:#fff;border:1px solid #e6edf7;border-radius:10px;padding:10px 12px;box-shadow:0 4px 12px rgba(15,23,42,.04);overflow:hidden}
@@ -501,4 +743,8 @@ function noduleLabel(type) {
 .todo-sub{color:#94a3b8;font-size:11px}
 .split{height:1px;background:#eef2f7;margin:8px 0}
 .remind{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #eef2f7;font-size:11px;color:#475569}
+@media (max-width:1380px){
+  .kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dept-grid,.chart-row{grid-template-columns:1fr}
+}
 </style>

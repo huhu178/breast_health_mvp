@@ -88,6 +88,30 @@ def _task_status_done(status):
     return status in {'completed', 'done', 'closed'}
 
 
+def _risk_bucket(value):
+    raw = (value or '').strip()
+    if raw in {'高风险', '高危', 'high'}:
+        return 'high'
+    if raw in {'中风险', '中危', 'medium', 'mid'}:
+        return 'mid'
+    if raw in {'低风险', '低危', 'low'}:
+        return 'low'
+    return 'unknown'
+
+
+def _nodule_label(value):
+    labels = {
+        'breast': '乳腺结节',
+        'lung': '肺部结节',
+        'thyroid': '甲状腺结节',
+        'breast_lung': '肺部合并乳腺结节',
+        'breast_thyroid': '甲状腺合并乳腺结节',
+        'lung_thyroid': '肺部合并甲状腺结节',
+        'triple': '三合并结节',
+    }
+    return labels.get(value or '', value or '其他结节')
+
+
 def _patient_list_item(patient):
     latest_report = _latest_report(patient.id)
     latest_task = (
@@ -106,6 +130,147 @@ def _patient_list_item(patient):
         'latest_task_status': latest_task.status if latest_task else None,
         'next_followup_at': latest_task.due_at.strftime('%Y-%m-%d %H:%M:%S') if latest_task and latest_task.due_at else None,
     }
+
+
+@hospital_bp.route('/analytics/nodule-overview', methods=['GET'])
+@login_required
+def nodule_overview(current_user):
+    patients = _patient_query(current_user).order_by(BPatient.id.asc()).all()
+    patient_ids = [patient.id for patient in patients]
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day)
+
+    reports_by_patient = {}
+    reports = []
+    tasks_by_patient = {}
+    submitted_advice_report_ids = set()
+
+    if patient_ids:
+        reports = (
+            BReport.query
+            .filter(BReport.patient_id.in_(patient_ids))
+            .order_by(BReport.updated_at.desc(), BReport.id.desc())
+            .all()
+        )
+        for report in reports:
+            reports_by_patient.setdefault(report.patient_id, []).append(report)
+
+        tasks = (
+            BFollowUpTask.query
+            .filter(BFollowUpTask.patient_id.in_(patient_ids))
+            .order_by(BFollowUpTask.updated_at.desc(), BFollowUpTask.id.desc())
+            .all()
+        )
+        for task in tasks:
+            tasks_by_patient.setdefault(task.patient_id, []).append(task)
+
+        submitted_advice_report_ids = {
+            row[0] for row in BReportFollowupAdvice.query
+            .filter(BReportFollowupAdvice.patient_id.in_(patient_ids), BReportFollowupAdvice.status == 'submitted')
+            .with_entities(BReportFollowupAdvice.report_id)
+            .all()
+        }
+
+    rows_by_type = {}
+    risk_distribution = {'high': 0, 'mid': 0, 'low': 0, 'unknown': 0}
+    report_status = {'not_generated': 0, 'pending_review': 0, 'pending_advice': 0, 'finalized': 0}
+    followup_status = {'active': 0, 'completed': 0, 'overdue': 0, 'abnormal': 0}
+
+    for patient in patients:
+        nodule_type = patient.nodule_type or 'unknown'
+        row = rows_by_type.setdefault(nodule_type, {
+            'nodule_type': nodule_type,
+            'type': _nodule_label(nodule_type),
+            'total': 0,
+            'new_today': 0,
+            'high': 0,
+            'mid': 0,
+            'low': 0,
+            'unknown_risk': 0,
+            'pending_report': 0,
+            'pending_review': 0,
+            'pending_advice': 0,
+            'finalized_report': 0,
+            'active_followup': 0,
+            'completed_followup': 0,
+            'overdue_followup': 0,
+            'abnormal': 0,
+        })
+        row['total'] += 1
+        if patient.created_at and patient.created_at >= today_start:
+            row['new_today'] += 1
+
+        patient_reports = reports_by_patient.get(patient.id, [])
+        latest_report = patient_reports[0] if patient_reports else None
+        risk = _risk_bucket(latest_report.risk_level if latest_report else None)
+        risk_distribution[risk] += 1
+        if risk == 'high':
+            row['high'] += 1
+        elif risk == 'mid':
+            row['mid'] += 1
+        elif risk == 'low':
+            row['low'] += 1
+        else:
+            row['unknown_risk'] += 1
+
+        if not patient_reports:
+            row['pending_report'] += 1
+            report_status['not_generated'] += 1
+
+        for report in patient_reports:
+            if report.status in {'draft', 'generated', 'pending_review', 'reviewing'}:
+                row['pending_review'] += 1
+                report_status['pending_review'] += 1
+            if report.status in {'finalized', 'published', 'archived'}:
+                row['finalized_report'] += 1
+                report_status['finalized'] += 1
+            if report.status in {'draft', 'generated', 'pending_review', 'finalized'} and report.id not in submitted_advice_report_ids:
+                row['pending_advice'] += 1
+                report_status['pending_advice'] += 1
+
+        patient_tasks = tasks_by_patient.get(patient.id, [])
+        for task in patient_tasks:
+            done = _task_status_done(task.status)
+            if done:
+                row['completed_followup'] += 1
+                followup_status['completed'] += 1
+            elif task.status not in {'cancelled', 'failed'}:
+                row['active_followup'] += 1
+                followup_status['active'] += 1
+            if task.due_at and task.due_at < now and not done and task.status not in {'cancelled', 'failed'}:
+                row['overdue_followup'] += 1
+                followup_status['overdue'] += 1
+            if task.abnormal_flag:
+                row['abnormal'] += 1
+                followup_status['abnormal'] += 1
+
+    preferred_order = ['triple', 'breast_lung', 'lung_thyroid', 'breast_thyroid', 'lung', 'thyroid', 'breast']
+    nodule_rows = sorted(
+        rows_by_type.values(),
+        key=lambda row: (preferred_order.index(row['nodule_type']) if row['nodule_type'] in preferred_order else len(preferred_order), -row['total']),
+    )
+    for row in nodule_rows:
+        total_followups = row['active_followup'] + row['completed_followup']
+        row['followup_completion_rate'] = round((row['completed_followup'] / total_followups) * 100, 1) if total_followups else 0
+
+    nodule_distribution = [
+        {
+            'nodule_type': row['nodule_type'],
+            'type': row['type'],
+            'value': row['total'],
+            'pct': round((row['total'] / len(patients)) * 100, 1) if patients else 0,
+        }
+        for row in nodule_rows
+    ]
+
+    return Response.success({
+        'patient_count': len(patients),
+        'nodule_rows': nodule_rows,
+        'nodule_distribution': nodule_distribution,
+        'risk_distribution': risk_distribution,
+        'report_status': report_status,
+        'followup_status': followup_status,
+    })
 
 
 @hospital_bp.route('/departments', methods=['GET'])
