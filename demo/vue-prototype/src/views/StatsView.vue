@@ -15,7 +15,7 @@
         <div class="card-title">提示</div>
       </div>
       <div style="padding:12px 14px;color:#64748b;line-height:1.7">
-        本页面统计已精简。请前往左侧导航的 <b>运营看板</b> 查看所有统计数据。
+        本页面统计已精简。请前往左侧导航的 <b>工作台</b> 查看所有统计数据。
       </div>
     </section>
   </div>

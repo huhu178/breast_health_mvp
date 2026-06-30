@@ -1,0 +1,12 @@
+# Runtime logs and local process files
+logs/
+*.pid
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
