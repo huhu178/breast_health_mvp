@@ -19,6 +19,7 @@ const router = createRouter({
     { path: '/stats', redirect: '/analytics' },      // 已合并到工作台
     { path: '/patient', name: 'patient', component: view('PatientManagementView'), meta: auth },
     { path: '/doctor-workbench', name: 'doctor-workbench', component: view('DoctorWorkbenchView'), meta: auth },
+    { path: '/assistant-workbench', name: 'assistant-workbench', component: view('DoctorAssistantWorkbenchView'), meta: auth },
     { path: '/department-dashboard', name: 'department-dashboard', component: view('DepartmentDashboardView'), meta: auth },
     { path: '/system', name: 'system', component: view('SystemManagementView'), meta: auth },
     { path: '/record', name: 'record', component: view('RecordView'), meta: auth },
@@ -41,16 +42,20 @@ router.beforeEach((to) => {
     const role = localStorage.getItem('proto_role') || ''
     if (to.name === 'analytics' && ['doctor', 'department_director'].includes(role)) return roleHome(role)
     if (to.name === 'doctor-workbench' && role !== 'doctor') return roleHome(role)
+    if (to.name === 'assistant-workbench' && role !== 'doctor_assistant') return roleHome(role)
     if (to.name === 'department-dashboard' && role !== 'department_director') return roleHome(role)
     if (to.name === 'system' && !['system_admin', 'admin'].includes(role)) return roleHome(role)
-    if (role === 'doctor' && ['patient', 'record', 'followup-workflow'].includes(to.name)) return roleHome(role)
-    if (['rws', 'ai-employee', 'scenario-workspace'].includes(to.name) && !['system_admin', 'admin'].includes(role)) return roleHome(role)
+    if (['doctor', 'doctor_assistant'].includes(role) && ['patient', 'record', 'followup-workflow'].includes(to.name)) return roleHome(role)
+    if (to.name === 'rws' && !['system_admin', 'admin', 'doctor', 'department_director'].includes(role)) return roleHome(role)
+    if (to.name === 'ai-employee' && !['system_admin', 'admin', 'doctor_assistant'].includes(role)) return roleHome(role)
+    if (to.name === 'scenario-workspace' && !['system_admin', 'admin'].includes(role)) return roleHome(role)
   }
   return true
 })
 
 function roleHome(role) {
   if (role === 'doctor') return { name: 'doctor-workbench' }
+  if (role === 'doctor_assistant') return { name: 'assistant-workbench' }
   if (role === 'department_director') return { name: 'department-dashboard' }
   if (['system_admin', 'admin'].includes(role)) return { name: 'system' }
   return { name: 'analytics' }

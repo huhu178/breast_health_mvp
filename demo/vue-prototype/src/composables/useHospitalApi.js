@@ -33,6 +33,13 @@ export function useHospitalApi() {
   const getDepartmentDoctors = () => apiJson('/api/hospital/department-dashboard/doctors')
   const getDepartmentAbnormalPatients = () => apiJson('/api/hospital/department-dashboard/abnormal-patients')
   const getNoduleOverview = () => apiJson('/api/hospital/analytics/nodule-overview')
+  const getAssistantOffline = (params = {}) => {
+    const q = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') q.set(key, value)
+    })
+    return apiJson(`/api/hospital/assistant-workbench/offline${q.toString() ? `?${q}` : ''}`)
+  }
 
   return {
     getDepartments,
@@ -51,5 +58,6 @@ export function useHospitalApi() {
     getDepartmentDoctors,
     getDepartmentAbnormalPatients,
     getNoduleOverview,
+    getAssistantOffline,
   }
 }

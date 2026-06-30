@@ -25,9 +25,20 @@
             <p>按主要负责医生归属展示，不提供建档入口。</p>
           </div>
         </div>
+        <div class="path-tabs">
+          <button
+            v-for="tab in carePathTabs"
+            :key="tab.key"
+            type="button"
+            :class="{ active: pathFilter === tab.key }"
+            @click="pathFilter = tab.key"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
         <div class="patient-list">
           <button
-            v-for="patient in patients"
+            v-for="patient in filteredPatients"
             :key="patient.id"
             class="patient-row"
             :class="{ active: activePatientId === patient.id }"
@@ -39,9 +50,10 @@
               <em>{{ patient.gender || '-' }} · {{ patient.age || '-' }}岁 · {{ patient.phone || patient.phoneMasked || '-' }}</em>
             </span>
             <strong>{{ riskLabel(patient.latest_report_risk_level || patient.risk_level || '') }}</strong>
+            <i>{{ patient.path_label || '未分组' }}</i>
             <small>{{ patient.next_followup_at || '待安排复查' }}</small>
           </button>
-          <div v-if="!patients.length" class="empty">暂无负责患者</div>
+          <div v-if="!filteredPatients.length" class="empty">暂无匹配患者</div>
         </div>
       </section>
 
@@ -180,8 +192,19 @@ const activePatientId = ref(null)
 const activePatient = ref(null)
 const patientDetail = ref(null)
 const activeReport = ref(null)
+const pathFilter = ref('all')
 const adviceForm = reactive({ advice_content: '', suggested_next_followup_at: '' })
 
+const carePathTabs = [
+  { key: 'all', label: '全部' },
+  { key: 'surgery', label: '手术' },
+  { key: 'non_surgery_medication', label: '非手术用药' },
+  { key: 'non_surgery_observation', label: '非手术观察' },
+]
+const filteredPatients = computed(() => {
+  if (pathFilter.value === 'all') return patients.value
+  return patients.value.filter((patient) => patient.path === pathFilter.value)
+})
 const patientReports = computed(() => patientDetail.value?.reports || [])
 const checkins = computed(() => patientDetail.value?.checkins || [])
 const latestTask = computed(() => (patientDetail.value?.followup_tasks || [])[0] || null)
@@ -369,11 +392,12 @@ p{margin:0;color:#64748b;font-size:13px;line-height:1.6}
 .advice-panel,.reports-panel{grid-column:1 / -1}
 .panel-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}
 .panel h2{font-size:15px;margin:0 0 4px}
+.path-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.path-tabs button{height:30px;border:1px solid #d9e2ef;border-radius:8px;background:#fff;color:#334155;font-size:12px;font-weight:900;padding:0 9px;cursor:pointer}.path-tabs button.active{background:#eff6ff;border-color:#2563eb;color:#1d4ed8}
 .patient-list,.pending-list,.checkin-list{display:grid;gap:8px}
 .patient-row,.pending-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #edf2f7;border-radius:8px;background:#fff;padding:10px;text-align:left;cursor:pointer}
 .patient-row.active{border-color:#2563eb;background:#eff6ff}
 .patient-row b,.pending-row b{display:block;font-size:13px}.patient-row em,.pending-row span{display:block;color:#64748b;font-size:12px;font-style:normal;margin-top:3px}
-.patient-row strong{font-size:12px;color:#dc2626}.patient-row small{grid-column:1 / -1;color:#64748b;font-size:12px}
+.patient-row strong{font-size:12px;color:#dc2626}.patient-row i{justify-self:start;font-style:normal;font-size:12px;border-radius:999px;background:#f1f5f9;color:#334155;padding:3px 8px}.patient-row small{grid-column:1 / -1;color:#64748b;font-size:12px}
 .detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .info-card{border:1px solid #edf2f7;border-radius:8px;padding:12px;background:#fff}
 .info-card[data-tone="red"]{background:#fff1f2;border-color:#fecdd3}.info-card[data-tone="orange"]{background:#fff7ed;border-color:#fed7aa}.info-card[data-tone="green"]{background:#f0fdf4;border-color:#bbf7d0}

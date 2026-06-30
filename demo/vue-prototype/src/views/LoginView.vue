@@ -85,6 +85,13 @@ const demoRoles = [
     key: 'manager',
     label: '健康管理员',
     desc: '建档、报告处理、随访任务、异常处理',
+    username: 'smoke_admin',
+    password: 'Smoke@123456',
+  },
+  {
+    key: 'assistant',
+    label: '医生助理',
+    desc: '线上智脑营销，线下按科室和医生跟进患者',
     username: 'assistant_chen',
     password: 'Assistant@123456',
   },
@@ -140,6 +147,7 @@ function completeLogin(user = {}) {
   localStorage.setItem('proto_role', user.role || '')
   localStorage.setItem('proto_department_id', user.department_id || '')
   if (user.role === 'doctor') router.push('/doctor-workbench')
+  else if (user.role === 'doctor_assistant') router.push('/assistant-workbench')
   else if (user.role === 'department_director') router.push('/department-dashboard')
   else if (['admin', 'system_admin'].includes(user.role)) router.push('/system')
   else router.push('/analytics')
@@ -199,7 +207,7 @@ function fillDemo() {
 function roleName(role) {
   const map = {
     health_manager: '健康管理员',
-    doctor_assistant: '健康管理员',
+    doctor_assistant: '医生助理',
     doctor: '医生',
     department_director: '科室主任',
     admin: '平台管理员',

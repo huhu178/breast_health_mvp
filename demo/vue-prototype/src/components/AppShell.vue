@@ -58,6 +58,17 @@
           <span class="nav-label">医生工作台</span>
         </RouterLink>
 
+        <RouterLink v-if="isDoctorAssistant" class="nav-item" to="/assistant-workbench">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 6V3M6 12H3M21 12h-3M12 21v-3" />
+              <circle cx="12" cy="12" r="4" />
+              <path d="M16 8l2-2M8 8 6 6M16 16l2 2M8 16l-2 2" />
+            </svg>
+          </span>
+          <span class="nav-label">医生助理</span>
+        </RouterLink>
+
         <RouterLink v-if="isDirector" class="nav-item" to="/department-dashboard">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -89,7 +100,7 @@
           <span class="nav-label">系统管理</span>
         </RouterLink>
 
-        <RouterLink v-if="isAdmin" class="nav-item" to="/rws">
+        <RouterLink v-if="canViewRws" class="nav-item" to="/rws">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 19V5" />
@@ -101,7 +112,7 @@
           <span class="nav-label">真实世界研究</span>
         </RouterLink>
 
-        <RouterLink v-if="isAdmin" class="nav-item" to="/ai-employee/overview">
+        <RouterLink v-if="isAdmin || isDoctorAssistant" class="nav-item" to="/ai-employee/overview">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="4" y="6" width="16" height="12" rx="3" />
@@ -111,7 +122,7 @@
           <span class="nav-label">AI营销</span>
         </RouterLink>
 
-        <div v-if="isAdmin && showAiMarketingSubnav" class="subnav" aria-label="AI营销二级标题">
+        <div v-if="(isAdmin || isDoctorAssistant) && showAiMarketingSubnav" class="subnav" aria-label="AI营销二级标题">
           <RouterLink v-for="item in aiMarketingTabs" :key="item.key" class="subnav-item" :class="{ active: aiMarketingTab === item.key }" :to="`/ai-employee/${item.key}`">{{ item.label }}</RouterLink>
         </div>
 
@@ -179,10 +190,12 @@ const org = computed(() => localStorage.getItem('proto_org') || scenario.value.o
 const user = computed(() => localStorage.getItem('proto_user') || '管理员')
 const role = computed(() => localStorage.getItem('proto_role') || '')
 const roleLabel = computed(() => localStorage.getItem('proto_role_label') || roleName(role.value))
-const isOperator = computed(() => ['health_manager', 'doctor_assistant'].includes(role.value) || !role.value)
+const isOperator = computed(() => role.value === 'health_manager' || !role.value)
+const isDoctorAssistant = computed(() => role.value === 'doctor_assistant')
 const isDoctor = computed(() => role.value === 'doctor')
 const isDirector = computed(() => role.value === 'department_director')
 const isAdmin = computed(() => ['admin', 'system_admin'].includes(role.value))
+const canViewRws = computed(() => isAdmin.value || isDoctor.value || isDirector.value)
 
 const now = new Date().toLocaleString('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit',
@@ -234,7 +247,7 @@ function logout() {
 function roleName(value) {
   const map = {
     health_manager: '健康管理员',
-    doctor_assistant: '健康管理员',
+    doctor_assistant: '医生助理',
     doctor: '医生',
     department_director: '科室主任',
     admin: '平台管理员',

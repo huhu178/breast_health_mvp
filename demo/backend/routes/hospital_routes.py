@@ -627,7 +627,103 @@ def doctor_workbench_patients(current_user):
         .limit(100)
         .all()
     )
-    return Response.success({'patients': [_patient_list_item(patient) for patient in patients]})
+    rows = []
+    for patient in patients:
+        item = _patient_list_item(patient)
+        item.update(_assistant_patient_path(patient))
+        rows.append(item)
+    return Response.success({'patients': rows})
+
+
+def _assistant_patient_path(patient):
+    latest_report = _latest_report(patient.id)
+    latest_record = _latest_record(patient.id)
+    text = ' '.join(str(value or '') for value in [
+        latest_report.risk_level if latest_report else '',
+        latest_report.imaging_conclusion if latest_report else '',
+        latest_report.report_summary if latest_report else '',
+        latest_record.birads_level if latest_record else '',
+        latest_record.tirads_level if latest_record else '',
+        latest_record.thyroid_tirads_level if latest_record else '',
+        latest_record.lung_rads_level if latest_record else '',
+        latest_record.symptoms if latest_record else '',
+        latest_record.medication_history if latest_record else '',
+        latest_record.breast_medication_history if latest_record else '',
+        latest_record.thyroid_medication_history if latest_record else '',
+        latest_record.lung_medication_history if latest_record else '',
+    ])
+    is_surgery = any(keyword in text for keyword in ['手术', '外科', '活检', '穿刺', '4B', '4C', '5', '高风险', '高危'])
+    has_medication = any(keyword in text for keyword in ['用药', '服药', '药', '内分泌', '靶向', '抗炎', '换药'])
+    if is_surgery:
+        return {
+            'path': 'surgery',
+            'path_label': '手术',
+            'service_focus': '术前注意事项',
+            'next_action': '确认术前检查、禁食禁饮、用药停用和入院安排。',
+        }
+    if has_medication:
+        return {
+            'path': 'non_surgery_medication',
+            'path_label': '非手术 · 用药',
+            'service_focus': '首诊/复诊/用药换药跟进',
+            'next_action': '跟进首诊、复诊、服药依从性、不良反应和后续换药。',
+        }
+    return {
+        'path': 'non_surgery_observation',
+        'path_label': '非手术 · 不吃药',
+        'service_focus': '观察复查跟进',
+        'next_action': '按医生建议提醒复查，跟进症状变化和复查资料回收。',
+    }
+
+
+@hospital_bp.route('/assistant-workbench/offline', methods=['GET'])
+@login_required
+def assistant_workbench_offline(current_user):
+    if current_user.role not in {'doctor_assistant', 'system_admin', 'admin'}:
+        return Response.error('仅医生助理可查看医生患者池', 403)
+
+    doctor_q = doctor_query()
+    department_id = request.args.get('department_id')
+    doctor_id = request.args.get('doctor_id')
+    if department_id:
+        doctor_q = doctor_q.filter(User.department_id == department_id)
+    doctors = doctor_q.order_by(User.department_id.asc().nullslast(), User.id.asc()).all()
+    doctor_ids = [doctor.id for doctor in doctors]
+
+    patient_q = BPatient.query
+    if doctor_ids:
+        patient_q = patient_q.filter(BPatient.primary_doctor_id.in_(doctor_ids))
+    else:
+        patient_q = patient_q.filter(False)
+    if doctor_id:
+        patient_q = patient_q.filter(BPatient.primary_doctor_id == doctor_id)
+    patients = patient_q.order_by(BPatient.updated_at.desc(), BPatient.id.desc()).limit(300).all()
+
+    rows = []
+    path_counts = {'surgery': 0, 'non_surgery_medication': 0, 'non_surgery_observation': 0}
+    for patient in patients:
+        item = _patient_list_item(patient)
+        path = _assistant_patient_path(patient)
+        item.update(path)
+        path_counts[path['path']] = path_counts.get(path['path'], 0) + 1
+        rows.append(item)
+
+    doctor_rows = []
+    for doctor in doctors:
+        doctor_patients = [patient for patient in rows if patient.get('primary_doctor_id') == doctor.id]
+        doctor_rows.append({
+            'doctor': doctor.to_dict(),
+            'patient_count': len(doctor_patients),
+            'surgery_count': len([item for item in doctor_patients if item.get('path') == 'surgery']),
+            'medication_count': len([item for item in doctor_patients if item.get('path') == 'non_surgery_medication']),
+            'observation_count': len([item for item in doctor_patients if item.get('path') == 'non_surgery_observation']),
+        })
+
+    return Response.success({
+        'doctors': doctor_rows,
+        'patients': rows,
+        'path_counts': path_counts,
+    })
 
 
 @hospital_bp.route('/doctor-workbench/pending-advice', methods=['GET'])
