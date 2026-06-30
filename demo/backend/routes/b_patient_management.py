@@ -197,6 +197,21 @@ def create_patient():
         from utils.id_generator import generate_patient_code
         patient_code = generate_patient_code().replace('PT', 'BP', 1)
 
+        current_user = getattr(g, 'current_user', None)
+        current_role = (getattr(current_user, 'role', '') or '').strip()
+        manager_id = data.get('manager_id')
+        department_id = data.get('department_id')
+        primary_doctor_id = data.get('primary_doctor_id')
+
+        if current_role in {'health_manager', 'doctor_assistant'}:
+            manager_id = g.user_id
+            department_id = department_id or getattr(current_user, 'department_id', None)
+        elif current_role == 'doctor':
+            primary_doctor_id = g.user_id
+            department_id = department_id or getattr(current_user, 'department_id', None)
+        elif current_role == 'department_director':
+            department_id = getattr(current_user, 'department_id', None) or department_id
+
         # 创建B端患者
         patient = BPatient(
             patient_code=patient_code,
@@ -206,9 +221,9 @@ def create_patient():
             phone=data.get('phone'),
             wechat_id=data.get('wechat_id'),
             nodule_type=data.get('nodule_type'),  # 结节类型
-            manager_id=data.get('manager_id') or g.user_id,  # 分配给当前登录的管理师，医院场景可显式指定
-            department_id=data.get('department_id'),
-            primary_doctor_id=data.get('primary_doctor_id'),
+            manager_id=manager_id,
+            department_id=department_id,
+            primary_doctor_id=primary_doctor_id,
             source_channel=data.get('source_channel', 'manual'),
             status='active',
             is_new=True

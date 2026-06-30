@@ -1363,6 +1363,15 @@ watch(
   }
 )
 
+watch(
+  () => subTab.value,
+  (tab, previousTab) => {
+    if (tab === 'queue' && previousTab && previousTab !== 'queue') {
+      loadPatients()
+    }
+  }
+)
+
 // countBy 已废弃：状态统计改为 statusKey 映射
 </script>
 
