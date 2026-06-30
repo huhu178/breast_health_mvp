@@ -43,6 +43,7 @@ router.beforeEach((to) => {
     if (to.name === 'doctor-workbench' && role !== 'doctor') return roleHome(role)
     if (to.name === 'department-dashboard' && role !== 'department_director') return roleHome(role)
     if (to.name === 'system' && !['system_admin', 'admin'].includes(role)) return roleHome(role)
+    if (role === 'doctor' && ['patient', 'record', 'followup-workflow'].includes(to.name)) return roleHome(role)
     if (['rws', 'ai-employee', 'scenario-workspace'].includes(to.name) && !['system_admin', 'admin'].includes(role)) return roleHome(role)
   }
   return true

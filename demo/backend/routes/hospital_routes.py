@@ -380,6 +380,13 @@ def patient_detail(current_user, patient_id):
         .limit(50)
         .all()
     )
+    checkins = (
+        BFollowUpCheckin.query
+        .filter(BFollowUpCheckin.patient_id == patient_id)
+        .order_by(BFollowUpCheckin.submitted_at.desc(), BFollowUpCheckin.id.desc())
+        .limit(50)
+        .all()
+    )
     advices = (
         BReportFollowupAdvice.query
         .filter(BReportFollowupAdvice.patient_id == patient_id)
@@ -409,6 +416,7 @@ def patient_detail(current_user, patient_id):
         'records': [record.to_dict() for record in records],
         'reports': [report.to_dict() for report in reports],
         'followup_tasks': [task.to_dict() for task in tasks],
+        'checkins': [checkin.to_dict() for checkin in checkins],
         'followup_advices': [advice.to_dict() for advice in advices],
     })
 

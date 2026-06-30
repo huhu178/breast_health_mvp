@@ -58,16 +58,6 @@
           <span class="nav-label">医生工作台</span>
         </RouterLink>
 
-        <RouterLink v-if="isDoctor" class="nav-item" to="/patient">
-          <span class="nav-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-            </svg>
-          </span>
-          <span class="nav-label">我的患者</span>
-        </RouterLink>
-
         <RouterLink v-if="isDirector" class="nav-item" to="/department-dashboard">
           <span class="nav-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -126,7 +116,7 @@
         </div>
 
         <div v-if="showPatientSubnav" class="subnav" :aria-label="`患者管理二级标题`">
-          <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">{{ isDirector ? '科室患者' : isDoctor ? '我的患者' : isAdmin ? '全院患者' : '患者队列' }}</RouterLink>
+          <RouterLink class="subnav-item" :class="{ active: activeTab === 'queue' }" :to="{ path: '/patient', query: { tab: 'queue' } }">{{ isDirector ? '科室患者' : isAdmin ? '全院患者' : '患者队列' }}</RouterLink>
           <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'record' }" :to="{ path: '/patient', query: { tab: 'record' } }">患者建档</RouterLink>
           <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'review' }" :to="{ path: '/patient', query: { tab: 'review' } }">报告审核</RouterLink>
           <RouterLink v-if="isOperator || isAdmin" class="subnav-item" :class="{ active: activeTab === 'followup-plan' }" :to="{ path: '/patient', query: { tab: 'followup-plan' } }">随访任务</RouterLink>
